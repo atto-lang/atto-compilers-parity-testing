@@ -26,7 +26,7 @@ struct Case {
     expected_kind: String,
     expected_value: Option<i32>,
     validation_status: String,
-    feature_coverage: String,
+    features: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -45,7 +45,7 @@ struct Record {
     backend: String,
     source_sha256: String,
     validation_status: String,
-    feature_coverage: String,
+    features: Vec<String>,
     status: String,
     compile: Option<Invocation>,
     run: Option<Invocation>,
@@ -163,7 +163,7 @@ fn main() -> Result<(), String> {
         for &(backend, env_name) in &BACKENDS {
             let mut rec = Record {
                 case_id: case.id.clone(), backend: backend.into(), source_sha256: digest.clone(),
-                validation_status: case.validation_status.clone(), feature_coverage: case.feature_coverage.clone(),
+                validation_status: case.validation_status.clone(), features: case.features.clone(),
                 status: "not_run".into(), compile: None, run: None,
             };
             if !execute {
