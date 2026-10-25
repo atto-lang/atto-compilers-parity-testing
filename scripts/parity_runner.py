@@ -108,7 +108,7 @@ def main():
     for record in records:
         s = record["status"]
         result["summary"][s] = result["summary"].get(s, 0) + 1
-    Path(a.output).write_text(json.dumps(result, indent=2)+"\\n")
+    Path(a.output).write_text(json.dumps(result, indent=2)+"\n")
     print(json.dumps(result["summary"], sort_keys=True))
     return 1 if any(r["status"] in {"compile_failure", "wrong_result",
                "unexpected_compile_success", "compile_infrastructure_failure",
