@@ -21,12 +21,15 @@ A compiler/backend only passes when it consumes the same source graph, finishes 
 - `checks/nb-match/`
 - `checks/nb-switch/`
 - `checks/named-parameters/`
+- `checks/parameter-syntax/`
 - `checks/optional-parameters/`
 - `checks/anonymous-functions/`
 - `checks/recursion/`
 - `checks/classes-traits-casting/`
 
 `nb-match` and `nb-switch` deserve special treatment: the current grammar permits `do match` and `do switch`, but not `nb match` or `nb switch`. Ordinary value-producing `match` already has tested suspension semantics, so that folder asserts await in the subject, guard, and arm and separately includes a compile-reject `nb match` probe. `nb-switch` follows the same model.
+
+`parameter-syntax` separately validates type-first (`string x`) versus name-first (`x: string`) declaration forms and mixed typed lambda parameter order, so it is not conflated with named call arguments.
 
 `optional-parameters` is intentionally a spec-convergence probe for the desired distinction between `T?` (Option shorthand) and `name?` (omittable parameter). Keep it frontier until the canonical grammar and every backend agree.
 

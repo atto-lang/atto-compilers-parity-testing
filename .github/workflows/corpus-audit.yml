@@ -23,18 +23,18 @@ jobs:
           assert data['executed'] is False
           assert data['corpus'] == {
               'legacy_cases': 30,
-              'multifile_checks': 15,
+              'multifile_checks': 16,
               'negative_probes': 2,
-              'total_cases': 47,
+              'total_cases': 48,
           }
-          assert data['cases'] == 47
-          assert len(data['records']) == 235
+          assert data['cases'] == 48
+          assert len(data['records']) == 240
           assert set(data['summary']) == {'not_run'}
-          assert data['summary']['not_run'] == 235
+          assert data['summary']['not_run'] == 240
           checks = [r for r in data['records'] if r['suite'] == 'checks']
-          assert len(checks) == 85
+          assert len(checks) == 90
           positives = [r for r in checks if 'graph_sha256' in r]
-          assert len(positives) == 75
+          assert len(positives) == 80
           assert all(len(r['graph_files']) >= 4 for r in positives)
           PY
       - uses: actions/upload-artifact@v4

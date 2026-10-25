@@ -1,6 +1,6 @@
 # Execution and parity gate
 
-The checked-in corpus remains **unvalidated**. The default CI only audits source presence and enumerates the 150 backend/case pairs. It makes no compiler claims.
+The checked-in corpus remains **unvalidated**. The default CI only audits source presence and audits source presence and enumerates the complete backend/case matrix. It makes no compiler claims.
 
 ## Local exploratory runs
 
@@ -31,10 +31,10 @@ For funded-runner fallback, mirror only an identical authorized source tree into
 The runner now audits both corpora in one fail-closed matrix:
 
 - 30 legacy single-file candidates from `manifest.json`
-- 15 multi-file checks from `checks/manifest.json`
+- 16 multi-file checks from `checks/manifest.json`
 - 2 explicit negative syntax probes (`nb-match`, `nb-switch`)
-- 47 logical cases total
-- 5 backend slots each = 235 records
+- 48 logical cases total
+- 5 backend slots each = 240 records
 
 For each positive multi-file check, the audit recursively follows relative Oreslang imports, requires at least a four-file reachable source graph, and records a deterministic SHA-256 over the complete reachable graph. The direct entry-point import count is checked against `expectation.json`; multiple declaration imports from the same source file count as one imported file.
 
