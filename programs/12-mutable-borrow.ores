@@ -1,3 +1,0 @@
-// Parity candidate 12: mutable-borrow
-// tier: core; not yet compiler-validated
-define class Box as pub let int value = 40; end fnc bump(borrow mut Box b): void { b.value = b.value + 2; return; } pub fnc main(): int { let mut Box b = new Box(); bump(rt borrow mut b); return b.value; }

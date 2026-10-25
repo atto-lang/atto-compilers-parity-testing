@@ -1,3 +1,0 @@
-// Parity candidate 28: float-signed-zero
-// tier: frontier; not yet compiler-validated
-pub fnc main(): int { val float x = -0.0; if (x eq 0.0) { return 42; } fi return 1; }

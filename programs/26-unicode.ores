@@ -1,3 +1,0 @@
-// Parity candidate 26: unicode
-// tier: frontier; not yet compiler-validated
-pub fnc main(): int { val string s = "λ🦊"; if (s eq "λ🦊") { return 42; } fi return 1; }

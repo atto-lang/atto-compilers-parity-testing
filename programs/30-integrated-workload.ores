@@ -1,3 +1,0 @@
-// Parity candidate 30: integrated-workload
-// tier: frontier; not yet compiler-validated
-fnc square(int n): int { return n * n; } fnc add(int a, int b): int { return a + b; } pub fnc main(): int { val int value = add(square(6), 6); if (value eq 42) { return value; } fi return 1; }

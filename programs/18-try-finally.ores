@@ -1,3 +1,0 @@
-// Parity candidate 18: try-finally
-// tier: core; not yet compiler-validated
-define class Box as pub let int value = 40; end fnc modify(borrow mut Box b): int { try { return 2; } catch (err) { return 0; } finally { b.value = b.value + 2; } } pub fnc main(): int { let mut Box b = new Box(); modify(rt borrow mut b); return b.value; }

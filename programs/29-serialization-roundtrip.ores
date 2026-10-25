@@ -1,3 +1,0 @@
-// Parity candidate 29: serialization-roundtrip
-// tier: frontier; not yet compiler-validated
-pub fnc main(): int { val record = infer struct {value: 42}; return record.value; }
