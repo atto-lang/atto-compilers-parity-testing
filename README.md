@@ -8,6 +8,6 @@ The reference-grounded 30-program feature ladder covers scalar execution, contro
 
 Every positive multi-file entry point imports exactly three local source files, performs in-program assertions, and emits a stable `PARITY_OK|<name>|` prefix. The Rust runner recursively fingerprints the complete reachable import graph, including cycles, so a result is tied to all source bytes involved.
 
-See `docs/TEST_MATRIX.md`, `docs/EXECUTION.md`, `manifest.json`, `checks/manifest.json`, and `checks/README.md`.
+See `docs/TEST_MATRIX.md`, `docs/EXECUTION.md`, `docs/BACKEND_ADAPTERS.md`, `manifest.json`, `checks/manifest.json`, and `checks/README.md`.
 
 Tooling follows the Oreslang Rust-only tooling policy; Python is prohibited.
