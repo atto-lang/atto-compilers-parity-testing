@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "notes": "Provisional source cases. 'core' means derived from observed repository idioms, NOT that five backends were tested. 'frontier' syntax and feature support require parser validation. Stub cases 24,25,29,30 are intentionally flagged: they do not yet exercise their named features.",
+  "schema_version": 2,
+  "notes": "Fail closed: no candidate syntax or scaffold is a passing conformance test until compiler-validated, upgraded, and exercised on the backend. Build execution is deliberately disabled by default.",
   "backends": [
     "llvm",
     "java",
@@ -18,7 +18,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "02",
@@ -28,7 +31,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "03",
@@ -38,7 +44,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "04",
@@ -48,7 +57,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "05",
@@ -58,7 +70,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "06",
@@ -68,7 +83,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "07",
@@ -78,7 +96,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "08",
@@ -88,7 +109,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "09",
@@ -98,7 +122,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "10",
@@ -108,7 +135,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "11",
@@ -118,7 +148,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "12",
@@ -128,7 +161,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "13",
@@ -138,7 +174,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "14",
@@ -148,7 +187,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "15",
@@ -158,7 +200,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "16",
@@ -168,7 +213,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "17",
@@ -178,7 +226,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "18",
@@ -188,7 +239,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "19",
@@ -198,7 +252,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "20",
@@ -208,7 +265,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "21",
@@ -218,7 +278,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "22",
@@ -228,7 +291,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "23",
@@ -238,7 +304,11 @@
       "expected_kind": "compile_reject",
       "expected_value": null,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "oracle_needs_replacement",
+      "feature_coverage": "invalid_negative_oracle",
+      "expected_diagnostic_category": "actor-isolation"
     },
     {
       "id": "24",
@@ -248,7 +318,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": true
+      "needs_feature_upgrade": true,
+      "required": true,
+      "validation_status": "scaffold_needs_replacement",
+      "feature_coverage": "scaffold"
     },
     {
       "id": "25",
@@ -258,7 +331,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": true
+      "needs_feature_upgrade": true,
+      "required": true,
+      "validation_status": "scaffold_needs_replacement",
+      "feature_coverage": "scaffold"
     },
     {
       "id": "26",
@@ -268,7 +344,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "27",
@@ -278,7 +357,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "28",
@@ -288,7 +370,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": false
+      "needs_feature_upgrade": false,
+      "required": true,
+      "validation_status": "unvalidated",
+      "feature_coverage": "candidate"
     },
     {
       "id": "29",
@@ -298,7 +383,10 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": true
+      "needs_feature_upgrade": true,
+      "required": true,
+      "validation_status": "scaffold_needs_replacement",
+      "feature_coverage": "scaffold"
     },
     {
       "id": "30",
@@ -308,7 +396,18 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "verified": false,
-      "needs_feature_upgrade": true
+      "needs_feature_upgrade": true,
+      "required": true,
+      "validation_status": "scaffold_needs_replacement",
+      "feature_coverage": "scaffold"
     }
-  ]
+  ],
+  "test_policy": {
+    "missing_backend": "not_run",
+    "unsupported": "unsupported",
+    "unvalidated": "unvalidated",
+    "scaffold": "not_coverage",
+    "max_wall_seconds": 30,
+    "canonical_source_required": true
+  }
 }

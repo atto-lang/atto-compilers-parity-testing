@@ -1,0 +1,30 @@
+name: Corpus audit
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  manifest-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Audit candidate matrix (no compiler execution)
+        run: |
+          python3 scripts/parity_runner.py --output parity-results.json
+          python3 - <<'PY'
+          import json
+          data = json.load(open('parity-results.json'))
+          assert data['cases'] == 30
+          assert len(data['records']) == 150
+          assert set(data['summary']) == {'not_run'}
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: parity-corpus-audit
+          path: parity-results.json
