@@ -1,0 +1,314 @@
+{
+  "schema_version": 1,
+  "notes": "Provisional source cases. 'core' means derived from observed repository idioms, NOT that five backends were tested. 'frontier' syntax and feature support require parser validation. Stub cases 24,25,29,30 are intentionally flagged: they do not yet exercise their named features.",
+  "backends": [
+    "llvm",
+    "java",
+    "wasm",
+    ".net",
+    "js-transpiler"
+  ],
+  "oracle": "Expected process result or compile rejection; record stdout/stderr, exit, diagnostics, compile stage, timeout, signal, compiler SHA.",
+  "cases": [
+    {
+      "id": "01",
+      "name": "integer-precedence",
+      "path": "programs/01-integer-precedence.ores",
+      "tier": "core",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "02",
+      "name": "integer-boundaries",
+      "path": "programs/02-integer-boundaries.ores",
+      "tier": "core",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "03",
+      "name": "boolean-short-circuit",
+      "path": "programs/03-boolean-short-circuit.ores",
+      "tier": "core",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "04",
+      "name": "conditional-laziness",
+      "path": "programs/04-conditional-laziness.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "05",
+      "name": "switch-value",
+      "path": "programs/05-switch-value.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "06",
+      "name": "match-value",
+      "path": "programs/06-match-value.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "07",
+      "name": "nested-control",
+      "path": "programs/07-nested-control.ores",
+      "tier": "core",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "08",
+      "name": "recursion",
+      "path": "programs/08-recursion.ores",
+      "tier": "core",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "09",
+      "name": "tuple-destructure",
+      "path": "programs/09-tuple-destructure.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "10",
+      "name": "struct-field",
+      "path": "programs/10-struct-field.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "11",
+      "name": "class-fields",
+      "path": "programs/11-class-fields.ores",
+      "tier": "core",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "12",
+      "name": "mutable-borrow",
+      "path": "programs/12-mutable-borrow.ores",
+      "tier": "core",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "13",
+      "name": "move-copy",
+      "path": "programs/13-move-copy.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "14",
+      "name": "generic-identity",
+      "path": "programs/14-generic-identity.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "15",
+      "name": "type-alias",
+      "path": "programs/15-type-alias.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "16",
+      "name": "closure-capture",
+      "path": "programs/16-closure-capture.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "17",
+      "name": "defer-lifo",
+      "path": "programs/17-defer-lifo.ores",
+      "tier": "core",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "18",
+      "name": "try-finally",
+      "path": "programs/18-try-finally.ores",
+      "tier": "core",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "19",
+      "name": "async-await",
+      "path": "programs/19-async-await.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "20",
+      "name": "nonblocking-select",
+      "path": "programs/20-nonblocking-select.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "21",
+      "name": "actor-message",
+      "path": "programs/21-actor-message.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "22",
+      "name": "actor-readiness",
+      "path": "programs/22-actor-readiness.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "23",
+      "name": "actor-isolation-reject",
+      "path": "programs/23-actor-isolation-reject.ores",
+      "tier": "negative",
+      "expected_kind": "compile_reject",
+      "expected_value": null,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "24",
+      "name": "actor-critical",
+      "path": "programs/24-actor-critical.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": true
+    },
+    {
+      "id": "25",
+      "name": "stream-backpressure",
+      "path": "programs/25-stream-backpressure.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": true
+    },
+    {
+      "id": "26",
+      "name": "unicode",
+      "path": "programs/26-unicode.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "27",
+      "name": "collections",
+      "path": "programs/27-collections.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "28",
+      "name": "float-signed-zero",
+      "path": "programs/28-float-signed-zero.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": false
+    },
+    {
+      "id": "29",
+      "name": "serialization-roundtrip",
+      "path": "programs/29-serialization-roundtrip.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": true
+    },
+    {
+      "id": "30",
+      "name": "integrated-workload",
+      "path": "programs/30-integrated-workload.ores",
+      "tier": "frontier",
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "verified": false,
+      "needs_feature_upgrade": true
+    }
+  ]
+}

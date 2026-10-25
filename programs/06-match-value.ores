@@ -1,0 +1,3 @@
+// Parity candidate 06: match-value
+// tier: frontier; not yet compiler-validated
+pub fnc main(): int { val int x = match 2 over on 1 { 1; } on 2 { 42; } on _ { 0; } end; return x; }

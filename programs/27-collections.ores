@@ -1,0 +1,3 @@
+// Parity candidate 27: collections
+// tier: frontier; not yet compiler-validated
+pub fnc main(): int { val items = [40, 2]; return items[0] + items[1]; }

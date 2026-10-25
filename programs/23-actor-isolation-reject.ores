@@ -1,0 +1,3 @@
+// Parity candidate 23: actor-isolation-reject
+// tier: negative; not yet compiler-validated
+define actor Worker as { pub fnc on_message(int n): int { return n; } } let int global_count = 0; pub fnc main(): int { global_count = 42; return global_count; }

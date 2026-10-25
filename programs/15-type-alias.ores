@@ -1,0 +1,3 @@
+// Parity candidate 15: type-alias
+// tier: frontier; not yet compiler-validated
+define type Answer as int; pub fnc main(): int { val Answer x = 42; return x; }

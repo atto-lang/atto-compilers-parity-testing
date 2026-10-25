@@ -1,0 +1,3 @@
+// Parity candidate 16: closure-capture
+// tier: frontier; not yet compiler-validated
+pub fnc main(): int { val int base = 40; val f = (int n) -> base + n; return f(2); }

@@ -1,0 +1,3 @@
+// Parity candidate 07: nested-control
+// tier: core; not yet compiler-validated
+pub fnc main(): int { if (7 > 3) { if (6 eq 6) { return 42; } fi } fi return 1; }

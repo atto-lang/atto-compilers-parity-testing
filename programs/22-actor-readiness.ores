@@ -1,0 +1,3 @@
+// Parity candidate 22: actor-readiness
+// tier: frontier; not yet compiler-validated
+define actor Worker as { pub fnc on_message(int n): int { return n; } } pub async fnc main(): int { val worker = spawn Worker(); await worker.get_ready(); await worker.get_ready(); return 42; }

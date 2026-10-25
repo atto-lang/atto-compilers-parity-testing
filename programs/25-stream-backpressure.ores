@@ -1,0 +1,3 @@
+// Parity candidate 25: stream-backpressure
+// tier: frontier; not yet compiler-validated
+pub fnc main(): int { return 42; }

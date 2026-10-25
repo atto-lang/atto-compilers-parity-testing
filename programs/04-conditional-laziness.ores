@@ -1,0 +1,3 @@
+// Parity candidate 04: conditional-laziness
+// tier: frontier; not yet compiler-validated
+pub fnc main(): int { val int x = if true then 42 else 1 / 0 fi; return x; }
