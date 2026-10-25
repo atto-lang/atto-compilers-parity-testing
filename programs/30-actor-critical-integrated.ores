@@ -1,6 +1,6 @@
 // 30: actor-critical-integrated
 // LLVM critical-state-counter-runtime fixture updated to canonical lifecycle spelling and integer oracle
-define actor Counter as
+define pub actor Counter as
   state {
     count: int = 0;
   }
