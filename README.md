@@ -26,3 +26,12 @@ For each test/backend capture source SHA, compiler revision, compiler command, f
 ## Next step
 
 Validate all 30 against canonical formatter/parser. Replace provisional syntax and scaffolds, add exact negative oracles, then implement five backend adapters. No CI execution claims are made by this commit.
+
+
+## Multi-file parity checks
+
+A second corpus lives under `checks/`. These are intentionally structured as small whole programs: each `checks/<lowercase-name>/main.ores` imports three local source files, performs in-program assertions, and emits a stable `PARITY_OK|...` result for differential comparison.
+
+Start with `checks/README.md` and `checks/manifest.json`. The suite covers import cycles, order of operations, deterministic fuzz seeds/metamorphic checks, mutexes, task blocks, actors, `do switch`, `do match`, async match/switch behavior, named/optional parameters, lambdas, recursion, and classes/interfaces/traits/casting.
+
+The `nb-match` and `nb-switch` folders intentionally include negative probes: the current grammar does not define those prefixes. Ordinary match already supports suspension in the subject, guard, and value arm.
