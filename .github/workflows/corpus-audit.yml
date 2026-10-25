@@ -14,15 +14,28 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Audit candidate matrix (no compiler execution)
+      - name: Audit complete parity corpus (no compiler execution)
         run: |
           python3 scripts/parity_runner.py --output parity-results.json
           python3 - <<'PY'
           import json
           data = json.load(open('parity-results.json'))
-          assert data['cases'] == 30
-          assert len(data['records']) == 150
+          assert data['executed'] is False
+          assert data['corpus'] == {
+              'legacy_cases': 30,
+              'multifile_checks': 15,
+              'negative_probes': 2,
+              'total_cases': 47,
+          }
+          assert data['cases'] == 47
+          assert len(data['records']) == 235
           assert set(data['summary']) == {'not_run'}
+          assert data['summary']['not_run'] == 235
+          checks = [r for r in data['records'] if r['suite'] == 'checks']
+          assert len(checks) == 85
+          positives = [r for r in checks if 'graph_sha256' in r]
+          assert len(positives) == 75
+          assert all(len(r['graph_files']) >= 4 for r in positives)
           PY
       - uses: actions/upload-artifact@v4
         with:
