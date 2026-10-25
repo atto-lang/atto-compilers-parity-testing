@@ -1,4 +1,4 @@
-pub define actor Echo as
+pub actor Echo
   receive(ActorMail<int> mail): void {
     self.send(mail.value * 2);
     self.end();
