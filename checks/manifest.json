@@ -54,6 +54,10 @@
       "expectation": "checks/named-parameters/expectation.json"
     },
     {
+      "name": "parameter-syntax",
+      "expectation": "checks/parameter-syntax/expectation.json"
+    },
+    {
       "name": "optional-parameters",
       "expectation": "checks/optional-parameters/expectation.json"
     },

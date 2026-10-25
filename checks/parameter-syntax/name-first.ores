@@ -1,0 +1,3 @@
+pub fnc name_first_case(tens: int, ones: int): int {
+  return tens * 10 + ones;
+}

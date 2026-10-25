@@ -1,0 +1,10 @@
+{
+  "name": "parameter-syntax",
+  "entry": "checks/parameter-syntax/main.ores",
+  "expected": "run-pass",
+  "stable_stdout_prefix": "PARITY_OK|parameter-syntax|",
+  "imported_files": 3,
+  "maturity": "core",
+  "verified": false,
+  "notes": "Type-first parameters, name-first parameters, and mixed typed lambda parameter order must normalize to the same callable signature semantics."
+}
