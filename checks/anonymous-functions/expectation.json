@@ -1,0 +1,10 @@
+{
+  "name": "anonymous-functions",
+  "entry": "checks/anonymous-functions/main.ores",
+  "expected": "run-pass",
+  "stable_stdout_prefix": "PARITY_OK|anonymous-functions|",
+  "imported_files": 3,
+  "maturity": "core",
+  "verified": false,
+  "notes": "Pipe lambdas, typed legacy lambdas, expression/block bodies, and lexical capture."
+}

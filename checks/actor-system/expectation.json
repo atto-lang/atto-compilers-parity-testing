@@ -1,0 +1,10 @@
+{
+  "name": "actor-system",
+  "entry": "checks/actor-system/main.ores",
+  "expected": "run-pass",
+  "stable_stdout_prefix": "PARITY_OK|actor-system|",
+  "imported_files": 3,
+  "maturity": "runtime",
+  "verified": false,
+  "notes": "Spawn/readiness, isolated mutable actor state, mailbox delivery, output stream, and lifecycle completion."
+}

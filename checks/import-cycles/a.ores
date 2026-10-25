@@ -1,0 +1,3 @@
+import fnc b_value from "./b.ores";
+pub fnc a_seed(): int { return 10; }
+pub fnc a_value(): int { return 10 + b_value(); }

@@ -1,0 +1,31 @@
+import fnc task_case from "./task.ores";
+import fnc nb_case from "./nb.ores";
+import fnc nested_task_case from "./nested.ores";
+
+fnc assert_eq_int(String label, int actual, int expected): void {
+  if actual != expected then
+    stdio.stdout.write("PARITY_FAIL|task-blocks|");
+    stdio.stdout.write(label);
+    stdio.stdout.write("|actual=");
+    stdio.stdout.write(actual);
+    stdio.stdout.write("|expected=");
+    stdio.stdout.println(expected);
+    val Result<bool, String> failure = Err(label);
+    failure.expect("cross-compiler parity assertion failed");
+  fi
+  return;
+}
+
+fnc parity_ok(int checksum): void {
+  stdio.stdout.write("PARITY_OK|task-blocks|");
+  stdio.stdout.println(checksum);
+  return;
+}
+
+pub async routine main(): void {
+  assert_eq_int("task", await task_case(), 42);
+  assert_eq_int("nb", await nb_case(), 42);
+  assert_eq_int("nested", await nested_task_case(), 42);
+  parity_ok(126);
+  return;
+}

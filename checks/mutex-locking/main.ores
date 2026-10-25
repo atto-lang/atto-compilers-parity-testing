@@ -1,0 +1,31 @@
+import fnc local_mutex_case from "./local.ores";
+import fnc shared_mutex_case from "./shared.ores";
+import fnc scoped_mutex_case from "./scoped.ores";
+
+fnc assert_eq_int(String label, int actual, int expected): void {
+  if actual != expected then
+    stdio.stdout.write("PARITY_FAIL|mutex-locking|");
+    stdio.stdout.write(label);
+    stdio.stdout.write("|actual=");
+    stdio.stdout.write(actual);
+    stdio.stdout.write("|expected=");
+    stdio.stdout.println(expected);
+    val Result<bool, String> failure = Err(label);
+    failure.expect("cross-compiler parity assertion failed");
+  fi
+  return;
+}
+
+fnc parity_ok(int checksum): void {
+  stdio.stdout.write("PARITY_OK|mutex-locking|");
+  stdio.stdout.println(checksum);
+  return;
+}
+
+pub fnc main(): void {
+  assert_eq_int("local", local_mutex_case(), 42);
+  assert_eq_int("shared", shared_mutex_case(), 42);
+  assert_eq_int("scoped", scoped_mutex_case(), 42);
+  parity_ok(local_mutex_case() + shared_mutex_case() + scoped_mutex_case());
+  return;
+}

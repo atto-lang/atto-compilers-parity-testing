@@ -1,0 +1,10 @@
+{
+  "name": "recursion",
+  "entry": "checks/recursion/main.ores",
+  "expected": "run-pass",
+  "stable_stdout_prefix": "PARITY_OK|recursion|",
+  "imported_files": 3,
+  "maturity": "core",
+  "verified": false,
+  "notes": "Direct recursion, branching recursion, and mutually recursive functions across an import cycle."
+}

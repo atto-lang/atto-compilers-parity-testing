@@ -1,0 +1,10 @@
+{
+  "name": "do-match",
+  "entry": "checks/do-match/main.ores",
+  "expected": "run-pass",
+  "stable_stdout_prefix": "PARITY_OK|do-match|",
+  "imported_files": 3,
+  "maturity": "syntax",
+  "verified": false,
+  "notes": "Plain match versus procedural do match, including brace arms without arrows."
+}

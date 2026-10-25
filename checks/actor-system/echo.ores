@@ -1,0 +1,7 @@
+pub define actor Echo as
+  receive(ActorMail<int> mail): void {
+    self.send(mail.value * 2);
+    self.end();
+    return;
+  }
+end

@@ -1,0 +1,17 @@
+{
+  "name": "nb-match",
+  "entry": "checks/nb-match/main.ores",
+  "expected": "run-pass",
+  "stable_stdout_prefix": "PARITY_OK|nb-match|",
+  "imported_files": 3,
+  "maturity": "core-async",
+  "verified": false,
+  "notes": "Ordinary match already supports suspension in subject/guard/arm; nb match is a compile-reject probe.",
+  "negative_cases": [
+    {
+      "path": "checks/nb-match/reject-nb-match.ores",
+      "expected": "compile-reject",
+      "reason": "nb is not a match prefix in current grammar"
+    }
+  ]
+}

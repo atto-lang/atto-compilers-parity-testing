@@ -1,0 +1,2 @@
+fnc encode(int a, int b, int c): int { return a * 100 + b * 10 + c; }
+pub fnc reordered_case(): int { return encode(c: 3, a: 1, b: 2); }

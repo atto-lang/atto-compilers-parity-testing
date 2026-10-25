@@ -1,0 +1,10 @@
+{
+  "name": "do-switch",
+  "entry": "checks/do-switch/main.ores",
+  "expected": "run-pass",
+  "stable_stdout_prefix": "PARITY_OK|do-switch|",
+  "imported_files": 3,
+  "maturity": "syntax",
+  "verified": false,
+  "notes": "Plain switch versus accepted do switch procedural prefix."
+}

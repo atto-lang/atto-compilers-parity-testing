@@ -1,0 +1,10 @@
+{
+  "name": "classes-traits-casting",
+  "entry": "checks/classes-traits-casting/main.ores",
+  "expected": "run-pass",
+  "stable_stdout_prefix": "PARITY_OK|classes-traits-casting|",
+  "imported_files": 3,
+  "maturity": "type-system",
+  "verified": false,
+  "notes": "Nominal inheritance, checked cast, interface implementation/dispatch, and trait implementation/dispatch."
+}

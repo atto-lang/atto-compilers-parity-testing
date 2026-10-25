@@ -1,0 +1,10 @@
+{
+  "name": "fuzz-seeds",
+  "entry": "checks/fuzz-seeds/main.ores",
+  "expected": "run-pass",
+  "stable_stdout_prefix": "PARITY_OK|fuzz-seeds|",
+  "imported_files": 3,
+  "maturity": "core",
+  "verified": false,
+  "notes": "Deterministic random-like seeds plus a metamorphic invariant; extend with generated programs."
+}

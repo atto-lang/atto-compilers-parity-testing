@@ -1,0 +1,7 @@
+async fnc delayed_bool(bool value): bool { return value; }
+pub async fnc await_guard_case(): int {
+  return match<int> 9 over
+    on int n when await delayed_bool(true) -> { return 42; }
+    on _ -> { return 0; }
+  end;
+}

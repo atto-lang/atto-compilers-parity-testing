@@ -1,0 +1,17 @@
+{
+  "name": "nb-switch",
+  "entry": "checks/nb-switch/main.ores",
+  "expected": "run-pass",
+  "stable_stdout_prefix": "PARITY_OK|nb-switch|",
+  "imported_files": 3,
+  "maturity": "async-probe",
+  "verified": false,
+  "notes": "Switch blocks in async callables may contain await; nb switch itself is a compile-reject probe.",
+  "negative_cases": [
+    {
+      "path": "checks/nb-switch/reject-nb-switch.ores",
+      "expected": "compile-reject",
+      "reason": "nb is not a switch prefix in current grammar"
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "layout": "checks/<lowercase-name>/main.ores + three imported local source files + expectation.json",
+  "rule": "A backend passes only when it compiles the same source graph, all in-program assertions pass, and stdout agrees byte-for-byte.",
+  "optimization_matrix": [
+    "interpreter-or-debug",
+    "aot-or-o0",
+    "optimized-o2",
+    "size-optimized-when-supported"
+  ],
+  "checks": [
+    {
+      "name": "import-cycles",
+      "expectation": "checks/import-cycles/expectation.json"
+    },
+    {
+      "name": "order-of-operations",
+      "expectation": "checks/order-of-operations/expectation.json"
+    },
+    {
+      "name": "fuzz-seeds",
+      "expectation": "checks/fuzz-seeds/expectation.json"
+    },
+    {
+      "name": "mutex-locking",
+      "expectation": "checks/mutex-locking/expectation.json"
+    },
+    {
+      "name": "task-blocks",
+      "expectation": "checks/task-blocks/expectation.json"
+    },
+    {
+      "name": "actor-system",
+      "expectation": "checks/actor-system/expectation.json"
+    },
+    {
+      "name": "do-switch",
+      "expectation": "checks/do-switch/expectation.json"
+    },
+    {
+      "name": "do-match",
+      "expectation": "checks/do-match/expectation.json"
+    },
+    {
+      "name": "nb-match",
+      "expectation": "checks/nb-match/expectation.json"
+    },
+    {
+      "name": "nb-switch",
+      "expectation": "checks/nb-switch/expectation.json"
+    },
+    {
+      "name": "named-parameters",
+      "expectation": "checks/named-parameters/expectation.json"
+    },
+    {
+      "name": "optional-parameters",
+      "expectation": "checks/optional-parameters/expectation.json"
+    },
+    {
+      "name": "anonymous-functions",
+      "expectation": "checks/anonymous-functions/expectation.json"
+    },
+    {
+      "name": "recursion",
+      "expectation": "checks/recursion/expectation.json"
+    },
+    {
+      "name": "classes-traits-casting",
+      "expectation": "checks/classes-traits-casting/expectation.json"
+    }
+  ],
+  "negative_policy": "compile-reject cases must fail in the frontend/typechecker for the intended reason; crash/ICE is never a pass.",
+  "async_policy": "schedule-fuzz and repeated runs should be layered on top of deterministic semantic assertions."
+}
