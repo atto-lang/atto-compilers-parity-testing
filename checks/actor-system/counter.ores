@@ -1,9 +1,11 @@
-pub define actor Counter as
+pub actor Counter
   let int count;
+
   on_start(): void {
     self.count = 0;
     return;
   }
+
   receive(ActorMail<int> mail): void {
     self.count = self.count + mail.value;
     self.send(self.count);
