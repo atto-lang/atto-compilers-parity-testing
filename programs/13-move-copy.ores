@@ -1,3 +1,0 @@
-// Parity candidate 13: move-copy
-// tier: frontier; not yet compiler-validated
-define class Box as pub let int value = 42; end pub fnc main(): int { let Box first = new Box(); let Box second = rt take first; return second.value; }

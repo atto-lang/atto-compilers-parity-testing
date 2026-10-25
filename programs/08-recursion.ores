@@ -1,3 +1,0 @@
-// Parity candidate 08: recursion
-// tier: core; not yet compiler-validated
-fnc sum(int n): int { if (n eq 0) { return 0; } fi return n + sum(n - 1); } pub fnc main(): int { return sum(6) * 2; }

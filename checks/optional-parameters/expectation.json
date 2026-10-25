@@ -5,6 +5,11 @@
   "stable_stdout_prefix": "PARITY_OK|optional-parameters|",
   "imported_files": 3,
   "maturity": "frontier-spec",
+  "features": [
+    "option",
+    "omittable-parameters",
+    "named-arguments"
+  ],
   "verified": false,
   "notes": "Tests intended split: T? as Option<T> shorthand, name? as omittable parameter. Spec-convergence probe. This is a convergence target, not a claim of current-main acceptance."
 }

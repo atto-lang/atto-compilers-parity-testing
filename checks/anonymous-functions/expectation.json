@@ -5,6 +5,11 @@
   "stable_stdout_prefix": "PARITY_OK|anonymous-functions|",
   "imported_files": 3,
   "maturity": "core",
+  "features": [
+    "lambda",
+    "closure",
+    "capture"
+  ],
   "verified": false,
   "notes": "Pipe lambdas, typed legacy lambdas, expression/block bodies, and lexical capture."
 }

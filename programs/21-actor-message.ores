@@ -1,3 +1,0 @@
-// Parity candidate 21: actor-message
-// tier: frontier; not yet compiler-validated
-define actor Counter as { pub fnc on_message(int n): int { return n + 2; } } pub async fnc main(): int { val worker = spawn Counter(); return await worker.send(40); }

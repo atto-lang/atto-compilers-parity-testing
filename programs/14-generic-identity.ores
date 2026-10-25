@@ -1,3 +1,0 @@
-// Parity candidate 14: generic-identity
-// tier: frontier; not yet compiler-validated
-fnc identity<T>(T x): T { return x; } pub fnc main(): int { return identity<int>(42); }

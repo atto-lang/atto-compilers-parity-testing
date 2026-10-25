@@ -5,6 +5,11 @@
   "stable_stdout_prefix": "PARITY_OK|nb-switch|",
   "imported_files": 3,
   "maturity": "async-probe",
+  "features": [
+    "switch",
+    "await",
+    "negative-syntax"
+  ],
   "verified": false,
   "notes": "Switch blocks in async callables may contain await; nb switch itself is a compile-reject probe.",
   "negative_cases": [

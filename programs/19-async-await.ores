@@ -1,3 +1,0 @@
-// Parity candidate 19: async-await
-// tier: frontier; not yet compiler-validated
-async fnc answer(): int { return 42; } pub async fnc main(): int { return await answer(); }

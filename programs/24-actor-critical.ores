@@ -1,3 +1,0 @@
-// Parity candidate 24: actor-critical
-// tier: frontier; not yet compiler-validated
-define class State as pub let int value = 40; end pub fnc main(): int { let mut State s = new State(); s.value = s.value + 2; return s.value; }

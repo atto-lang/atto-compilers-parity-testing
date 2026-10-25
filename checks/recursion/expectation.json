@@ -5,6 +5,11 @@
   "stable_stdout_prefix": "PARITY_OK|recursion|",
   "imported_files": 3,
   "maturity": "core",
+  "features": [
+    "recursion",
+    "mutual-recursion",
+    "import-cycle"
+  ],
   "verified": false,
   "notes": "Direct recursion, branching recursion, and mutually recursive functions across an import cycle."
 }

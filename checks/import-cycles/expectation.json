@@ -5,6 +5,11 @@
   "stable_stdout_prefix": "PARITY_OK|import-cycles|",
   "imported_files": 3,
   "maturity": "core",
+  "features": [
+    "imports",
+    "import-cycle",
+    "linking"
+  ],
   "verified": false,
   "notes": "Three-node import SCC; all declarations must link before execution."
 }

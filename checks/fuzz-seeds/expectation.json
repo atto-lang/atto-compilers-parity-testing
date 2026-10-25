@@ -5,6 +5,11 @@
   "stable_stdout_prefix": "PARITY_OK|fuzz-seeds|",
   "imported_files": 3,
   "maturity": "core",
+  "features": [
+    "differential-fuzz",
+    "metamorphic",
+    "determinism"
+  ],
   "verified": false,
   "notes": "Deterministic random-like seeds plus a metamorphic invariant; extend with generated programs."
 }

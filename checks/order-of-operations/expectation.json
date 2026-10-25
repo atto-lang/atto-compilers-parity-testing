@@ -5,6 +5,11 @@
   "stable_stdout_prefix": "PARITY_OK|order-of-operations|",
   "imported_files": 3,
   "maturity": "core",
+  "features": [
+    "precedence",
+    "associativity",
+    "grouping"
+  ],
   "verified": false,
   "notes": "Arithmetic precedence, associativity, and explicit grouping."
 }

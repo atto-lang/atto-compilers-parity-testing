@@ -12,27 +12,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - name: Format-check parity runner
+        run: cargo fmt --manifest-path tools/parity-runner/Cargo.toml -- --check
       - name: Test parity runner
         run: cargo test --manifest-path tools/parity-runner/Cargo.toml
-      - name: Audit complete parity corpus (no compiler execution)
+      - name: Audit complete 48 x 5 matrix without making compiler claims
         run: |
           cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml -- --output parity-results.json
           node - <<'NODE'
           const d = require("./parity-results.json");
-          const expectedCorpus = {
-            legacy_cases: 30,
-            multifile_checks: 16,
-            negative_probes: 2,
-            total_cases: 48,
-          };
-          if (JSON.stringify(d.corpus) !== JSON.stringify(expectedCorpus)) process.exit(1);
-          if (d.cases !== 48 || d.records.length !== 240) process.exit(1);
-          if (Object.keys(d.summary).length !== 1 || d.summary.not_run !== 240) process.exit(1);
+          const expected = {legacy_cases:30,multifile_checks:16,negative_probes:2,total_cases:48};
+          if (JSON.stringify(d.corpus) !== JSON.stringify(expected)) process.exit(1);
+          if (d.cases !== 48 || d.records.length !== 240 || d.summary.not_run !== 240) process.exit(1);
           const checks = d.records.filter(r => r.suite === "checks");
-          if (checks.length !== 90) process.exit(1);
           const positives = checks.filter(r => typeof r.graph_sha256 === "string");
-          if (positives.length !== 80) process.exit(1);
+          if (checks.length !== 90 || positives.length !== 80) process.exit(1);
           if (!positives.every(r => Array.isArray(r.graph_files) && r.graph_files.length >= 4)) process.exit(1);
+          if (!checks.every(r => Array.isArray(r.features) && r.features.length > 0)) process.exit(1);
           NODE
       - uses: actions/upload-artifact@v4
         with:

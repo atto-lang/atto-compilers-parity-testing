@@ -5,6 +5,11 @@
   "stable_stdout_prefix": "PARITY_OK|named-parameters|",
   "imported_files": 3,
   "maturity": "frontier",
+  "features": [
+    "named-arguments",
+    "argument-reordering",
+    "mixed-arguments"
+  ],
   "verified": false,
   "notes": "Positional, reordered named, and positional-prefix plus named-tail call binding. This is a convergence target, not a claim of current-main acceptance."
 }

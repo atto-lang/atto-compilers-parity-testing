@@ -1,3 +1,0 @@
-// Parity candidate 02: integer-boundaries
-// tier: core; not yet compiler-validated
-pub fnc main(): int { val int top = 9223372036854775807; if (top > 0) { return 42; } fi return 1; }

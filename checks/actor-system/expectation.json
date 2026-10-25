@@ -5,6 +5,12 @@
   "stable_stdout_prefix": "PARITY_OK|actor-system|",
   "imported_files": 3,
   "maturity": "runtime",
+  "features": [
+    "actor",
+    "spawn",
+    "mailbox",
+    "lifecycle"
+  ],
   "verified": false,
   "notes": "Spawn/readiness, isolated mutable actor state, mailbox delivery, output stream, and lifecycle completion."
 }

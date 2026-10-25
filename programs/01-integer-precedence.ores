@@ -1,3 +1,0 @@
-// Parity candidate 01: integer-precedence
-// tier: core; not yet compiler-validated
-pub fnc main(): int { return 4 + 6 * (5 - 1) + 14; }

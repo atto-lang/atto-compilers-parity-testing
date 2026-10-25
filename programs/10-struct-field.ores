@@ -1,3 +1,0 @@
-// Parity candidate 10: struct-field
-// tier: frontier; not yet compiler-validated
-pub fnc main(): int { const p = infer struct {left: 40, right: 2}; return p.left + p.right; }

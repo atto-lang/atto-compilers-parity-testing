@@ -5,6 +5,11 @@
   "stable_stdout_prefix": "PARITY_OK|nb-match|",
   "imported_files": 3,
   "maturity": "core-async",
+  "features": [
+    "match",
+    "await",
+    "negative-syntax"
+  ],
   "verified": false,
   "notes": "Ordinary match already supports suspension in subject/guard/arm; nb match is a compile-reject probe.",
   "negative_cases": [

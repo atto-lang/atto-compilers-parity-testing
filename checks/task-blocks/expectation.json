@@ -5,6 +5,11 @@
   "stable_stdout_prefix": "PARITY_OK|task-blocks|",
   "imported_files": 3,
   "maturity": "frontier",
+  "features": [
+    "task",
+    "nb-task",
+    "await"
+  ],
   "verified": false,
   "notes": "Canonical task { } and nb { } Task<T> inference/await semantics. This is a convergence target, not a claim of current-main acceptance."
 }

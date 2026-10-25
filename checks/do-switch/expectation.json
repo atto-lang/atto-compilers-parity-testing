@@ -5,6 +5,11 @@
   "stable_stdout_prefix": "PARITY_OK|do-switch|",
   "imported_files": 3,
   "maturity": "syntax",
+  "features": [
+    "switch",
+    "do-switch",
+    "return-scope"
+  ],
   "verified": false,
   "notes": "Plain switch versus accepted do switch procedural prefix."
 }

@@ -28,7 +28,7 @@ struct LegacyCase {
     expected_kind: String,
     expected_value: Option<i32>,
     validation_status: String,
-    feature_coverage: String,
+    features: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -49,6 +49,8 @@ struct Expectation {
     stable_stdout_prefix: String,
     imported_files: usize,
     maturity: String,
+    #[serde(default)]
+    features: Vec<String>,
     verified: bool,
     #[serde(default)]
     negative_cases: Vec<NegativeExpectation>,
@@ -74,7 +76,7 @@ struct TestCase {
     expected_value: Option<i32>,
     expected_stdout_prefix: Option<String>,
     validation_status: String,
-    feature_coverage: String,
+    features: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -97,7 +99,7 @@ struct Record {
     graph_sha256: Option<String>,
     graph_files: Option<Vec<String>>,
     validation_status: String,
-    feature_coverage: String,
+    features: Vec<String>,
     status: String,
     compile: Option<Invocation>,
     run: Option<Invocation>,
@@ -279,7 +281,7 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
             expected_value: case.expected_value,
             expected_stdout_prefix: None,
             validation_status: case.validation_status.clone(),
-            feature_coverage: case.feature_coverage.clone(),
+            features: case.features.clone(),
         });
     }
 
@@ -360,7 +362,7 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
             } else {
                 "unvalidated".into()
             },
-            feature_coverage: expectation.maturity.clone(),
+            features: expectation.features.clone(),
         });
 
         for (index, negative) in expectation.negative_cases.iter().enumerate() {
@@ -372,6 +374,8 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
                 ));
             }
             negative_probes += 1;
+            let mut negative_features = expectation.features.clone();
+            negative_features.push("negative-probe".into());
             cases.push(TestCase {
                 suite: "checks".into(),
                 case_id: format!("{}/negative-{}", item.name, index + 1),
@@ -384,7 +388,7 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
                 expected_value: None,
                 expected_stdout_prefix: None,
                 validation_status: "unvalidated".into(),
-                feature_coverage: "negative-probe".into(),
+                features: negative_features,
             });
         }
     }
@@ -555,7 +559,7 @@ fn evaluate_case(
         graph_sha256: case.graph_sha256.clone(),
         graph_files: case.graph_files.clone(),
         validation_status: case.validation_status.clone(),
-        feature_coverage: case.feature_coverage.clone(),
+        features: case.features.clone(),
         status: "not_run".into(),
         compile: None,
         run: None,

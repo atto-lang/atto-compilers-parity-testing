@@ -1,9 +1,13 @@
 # Oreslang compiler parity testing
 
-Shared source-level conformance corpus for Java/GraalVM, LLVM, WebAssembly, .NET and JavaScript.
+A shared cross-backend conformance corpus for Java/GraalVM, LLVM, WebAssembly, .NET Native AOT, and the JavaScript transpiler.
 
-**Current status:** 30 legacy single-file candidates plus 16 multi-file checks and 2 explicit negative probes = 48 logical cases / 240 backend cells. There are still zero validated cross-backend parity claims. The harness fails closed: unvalidated syntax, unsupported features, missing adapters and infrastructure failures cannot become passes.
+The suite is deliberately fail-closed. The same `.ores` bytes must be presented to every backend. Unsupported features, infrastructure failures, unclassified negative diagnostics, or backend-specific source rewrites are never counted as parity passes.
 
-The multi-file corpus lives under `checks/<lowercase-name>/`. Each positive entry point imports three local source files, performs in-program semantic assertions and emits a stable `PARITY_OK|<name>|` prefix. The Rust runner recursively fingerprints the reachable import graph so a backend result is tied to the complete source graph rather than only `main.ores`.
+The reference-grounded 30-program feature ladder covers scalar execution, control flow, diagnostics, ownership, cleanup/async/channels, and actor isolation/lifecycle. A second whole-program layer under `checks/<lowercase-name>/` adds 16 positive multi-file checks plus 2 negative syntax probes. Together they form 48 logical cases and 240 backend/case cells.
 
-Tooling follows the Oreslang organization Rust-only policy. See `docs/EXECUTION.md`, `manifest.json`, `checks/manifest.json`, and `checks/README.md`.
+Every positive multi-file entry point imports exactly three local source files, performs in-program assertions, and emits a stable `PARITY_OK|<name>|` prefix. The Rust runner recursively fingerprints the complete reachable import graph, including cycles, so a result is tied to all source bytes involved.
+
+See `docs/TEST_MATRIX.md`, `docs/EXECUTION.md`, `manifest.json`, `checks/manifest.json`, and `checks/README.md`.
+
+Tooling follows the Oreslang Rust-only tooling policy; Python is prohibited.
