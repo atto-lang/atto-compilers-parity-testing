@@ -8,22 +8,18 @@ permissions:
 jobs:
   manifest-audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Format-check parity runner
+        run: cargo fmt --manifest-path tools/parity-runner/Cargo.toml -- --check
+      - name: Build parity runner
+        run: cargo build --locked --manifest-path tools/parity-runner/Cargo.toml
       - name: Audit candidate matrix (no compiler execution)
         run: |
-          python3 scripts/parity_runner.py --output parity-results.json
-          python3 - <<'PY'
-          import json
-          data = json.load(open('parity-results.json'))
-          assert data['cases'] == 30
-          assert len(data['records']) == 150
-          assert set(data['summary']) == {'not_run'}
-          PY
+          cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml -- --output parity-results.json
+          node -e 'const d=require("./parity-results.json"); if(d.cases!==30||d.records.length!==150||Object.keys(d.summary).length!==1||d.summary.not_run!==150) process.exit(1)'
       - uses: actions/upload-artifact@v4
         with:
           name: parity-corpus-audit
