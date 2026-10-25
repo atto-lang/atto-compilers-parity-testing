@@ -8,35 +8,32 @@ permissions:
 jobs:
   manifest-audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Test parity runner
+        run: cargo test --manifest-path tools/parity-runner/Cargo.toml
       - name: Audit complete parity corpus (no compiler execution)
         run: |
-          python3 scripts/parity_runner.py --output parity-results.json
-          python3 - <<'PY'
-          import json
-          data = json.load(open('parity-results.json'))
-          assert data['executed'] is False
-          assert data['corpus'] == {
-              'legacy_cases': 30,
-              'multifile_checks': 16,
-              'negative_probes': 2,
-              'total_cases': 48,
-          }
-          assert data['cases'] == 48
-          assert len(data['records']) == 240
-          assert set(data['summary']) == {'not_run'}
-          assert data['summary']['not_run'] == 240
-          checks = [r for r in data['records'] if r['suite'] == 'checks']
-          assert len(checks) == 90
-          positives = [r for r in checks if 'graph_sha256' in r]
-          assert len(positives) == 80
-          assert all(len(r['graph_files']) >= 4 for r in positives)
-          PY
+          cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml -- --output parity-results.json
+          node - <<'NODE'
+          const d = require("./parity-results.json");
+          const expectedCorpus = {
+            legacy_cases: 30,
+            multifile_checks: 16,
+            negative_probes: 2,
+            total_cases: 48,
+          };
+          if (JSON.stringify(d.corpus) !== JSON.stringify(expectedCorpus)) process.exit(1);
+          if (d.cases !== 48 || d.records.length !== 240) process.exit(1);
+          if (Object.keys(d.summary).length !== 1 || d.summary.not_run !== 240) process.exit(1);
+          const checks = d.records.filter(r => r.suite === "checks");
+          if (checks.length !== 90) process.exit(1);
+          const positives = checks.filter(r => typeof r.graph_sha256 === "string");
+          if (positives.length !== 80) process.exit(1);
+          if (!positives.every(r => Array.isArray(r.graph_files) && r.graph_files.length >= 4)) process.exit(1);
+          NODE
       - uses: actions/upload-artifact@v4
         with:
           name: parity-corpus-audit

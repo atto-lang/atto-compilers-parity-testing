@@ -1,37 +1,9 @@
 # Oreslang compiler parity testing
 
-30 **provisional** source programs for Java/GraalVM, LLVM, WASM, .NET and JavaScript transpilation. None has been executed here. All programs are common inputs (no backend-specific rewrites). They are intended as a starting corpus, not proof of conformance.
+Shared source-level conformance corpus for Java/GraalVM, LLVM, WebAssembly, .NET and JavaScript.
 
-## Status and caveats
+**Current status:** 30 legacy single-file candidates plus 16 multi-file checks and 2 explicit negative probes = 48 logical cases / 240 backend cells. There are still zero validated cross-backend parity claims. The harness fails closed: unvalidated syntax, unsupported features, missing adapters and infrastructure failures cannot become passes.
 
-- `core`: syntax patterns grounded in existing Java/LLVM fixtures, but not compiler-verified in this repository.
-- `frontier`: candidate syntax/behavior needing parser validation and adaptation to canonical Oreslang grammar.
-- `negative`: expected compile rejection, never a runnable positive case.
-- Cases **24, 25, 29, 30** are *scaffolds*, NOT real critical-section, backpressure, serialization or end-to-end tests. Upgrade them before reporting coverage.
-- Case 23's negative oracle is provisional and must be replaced with an exact actor lexical-isolation violation. Do not report it as a validated rejection test.
-- Case 01 returns 42; case 17 returns 42 (LIFO 1*10+2+30); all positive expected results 42. Do not confuse process exit code with stdout.
-- Case 03 must be tested with a compiler that preserves laziness; the division branch may be rejected statically if constant-folded.
+The multi-file corpus lives under \`checks/<lowercase-name>/\`. Each positive entry point imports three local source files, performs in-program semantic assertions and emits a stable \`PARITY_OK|<name>|\` prefix. The Rust runner recursively fingerprints the reachable import graph so a backend result is tied to the complete source graph rather than only \`main.ores\`.
 
-## Protocol
-
-For each test/backend capture source SHA, compiler revision, compiler command, feature capability, compile outcome, normalized diagnostic category, process exit status, stdout bytes, stderr bytes, and timeout. Compare to independent golden oracle and other backends. Never treat a skip or an absent backend runner as a pass. Run optimized/unoptimized configurations; run deterministically with fixed seed and bounded time. Separate unsupported features from wrong-code, compiler crash, runtime crash, and infrastructure failure.
-
-## Research basis
-
-- Csmith differential compiler testing: https://github.com/csmith-project/csmith
-- Equivalence modulo inputs (EMI): https://www.microsoft.com/en-us/research/publication/compiler-validation-via-equivalence-modulo-inputs/
-- WebAssembly official spec/test suite: https://github.com/WebAssembly/spec
-- Metamorphic relations: https://varylang.com/docs/vast/metamorphic-testing/
-
-## Next step
-
-Validate all 30 against canonical formatter/parser. Replace provisional syntax and scaffolds, add exact negative oracles, then implement five backend adapters. No CI execution claims are made by this commit.
-
-
-## Multi-file parity checks
-
-A second corpus lives under `checks/`. These are intentionally structured as small whole programs: each `checks/<lowercase-name>/main.ores` imports three local source files, performs in-program assertions, and emits a stable `PARITY_OK|...` result for differential comparison.
-
-Start with `checks/README.md` and `checks/manifest.json`. The suite covers import cycles, order of operations, deterministic fuzz seeds/metamorphic checks, mutexes, task blocks, actors, `do switch`, `do match`, async match/switch behavior, named/optional parameters, lambdas, recursion, and classes/interfaces/traits/casting.
-
-The `nb-match` and `nb-switch` folders intentionally include negative probes: the current grammar does not define those prefixes. Ordinary match already supports suspension in the subject, guard, and value arm.
+Tooling follows the Oreslang organization Rust-only policy. See \`docs/EXECUTION.md\`, \`manifest.json\`, \`checks/manifest.json\`, and \`checks/README.md\`.

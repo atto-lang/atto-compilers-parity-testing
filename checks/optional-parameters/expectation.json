@@ -1,10 +1,10 @@
 {
   "name": "optional-parameters",
   "entry": "checks/optional-parameters/main.ores",
-  "expected": "run-pass",
+  "expected": "feature-probe",
   "stable_stdout_prefix": "PARITY_OK|optional-parameters|",
   "imported_files": 3,
   "maturity": "frontier-spec",
   "verified": false,
-  "notes": "Tests intended split: T? as Option<T> shorthand, name? as omittable parameter. Spec-convergence probe."
+  "notes": "Tests intended split: T? as Option<T> shorthand, name? as omittable parameter. Spec-convergence probe. This is a convergence target, not a claim of current-main acceptance."
 }

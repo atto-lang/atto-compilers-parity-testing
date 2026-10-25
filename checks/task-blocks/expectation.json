@@ -1,10 +1,10 @@
 {
   "name": "task-blocks",
   "entry": "checks/task-blocks/main.ores",
-  "expected": "run-pass",
+  "expected": "feature-probe",
   "stable_stdout_prefix": "PARITY_OK|task-blocks|",
   "imported_files": 3,
   "maturity": "frontier",
   "verified": false,
-  "notes": "Canonical task { } and nb { } Task<T> inference/await semantics."
+  "notes": "Canonical task { } and nb { } Task<T> inference/await semantics. This is a convergence target, not a claim of current-main acceptance."
 }
