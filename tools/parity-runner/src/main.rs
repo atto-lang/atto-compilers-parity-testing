@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
@@ -134,39 +134,15 @@ fn hex(bytes: &[u8]) -> String {
     out
 }
 
-fn parse_sha256_output(output: std::process::Output) -> Result<String, String> {
-    if !output.status.success() {
-        return Err(format!("sha256sum failed with {:?}", output.status.code()));
-    }
-    let text = String::from_utf8(output.stdout).map_err(|e| e.to_string())?;
-    text.split_whitespace()
-        .next()
-        .map(str::to_owned)
-        .ok_or_else(|| "sha256sum produced no digest".to_string())
-}
-
 fn sha256_file(path: &Path) -> Result<String, String> {
-    let output = Command::new("sha256sum")
-        .arg(path)
-        .output()
-        .map_err(|e| format!("failed to run sha256sum: {e}"))?;
-    parse_sha256_output(output)
+    let bytes = fs::read(path).map_err(|e| format!("failed to read source for SHA-256: {e}"))?;
+    let digest = Sha256::digest(bytes);
+    Ok(format!("{digest:x}"))
 }
 
 fn sha256_bytes(bytes: &[u8]) -> Result<String, String> {
-    let mut child = Command::new("sha256sum")
-        .arg("-")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("failed to run sha256sum: {e}"))?;
-    let mut stdin = child
-        .stdin
-        .take()
-        .ok_or_else(|| "sha256sum stdin was not piped".to_string())?;
-    stdin.write_all(bytes).map_err(|e| e.to_string())?;
-    drop(stdin);
-    parse_sha256_output(child.wait_with_output().map_err(|e| e.to_string())?)
+    let digest = Sha256::digest(bytes);
+    Ok(format!("{digest:x}"))
 }
 
 fn safe_file(root: &Path, path_text: &str) -> Result<PathBuf, String> {
