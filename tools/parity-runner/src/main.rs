@@ -226,7 +226,17 @@ fn main() -> Result<(), String> {
                     };
                 }
             } else if comp_exit != Some(0) {
-                rec.status = "compile_failure".into();
+                rec.actual_diagnostic_category = rec.compile.as_ref()
+                    .and_then(|c| classify_diagnostic(&diagnostic_rules, backend, c));
+                let select_case = case.features.iter().any(|feature|
+                    matches!(feature.as_str(),
+                        "select" | "do-select" | "nb-select" | "do-nb-select"));
+                rec.status = if select_case &&
+                    rec.actual_diagnostic_category.as_deref() == Some("unsupported_select") {
+                        "intentional_capability_reject".into()
+                    } else {
+                        "compile_failure".into()
+                    };
             } else {
                 let run_argv = expand(run_tpl.as_ref().unwrap(), &source, &artifact, &wd)?;
                 let run = invoke(&run_argv, &wd, Duration::from_secs(timeout_s));
@@ -249,7 +259,8 @@ fn main() -> Result<(), String> {
     fs::write(&output, serde_json::to_vec_pretty(&report).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
     println!("{}", serde_json::to_string(&report.summary).map_err(|e| e.to_string())?);
     let hard_fail = report.records.iter().any(|r| matches!(r.status.as_str(),
-        "compile_failure" | "wrong_result" | "unexpected_compile_success" |
+        "compile_failure" | "intentional_capability_reject" |
+        "wrong_result" | "unexpected_compile_success" |
         "wrong_diagnostic" | "rejection_unclassified" |
         "compile_infrastructure_failure" | "runtime_infrastructure_failure"));
     if hard_fail { std::process::exit(1); }
