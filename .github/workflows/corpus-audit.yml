@@ -14,6 +14,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Format-check parity runner
         run: cargo fmt --manifest-path tools/parity-runner/Cargo.toml -- --check
+      - name: Test parity runner
+        run: cargo test --manifest-path tools/parity-runner/Cargo.toml
       - name: Build parity runner
         run: cargo build --manifest-path tools/parity-runner/Cargo.toml
       - name: Audit 31 x 5 matrix without making compiler claims
