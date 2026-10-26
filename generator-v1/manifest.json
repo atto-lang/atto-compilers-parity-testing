@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "suite": "oreslang.generator-v1",
+  "policy": {
+    "identical_source_bytes": true,
+    "target_backends": ["java", "llvm", "wasm", "dotnet", "js"],
+    "unsupported_is_pass": false,
+    "not_executed_is_pass": false
+  },
+  "cases": [
+    {
+      "id": "g01",
+      "path": "generator-v1/01-sync-gen-star.ores",
+      "expected": "exit:42",
+      "features": ["gen-star", "Iterator", "yield", "for-of"]
+    },
+    {
+      "id": "g02",
+      "path": "generator-v1/02-async-gen-star.ores",
+      "expected": "exit:42",
+      "features": ["async-gen-star", "AsyncIterator", "yield-await", "for-await"]
+    },
+    {
+      "id": "g03",
+      "path": "generator-v1/03-suspend-gen-star.ores",
+      "expected": "exit:42",
+      "features": ["suspend-gen-star", "AsyncIterator", "suspension", "for-await"]
+    },
+    {
+      "id": "g06",
+      "path": "generator-v1/06-sync-protocol-mismatch-reject.ores",
+      "expected": "compile_reject:generator_protocol_mismatch",
+      "features": ["gen-star", "Iterator", "AsyncIterator", "diagnostic"]
+    },
+    {
+      "id": "g07",
+      "path": "generator-v1/07-async-protocol-mismatch-reject.ores",
+      "expected": "compile_reject:generator_protocol_mismatch",
+      "features": ["async-gen-star", "Iterator", "AsyncIterator", "diagnostic"]
+    }
+  ],
+  "status_vocabulary": ["verified", "compile_reject_expected", "unsupported", "failed", "not_executed"]
+}
