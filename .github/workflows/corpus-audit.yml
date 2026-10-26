@@ -16,10 +16,10 @@ jobs:
         run: cargo fmt --manifest-path tools/parity-runner/Cargo.toml -- --check
       - name: Build parity runner
         run: cargo build --manifest-path tools/parity-runner/Cargo.toml
-      - name: Audit 30 x 5 matrix without making compiler claims
+      - name: Audit 31 x 5 matrix without making compiler claims
         run: |
           cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml -- --output parity-results.json
-          node -e 'const d=require("./parity-results.json"); if(d.cases!==30||d.records.length!==150||d.summary.not_run!==150) process.exit(1)'
+          node -e 'const d=require("./parity-results.json"); if(d.cases!==31||d.records.length!==155||d.summary.not_run!==155) process.exit(1)'
       - uses: actions/upload-artifact@v4
         with:
           name: parity-corpus-audit
