@@ -75,6 +75,26 @@ fn hex(bytes: &[u8]) -> String {
     out
 }
 
+fn ascii_lower_hex(input: &str) -> Option<String> {
+    if input.len() % 2 != 0 { return None; }
+    let bytes = input.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len() / 2);
+    let nibble = |value: u8| -> Option<u8> {
+        match value {
+            b'0'..=b'9' => Some(value - b'0'),
+            b'a'..=b'f' => Some(value - b'a' + 10),
+            b'A'..=b'F' => Some(value - b'A' + 10),
+            _ => None,
+        }
+    };
+    for pair in bytes.chunks_exact(2) {
+        let high = nibble(pair[0])?;
+        let low = nibble(pair[1])?;
+        decoded.push((high << 4 | low).to_ascii_lowercase());
+    }
+    Some(hex(&decoded))
+}
+
 fn sha256_file(path: &Path) -> Result<String, String> {
     let bytes = fs::read(path).map_err(|e| format!("failed to read source for SHA-256: {e}"))?;
     let digest = Sha256::digest(bytes);
@@ -85,10 +105,11 @@ type DiagnosticRules = BTreeMap<String, BTreeMap<String, Vec<String>>>;
 
 fn classify_diagnostic(rules: &DiagnosticRules, backend: &str, invocation: &Invocation) -> Option<String> {
     let backend_rules = rules.get(backend)?;
-    let haystack = format!("{}{}", invocation.stdout_hex, invocation.stderr_hex);
+    let raw = format!("{}{}", invocation.stdout_hex, invocation.stderr_hex);
+    let haystack = ascii_lower_hex(&raw)?;
     for (category, needles) in backend_rules {
         for needle in needles {
-            let encoded = hex(needle.to_lowercase().as_bytes());
+            let encoded = hex(needle.to_ascii_lowercase().as_bytes());
             if haystack.contains(&encoded) {
                 return Some(category.clone());
             }
@@ -266,3 +287,40 @@ fn main() -> Result<(), String> {
     if hard_fail { std::process::exit(1); }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn diagnostic_classification_is_ascii_case_insensitive() {
+        let mut backend = BTreeMap::new();
+        backend.insert(
+            "unsupported_select".to_string(),
+            vec!["static select requires checked channel/future arbitration".to_string()],
+        );
+        let mut rules = BTreeMap::new();
+        rules.insert("dotnet".to_string(), backend);
+        let invocation = Invocation {
+            status: "completed".into(),
+            exit_code: Some(1),
+            stdout_hex: String::new(),
+            stderr_hex: hex(
+                b"Static select requires checked Channel/Future arbitration in .NET"
+            ),
+            duration_ms: 1,
+            error: None,
+        };
+        assert_eq!(
+            classify_diagnostic(&rules, "dotnet", &invocation).as_deref(),
+            Some("unsupported_select")
+        );
+    }
+
+    #[test]
+    fn ascii_lower_hex_rejects_malformed_capture() {
+        assert!(ascii_lower_hex("0").is_none());
+        assert!(ascii_lower_hex("zz").is_none());
+    }
+}
+
