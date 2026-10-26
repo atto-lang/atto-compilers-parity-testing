@@ -1,6 +1,6 @@
 # Execution and parity gate
 
-The checked-in corpus is fail-closed. The default CI audits source presence and enumerates the 150 backend/case pairs. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
+The checked-in corpus is fail-closed. The default CI audits source presence and enumerates the 155 backend/case pairs. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
 
 ## Rust-only tooling
 
@@ -34,3 +34,5 @@ For funded-runner fallback, mirror only an identical authorized Git tree into an
 ## Known debt
 
 Cases 24, 25, 29 and 30 are coverage placeholders and case 23 needs a precise actor-isolation violation. Several frontier cases need canonical grammar repair. The next stage replaces these with real semantic tests and adds backend-specific adapters.
+
+Case 31 is the Java-reference `do select ... over ... end` target. Explicit fail-closed rejection on LLVM/Wasm/.NET/JS is useful capability evidence, but remains a parity gap rather than a pass until those backends execute the same source semantics.
