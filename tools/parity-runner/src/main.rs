@@ -1,3 +1,4 @@
+mod inverted_index_contract_v1;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -155,6 +156,7 @@ fn temp_dir(case_id: &str, backend: &str) -> Result<PathBuf, String> {
 }
 
 fn main() -> Result<(), String> {
+    inverted_index_contract_v1::self_check()?;
     let args: Vec<String> = env::args().collect();
     let execute = args.iter().any(|a| a == "--execute");
     let allow_unvalidated = args.iter().any(|a| a == "--allow-unvalidated");
