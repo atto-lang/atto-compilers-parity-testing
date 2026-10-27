@@ -15,24 +15,32 @@
     "llvm": {
       "state": "unsupported",
       "tracking_issue": 1062,
-      "note": "Native generator frame/continuation lowering is not implemented."
+      "hardening_pull_request": 1069,
+      "head": "5ca0ff0b5cd09edc1cca8dd64839c53f01266a89",
+      "note": "Native generator frame/continuation lowering is not implemented. The current-main hardening PR gives canonical generator-v1 spellings one compiler-owned diagnostic and native CTest rejection gates."
     },
     "wasm": {
       "state": "unsupported",
       "tracking_issue": 136,
-      "note": "Language support is gated by the pinned real LLVM compiler; no stub or host-only generator may count."
+      "hardening_pull_request": 142,
+      "head": "f1e257148f76becd6fc958533ed9dfb17e12124b",
+      "note": "Language support is gated by the pinned real LLVM compiler. The current-main hardening PR requires the real compiler-owned generator-v1 rejection and rechecks compiler identity after each negative case."
     },
     "dotnet": {
       "state": "unsupported",
       "tracking_issue": 168,
       "hardening_pull_request": 174,
-      "note": "Native AOT bootstrap rejects generator syntax with an explicit compiler-owned diagnostic."
+      "hardening_merged": true,
+      "merge_commit": "82edba5f4c29e10dbfbd73489bd5397f8f943c00",
+      "note": "Native AOT bootstrap rejects canonical and legacy generator syntax with an explicit compiler-owned diagnostic before CIL emission."
     },
     "js": {
       "state": "unsupported",
       "tracking_issue": 74,
       "hardening_pull_request": 75,
-      "note": "Scalar-v1 and program-v2 reject generator-v1 syntax until real ESM lowering exists."
+      "hardening_merged": true,
+      "merge_commit": "4ca9741644cfa9715309fb47e3f63a45bfaf1b80",
+      "note": "Scalar-v1 and program-v2 have an auto-discovered fail-closed regression for canonical sync, async and suspend generator-v1 syntax until real ESM lowering exists."
     }
   },
   "policy": {
