@@ -9,21 +9,20 @@
     "java": {
       "state": "not_executed",
       "implementation_pull_request": 2113,
-      "head": "5e4a53b7f117b4f1046851f2b52778e5c0d65de5",
-      "note": "Canonical free generator implementation is on #2113. The head now also deterministically rejects overlapping sync/async pulls instead of admitting unbounded waiting runtime tasks. Static class generators remain stacked in #2117. Current #2113 source-org workflows have not produced executable steps; instance generator methods remain fail-closed until receiver lifetime is continuation-safe.",
-      "tree": null,
+      "head": "5a0e948886055eac4cfa85e1e2b826cc4922a603",
+      "note": "Free generator-v1 implementation includes canonical/compatibility syntax, suspend AsyncIterator semantics, deterministic one-pull admission, fresh-yield borrow rejection, and sticky close-cleanup failures. Instance generator methods remain fail-closed.",
       "ci_evidence": {
-        "head": "5e4a53b7f117b4f1046851f2b52778e5c0d65de5",
-        "workflow_runs_seen": 0,
-        "executed_steps": false
+        "fast_ci_run": 40429323707,
+        "ci_run": 40429323743,
+        "executed_steps": false,
+        "classification": "not_executed"
       },
       "static_class_generators": {
         "state": "not_executed",
         "pull_request": 2117,
-        "head": "a0b786a066f720a17425aa0843ea8066ed318226",
-        "tree": "169a5ca18aa49c5001c5885641303e18cdec6403",
-        "fast_ci_run": 40428141630,
-        "ci_run": 40428141615,
+        "head": "d74e00ff84d4c3cc8f38912d130ced208c3067f6",
+        "fast_ci_run": 40429445923,
+        "ci_run": 40429446034,
         "executed_steps": false,
         "modes": [
           "sync",
@@ -38,16 +37,22 @@
     "llvm": {
       "state": "unsupported",
       "tracking_issue": 1062,
-      "hardening_pull_request": 1069,
-      "head": "72c4f354f651c9652c450fd19efc1f608a5ba01d",
-      "note": "Native generator frame/continuation lowering is not implemented. #1069 now gives canonical and legacy prefix/postfix generator-v1 spellings one compiler-owned diagnostic and six native CTest rejection gates; source-org execution remains unavailable."
+      "baseline_hardening_pull_request": 1069,
+      "baseline_hardening_merged": true,
+      "baseline_merge_commit": "93e549b7fb70766768e75a400a271131472071d0",
+      "legacy_followup_pull_request": 1073,
+      "legacy_followup_head": "2017c172cb8492c2c9cc1ffc0ce758a78ead292d",
+      "note": "Native generator frame/continuation lowering is not implemented. Merged #1069 supplies the canonical compiler-owned rejection gate; draft #1073 adds retained compatibility spellings and native CTest fixtures."
     },
     "wasm": {
       "state": "unsupported",
       "tracking_issue": 136,
-      "hardening_pull_request": 142,
-      "head": "b744fe74f8b7f531b5efdd84475b1215b56e3b50",
-      "note": "Language support is gated by the pinned real LLVM compiler. #142 now verifies canonical and legacy generator spellings through that compiler-owned gate and rechecks the pinned compiler hash after every negative case; source-org execution remains unavailable."
+      "baseline_hardening_pull_request": 142,
+      "baseline_hardening_merged": true,
+      "baseline_merge_commit": "876e81ace4f72ab9ba2c4a9505b706a17ac7830a",
+      "legacy_followup_pull_request": 144,
+      "legacy_followup_head": "fdffa952c8060b9d46edb0b94f0b5ca3f099f9f4",
+      "note": "Wasm language support is gated by the real LLVM compiler. Merged #142 verifies canonical rejection; draft #144 extends the same real-compiler gate to retained compatibility spellings."
     },
     "dotnet": {
       "state": "unsupported",
@@ -55,7 +60,9 @@
       "hardening_pull_request": 174,
       "hardening_merged": true,
       "merge_commit": "82edba5f4c29e10dbfbd73489bd5397f8f943c00",
-      "note": "Native AOT bootstrap rejects canonical and legacy generator syntax with an explicit compiler-owned diagnostic before CIL emission."
+      "legacy_followup_pull_request": 177,
+      "legacy_followup_head": "ef8ed49cb8b507cc0b76b4b664e6fee11a5d3fa6",
+      "note": "Native AOT bootstrap rejects generator syntax before CIL emission. Draft #177 makes the full retained compatibility matrix executable evidence."
     },
     "js": {
       "state": "unsupported",
@@ -63,7 +70,9 @@
       "hardening_pull_request": 75,
       "hardening_merged": true,
       "merge_commit": "4ca9741644cfa9715309fb47e3f63a45bfaf1b80",
-      "note": "Scalar-v1 and program-v2 have an auto-discovered fail-closed regression for canonical sync, async and suspend generator-v1 syntax until real ESM lowering exists."
+      "legacy_followup_pull_request": 82,
+      "legacy_followup_head": "50e06f91221ce8c6277c21388df17e18e53a2638",
+      "note": "Scalar-v1/program-v2 reject generator-v1 until real ESM lowering exists. Draft #82 extends the fail-closed matrix to retained compatibility spellings."
     }
   },
   "policy": {
@@ -89,7 +98,10 @@
     }
   },
   "audit_updates": {
-    "suspend_fixture": "g03 corrected: suspend callables expose T directly; suspension is an effect, not Future<T>, so the fixture now calls a cooperating suspend fnc without await.",
-    "concurrent_pull_policy": "Java #2113 chooses deterministic rejection for overlapping Iterator.next()/AsyncIterator.next() calls, satisfying the bounded-admission branch of generator-v1."
+    "suspend_fixture": "g03 corrected: suspend callables expose T directly; suspension is an effect, not Future<T>.",
+    "concurrent_pull_policy": "Java uses deterministic rejection for overlapping sync/async pulls rather than unbounded queued runtime tasks.",
+    "yield_borrow_boundary": "Java rejects borrows created by the yield expression itself and borrowed yield* element types.",
+    "close_cleanup_failure": "Java preserves non-cancellation failures raised during explicit-close cleanup after physical producer exit.",
+    "compatibility_fixture": "g10 exercises retained legacy declaration spellings and returns 42 on the reference backend."
   }
 }
