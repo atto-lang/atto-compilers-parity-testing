@@ -561,6 +561,25 @@
       "validation_status": "candidate",
       "source_basis": "LLVM critical-state-counter-runtime fixture updated to canonical lifecycle spelling and integer oracle",
       "required_on_all_backends": true
+    },
+    {
+      "id": "31",
+      "name": "channel-select-over-end",
+      "path": "programs/31-channel-select-over-end.ores",
+      "group": "effects-async",
+      "features": [
+        "channel",
+        "writech",
+        "readch",
+        "do-select",
+        "over-end"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "reference_test",
+      "source_basis": "Java PR #2079 SelectOverEndSyntaxTest and delimiter-equivalence contract",
+      "required_on_all_backends": true
     }
   ]
 }

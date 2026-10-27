@@ -15,6 +15,24 @@
     "unsupported_feature": [
       "division unsupported in provisional int profile",
       "expected module, found actor"
+    ],
+    "unsupported_select": [
+      "static select requires checked channel/future arbitration"
+    ]
+  },
+  "llvm": {
+    "unsupported_select": [
+      "native async/channel/select boundary unsupported"
+    ]
+  },
+  "wasm": {
+    "unsupported_select": [
+      "native async/channel/select boundary unsupported"
+    ]
+  },
+  "dotnet": {
+    "unsupported_select": [
+      "static select requires checked channel/future arbitration"
     ]
   }
 }

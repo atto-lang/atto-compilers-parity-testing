@@ -75,6 +75,28 @@ fn hex(bytes: &[u8]) -> String {
     out
 }
 
+fn ascii_lower_hex(input: &str) -> Option<String> {
+    if input.len() % 2 != 0 {
+        return None;
+    }
+    let bytes = input.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len() / 2);
+    let nibble = |value: u8| -> Option<u8> {
+        match value {
+            b'0'..=b'9' => Some(value - b'0'),
+            b'a'..=b'f' => Some(value - b'a' + 10),
+            b'A'..=b'F' => Some(value - b'A' + 10),
+            _ => None,
+        }
+    };
+    for pair in bytes.chunks_exact(2) {
+        let high = nibble(pair[0])?;
+        let low = nibble(pair[1])?;
+        decoded.push((high << 4 | low).to_ascii_lowercase());
+    }
+    Some(hex(&decoded))
+}
+
 fn sha256_file(path: &Path) -> Result<String, String> {
     let bytes = fs::read(path).map_err(|e| format!("failed to read source for SHA-256: {e}"))?;
     let digest = Sha256::digest(bytes);
@@ -83,12 +105,17 @@ fn sha256_file(path: &Path) -> Result<String, String> {
 
 type DiagnosticRules = BTreeMap<String, BTreeMap<String, Vec<String>>>;
 
-fn classify_diagnostic(rules: &DiagnosticRules, backend: &str, invocation: &Invocation) -> Option<String> {
+fn classify_diagnostic(
+    rules: &DiagnosticRules,
+    backend: &str,
+    invocation: &Invocation,
+) -> Option<String> {
     let backend_rules = rules.get(backend)?;
-    let haystack = format!("{}{}", invocation.stdout_hex, invocation.stderr_hex);
+    let raw = format!("{}{}", invocation.stdout_hex, invocation.stderr_hex);
+    let haystack = ascii_lower_hex(&raw)?;
     for (category, needles) in backend_rules {
         for needle in needles {
-            let encoded = hex(needle.to_lowercase().as_bytes());
+            let encoded = hex(needle.to_ascii_lowercase().as_bytes());
             if haystack.contains(&encoded) {
                 return Some(category.clone());
             }
@@ -97,29 +124,53 @@ fn classify_diagnostic(rules: &DiagnosticRules, backend: &str, invocation: &Invo
     None
 }
 
-fn expand(template: &str, source: &Path, artifact: &Path, workdir: &Path) -> Result<Vec<String>, String> {
+fn expand(
+    template: &str,
+    source: &Path,
+    artifact: &Path,
+    workdir: &Path,
+) -> Result<Vec<String>, String> {
     let parts = shell_words::split(template).map_err(|e| e.to_string())?;
-    Ok(parts.into_iter().map(|p| {
-        p.replace("{source}", &source.to_string_lossy())
-            .replace("{artifact}", &artifact.to_string_lossy())
-            .replace("{workdir}", &workdir.to_string_lossy())
-    }).collect())
+    Ok(parts
+        .into_iter()
+        .map(|p| {
+            p.replace("{source}", &source.to_string_lossy())
+                .replace("{artifact}", &artifact.to_string_lossy())
+                .replace("{workdir}", &workdir.to_string_lossy())
+        })
+        .collect())
 }
 
 fn invoke(argv: &[String], workdir: &Path, timeout: Duration) -> Invocation {
     if argv.is_empty() {
-        return Invocation { status: "infrastructure_error".into(), exit_code: None,
-            stdout_hex: String::new(), stderr_hex: String::new(), duration_ms: 0,
-            error: Some("empty command".into()) };
+        return Invocation {
+            status: "infrastructure_error".into(),
+            exit_code: None,
+            stdout_hex: String::new(),
+            stderr_hex: String::new(),
+            duration_ms: 0,
+            error: Some("empty command".into()),
+        };
     }
     let start = Instant::now();
     let mut child = match Command::new(&argv[0])
-        .args(&argv[1..]).current_dir(workdir)
-        .stdout(Stdio::piped()).stderr(Stdio::piped()).spawn() {
+        .args(&argv[1..])
+        .current_dir(workdir)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+    {
         Ok(c) => c,
-        Err(e) => return Invocation { status: "infrastructure_error".into(), exit_code: None,
-            stdout_hex: String::new(), stderr_hex: String::new(), duration_ms: start.elapsed().as_millis(),
-            error: Some(e.to_string()) },
+        Err(e) => {
+            return Invocation {
+                status: "infrastructure_error".into(),
+                exit_code: None,
+                stdout_hex: String::new(),
+                stderr_hex: String::new(),
+                duration_ms: start.elapsed().as_millis(),
+                error: Some(e.to_string()),
+            }
+        }
     };
     loop {
         match child.try_wait() {
@@ -127,29 +178,58 @@ fn invoke(argv: &[String], workdir: &Path, timeout: Duration) -> Invocation {
             Ok(None) if start.elapsed() >= timeout => {
                 let _ = child.kill();
                 let _ = child.wait();
-                return Invocation { status: "timeout".into(), exit_code: None,
-                    stdout_hex: String::new(), stderr_hex: String::new(), duration_ms: start.elapsed().as_millis(),
-                    error: None };
+                return Invocation {
+                    status: "timeout".into(),
+                    exit_code: None,
+                    stdout_hex: String::new(),
+                    stderr_hex: String::new(),
+                    duration_ms: start.elapsed().as_millis(),
+                    error: None,
+                };
             }
             Ok(None) => std::thread::sleep(Duration::from_millis(20)),
-            Err(e) => return Invocation { status: "infrastructure_error".into(), exit_code: None,
-                stdout_hex: String::new(), stderr_hex: String::new(), duration_ms: start.elapsed().as_millis(),
-                error: Some(e.to_string()) },
+            Err(e) => {
+                return Invocation {
+                    status: "infrastructure_error".into(),
+                    exit_code: None,
+                    stdout_hex: String::new(),
+                    stderr_hex: String::new(),
+                    duration_ms: start.elapsed().as_millis(),
+                    error: Some(e.to_string()),
+                }
+            }
         }
     }
     match child.wait_with_output() {
-        Ok(out) => Invocation { status: "completed".into(), exit_code: out.status.code(),
-            stdout_hex: hex(&out.stdout), stderr_hex: hex(&out.stderr), duration_ms: start.elapsed().as_millis(),
-            error: None },
-        Err(e) => Invocation { status: "infrastructure_error".into(), exit_code: None,
-            stdout_hex: String::new(), stderr_hex: String::new(), duration_ms: start.elapsed().as_millis(),
-            error: Some(e.to_string()) },
+        Ok(out) => Invocation {
+            status: "completed".into(),
+            exit_code: out.status.code(),
+            stdout_hex: hex(&out.stdout),
+            stderr_hex: hex(&out.stderr),
+            duration_ms: start.elapsed().as_millis(),
+            error: None,
+        },
+        Err(e) => Invocation {
+            status: "infrastructure_error".into(),
+            exit_code: None,
+            stdout_hex: String::new(),
+            stderr_hex: String::new(),
+            duration_ms: start.elapsed().as_millis(),
+            error: Some(e.to_string()),
+        },
     }
 }
 
 fn temp_dir(case_id: &str, backend: &str) -> Result<PathBuf, String> {
-    let p = env::temp_dir().join(format!("ores-parity-{}-{}-{}", std::process::id(), case_id, backend));
-    if p.exists() { fs::remove_dir_all(&p).map_err(|e| e.to_string())?; }
+    let p = env::temp_dir().join(format!(
+        "ores-parity-{}-{}-{}",
+        std::process::id(),
+        case_id,
+        backend
+    ));
+    if p.exists() {
+        fs::remove_dir_all(&p).map_err(|e| e.to_string())?;
+    }
     fs::create_dir_all(&p).map_err(|e| e.to_string())?;
     Ok(p)
 }
@@ -158,43 +238,73 @@ fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     let execute = args.iter().any(|a| a == "--execute");
     let allow_unvalidated = args.iter().any(|a| a == "--allow-unvalidated");
-    let output = args.windows(2).find(|w| w[0] == "--output")
-        .map(|w| w[1].clone()).unwrap_or_else(|| "parity-results.json".into());
-    let timeout_s: u64 = args.windows(2).find(|w| w[0] == "--timeout")
-        .map(|w| w[1].parse::<u64>().map_err(|e| e.to_string())).transpose()?.unwrap_or(30);
-    if timeout_s == 0 { return Err("--timeout must be positive".into()); }
+    let output = args
+        .windows(2)
+        .find(|w| w[0] == "--output")
+        .map(|w| w[1].clone())
+        .unwrap_or_else(|| "parity-results.json".into());
+    let timeout_s: u64 = args
+        .windows(2)
+        .find(|w| w[0] == "--timeout")
+        .map(|w| w[1].parse::<u64>().map_err(|e| e.to_string()))
+        .transpose()?
+        .unwrap_or(30);
+    if timeout_s == 0 {
+        return Err("--timeout must be positive".into());
+    }
 
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..").canonicalize().map_err(|e| e.to_string())?;
-    let manifest: Manifest = serde_json::from_str(&fs::read_to_string(root.join("manifest.json")).map_err(|e| e.to_string())?)
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../..")
+        .canonicalize()
         .map_err(|e| e.to_string())?;
+    let manifest: Manifest = serde_json::from_str(
+        &fs::read_to_string(root.join("manifest.json")).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
     let diagnostic_rules: DiagnosticRules = serde_json::from_str(
-        &fs::read_to_string(root.join("diagnostics.json")).map_err(|e| e.to_string())?
-    ).map_err(|e| e.to_string())?;
+        &fs::read_to_string(root.join("diagnostics.json")).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
     let mut records = Vec::new();
 
     for case in &manifest.cases {
-        let source = root.join(&case.path).canonicalize().map_err(|e| format!("{}: {e}", case.path))?;
-        if !source.starts_with(&root) || !source.is_file() { return Err(format!("invalid source path: {}", case.path)); }
+        let source = root
+            .join(&case.path)
+            .canonicalize()
+            .map_err(|e| format!("{}: {e}", case.path))?;
+        if !source.starts_with(&root) || !source.is_file() {
+            return Err(format!("invalid source path: {}", case.path));
+        }
         let digest = sha256_file(&source)?;
         for &(backend, env_name) in &BACKENDS {
             let mut rec = Record {
-                case_id: case.id.clone(), backend: backend.into(), source_sha256: digest.clone(),
-                validation_status: case.validation_status.clone(), features: case.features.clone(),
+                case_id: case.id.clone(),
+                backend: backend.into(),
+                source_sha256: digest.clone(),
+                validation_status: case.validation_status.clone(),
+                features: case.features.clone(),
                 expected_diagnostic_category: case.expected_diagnostic_category.clone(),
                 actual_diagnostic_category: None,
-                status: "not_run".into(), compile: None, run: None,
+                status: "not_run".into(),
+                compile: None,
+                run: None,
             };
             if !execute {
-                records.push(rec); continue;
+                records.push(rec);
+                continue;
             }
             if case.validation_status != "validated" && !allow_unvalidated {
-                rec.status = "unvalidated".into(); records.push(rec); continue;
+                rec.status = "unvalidated".into();
+                records.push(rec);
+                continue;
             }
             let prefix = format!("ORES_PARITY_{env_name}");
             let compile_tpl = env::var(format!("{prefix}_COMPILE")).ok();
             let run_tpl = env::var(format!("{prefix}_RUN")).ok();
             if compile_tpl.is_none() || (case.expected_kind == "exit" && run_tpl.is_none()) {
-                rec.status = "backend_not_configured".into(); records.push(rec); continue;
+                rec.status = "backend_not_configured".into();
+                records.push(rec);
+                continue;
             }
             let wd = temp_dir(&case.id, backend)?;
             let artifact = wd.join("program");
@@ -209,49 +319,133 @@ fn main() -> Result<(), String> {
                 if comp_exit == Some(0) {
                     rec.status = "unexpected_compile_success".into();
                 } else {
-                    rec.actual_diagnostic_category = rec.compile.as_ref()
+                    rec.actual_diagnostic_category = rec
+                        .compile
+                        .as_ref()
                         .and_then(|c| classify_diagnostic(&diagnostic_rules, backend, c));
                     rec.status = match (
                         case.expected_diagnostic_category.as_deref(),
-                        rec.actual_diagnostic_category.as_deref()
+                        rec.actual_diagnostic_category.as_deref(),
                     ) {
-                        (Some(expected), Some(actual)) if expected == actual =>
+                        (Some(expected), Some(actual)) if expected == actual => {
                             if case.validation_status == "validated" {
                                 "expected_reject".into()
                             } else {
                                 "exploratory_expected_reject_not_parity_pass".into()
-                            },
+                            }
+                        }
                         (_, Some(_)) => "wrong_diagnostic".into(),
                         _ => "rejection_unclassified".into(),
                     };
                 }
             } else if comp_exit != Some(0) {
-                rec.status = "compile_failure".into();
+                rec.actual_diagnostic_category = rec
+                    .compile
+                    .as_ref()
+                    .and_then(|c| classify_diagnostic(&diagnostic_rules, backend, c));
+                let select_case = case.features.iter().any(|feature| {
+                    matches!(
+                        feature.as_str(),
+                        "select" | "do-select" | "nb-select" | "do-nb-select"
+                    )
+                });
+                rec.status = if select_case
+                    && rec.actual_diagnostic_category.as_deref() == Some("unsupported_select")
+                {
+                    "intentional_capability_reject".into()
+                } else {
+                    "compile_failure".into()
+                };
             } else {
                 let run_argv = expand(run_tpl.as_ref().unwrap(), &source, &artifact, &wd)?;
                 let run = invoke(&run_argv, &wd, Duration::from_secs(timeout_s));
                 let run_status = run.status.clone();
                 let run_exit = run.exit_code;
                 rec.run = Some(run);
-                rec.status = if run_status != "completed" { "runtime_infrastructure_failure".into() }
-                    else if run_exit != case.expected_value { "wrong_result".into() }
-                    else if case.validation_status == "validated" { "pass".into() }
-                    else { "exploratory_match_not_parity_pass".into() };
+                rec.status = if run_status != "completed" {
+                    "runtime_infrastructure_failure".into()
+                } else if run_exit != case.expected_value {
+                    "wrong_result".into()
+                } else if case.validation_status == "validated" {
+                    "pass".into()
+                } else {
+                    "exploratory_match_not_parity_pass".into()
+                };
             }
             let _ = fs::remove_dir_all(wd);
             records.push(rec);
         }
     }
     let mut summary = BTreeMap::new();
-    for r in &records { *summary.entry(r.status.clone()).or_insert(0) += 1; }
-    let report = Report { schema_version: 1, executed: execute, cases: manifest.cases.len(),
-        backends: BACKENDS.iter().map(|x| x.0.to_string()).collect(), records, summary };
-    fs::write(&output, serde_json::to_vec_pretty(&report).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
-    println!("{}", serde_json::to_string(&report.summary).map_err(|e| e.to_string())?);
-    let hard_fail = report.records.iter().any(|r| matches!(r.status.as_str(),
-        "compile_failure" | "wrong_result" | "unexpected_compile_success" |
-        "wrong_diagnostic" | "rejection_unclassified" |
-        "compile_infrastructure_failure" | "runtime_infrastructure_failure"));
-    if hard_fail { std::process::exit(1); }
+    for r in &records {
+        *summary.entry(r.status.clone()).or_insert(0) += 1;
+    }
+    let report = Report {
+        schema_version: 1,
+        executed: execute,
+        cases: manifest.cases.len(),
+        backends: BACKENDS.iter().map(|x| x.0.to_string()).collect(),
+        records,
+        summary,
+    };
+    fs::write(
+        &output,
+        serde_json::to_vec_pretty(&report).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
+    println!(
+        "{}",
+        serde_json::to_string(&report.summary).map_err(|e| e.to_string())?
+    );
+    let hard_fail = report.records.iter().any(|r| {
+        matches!(
+            r.status.as_str(),
+            "compile_failure"
+                | "intentional_capability_reject"
+                | "wrong_result"
+                | "unexpected_compile_success"
+                | "wrong_diagnostic"
+                | "rejection_unclassified"
+                | "compile_infrastructure_failure"
+                | "runtime_infrastructure_failure"
+        )
+    });
+    if hard_fail {
+        std::process::exit(1);
+    }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn diagnostic_classification_is_ascii_case_insensitive() {
+        let mut backend = BTreeMap::new();
+        backend.insert(
+            "unsupported_select".to_string(),
+            vec!["static select requires checked channel/future arbitration".to_string()],
+        );
+        let mut rules = BTreeMap::new();
+        rules.insert("dotnet".to_string(), backend);
+        let invocation = Invocation {
+            status: "completed".into(),
+            exit_code: Some(1),
+            stdout_hex: String::new(),
+            stderr_hex: hex(b"Static select requires checked Channel/Future arbitration in .NET"),
+            duration_ms: 1,
+            error: None,
+        };
+        assert_eq!(
+            classify_diagnostic(&rules, "dotnet", &invocation).as_deref(),
+            Some("unsupported_select")
+        );
+    }
+
+    #[test]
+    fn ascii_lower_hex_rejects_malformed_capture() {
+        assert!(ascii_lower_hex("0").is_none());
+        assert!(ascii_lower_hex("zz").is_none());
+    }
 }
