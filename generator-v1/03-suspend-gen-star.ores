@@ -1,8 +1,13 @@
 // generator-v1 03: canonical suspend gen*
-suspend fnc later(int value): int { return value; }
+// suspend callables expose their declared T directly; suspension is an effect,
+// not a Future<T> wrapper. The call itself may cooperate before returning.
+suspend fnc later(int value): int {
+  rt cooperate;
+  return value;
+}
 pub suspend gen* values(): AsyncIterator<int> {
-  yield await later(20);
-  yield await later(22);
+  yield later(20);
+  yield later(22);
   return;
 }
 pub async fnc main(): int {
