@@ -72,9 +72,10 @@
     {
       "id": "g08",
       "path": "generator-v1/08-static-class-generators.ores",
-      "expected": "exit:84",
+      "expected": "exit:126",
       "features": [
         "static-gen-star",
+        "static-async-gen-star",
         "static-suspend-gen-star",
         "Iterator",
         "AsyncIterator",
