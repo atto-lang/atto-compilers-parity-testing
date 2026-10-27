@@ -9,8 +9,14 @@
     "java": {
       "state": "not_executed",
       "implementation_pull_request": 2113,
-      "head": "62d80429707142d2f541c796e227723e9c64173a",
-      "note": "Canonical bare gen* and suspend gen* implementation is present on the PR head, but source-org fast-ci/ci failed before executing steps."
+      "head": "889ea2f8621d0e6cea078c5fec2efda2ccc504d8",
+      "note": "Canonical bare gen* and suspend gen* implementation plus a JVM/AOT/hybrid guest fixture are present on the PR head. Source fast-ci/ci are zero-step NOT_EXECUTED; private cross-org execution remains authorization-gated.",
+      "tree": "d22095691b4d110800cc4e0647897a48e8232a66",
+      "ci_evidence": {
+        "fast_ci_run": 40424991900,
+        "ci_run": 40424991904,
+        "executed_steps": false
+      }
     },
     "llvm": {
       "state": "unsupported",
@@ -48,5 +54,21 @@
     "not_executed_is_pass": false,
     "zero_step_ci_is_pass": false,
     "private_cross_org_mirror_requires_approved_destination": true
+  },
+  "runner_fallback": {
+    "source_transfer_authorized": false,
+    "source_main_protected": false,
+    "approved_destination_present": false,
+    "live_private_capacity": {
+      "repository": "claritas-viz-test/api-contract-e2e",
+      "repository_id": 1323577429,
+      "evidence_run": 40372951024,
+      "evidence": "real exact-tree/native/CTest/sanitizer steps executed"
+    },
+    "review_only_plan": {
+      "repository": "sonus-auris-test/clients-api-contract",
+      "pull_request": 25,
+      "source_transferred": false
+    }
   }
 }
