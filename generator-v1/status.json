@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "captured_on": "2026-10-26",
+  "contract": {
+    "repository": "ores-truffle-oreslang/oreslang-common-source",
+    "pull_request": 160
+  },
+  "backends": {
+    "java": {
+      "state": "not_executed",
+      "implementation_pull_request": 2113,
+      "head": "62d80429707142d2f541c796e227723e9c64173a",
+      "note": "Canonical bare gen* and suspend gen* implementation is present on the PR head, but source-org fast-ci/ci failed before executing steps."
+    },
+    "llvm": {
+      "state": "unsupported",
+      "tracking_issue": 1062,
+      "note": "Native generator frame/continuation lowering is not implemented."
+    },
+    "wasm": {
+      "state": "unsupported",
+      "tracking_issue": 136,
+      "note": "Language support is gated by the pinned real LLVM compiler; no stub or host-only generator may count."
+    },
+    "dotnet": {
+      "state": "unsupported",
+      "tracking_issue": 168,
+      "hardening_pull_request": 174,
+      "note": "Native AOT bootstrap rejects generator syntax with an explicit compiler-owned diagnostic."
+    },
+    "js": {
+      "state": "unsupported",
+      "tracking_issue": 74,
+      "hardening_pull_request": 75,
+      "note": "Scalar-v1 and program-v2 reject generator-v1 syntax until real ESM lowering exists."
+    }
+  },
+  "policy": {
+    "unsupported_is_pass": false,
+    "not_executed_is_pass": false,
+    "zero_step_ci_is_pass": false,
+    "private_cross_org_mirror_requires_approved_destination": true
+  }
+}
