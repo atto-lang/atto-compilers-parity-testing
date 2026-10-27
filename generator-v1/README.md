@@ -4,7 +4,7 @@ This directory is an additive generator-specific corpus. It does not change the 
 
 Every file is supplied byte-for-byte to Java/Graal, LLVM, WebAssembly, .NET Native AOT, and JavaScript. Unsupported features and infrastructure failures are parity gaps, not passes.
 
-Current cases cover canonical bare sync `gen*`, `async gen*`, `suspend gen*`, sync/async iterator protocol mismatch diagnostics, static class generators, and the fail-closed receiver-lifetime gate for instance generator methods. Additional lifecycle fixtures should be added only with a deterministic oracle for cleanup, concurrency, or shutdown behavior.
+Current cases cover canonical bare sync `gen*`, `async gen*`, `suspend gen*`, sync/async iterator protocol mismatch diagnostics, static class generators, the fail-closed receiver-lifetime gate for instance generator methods, and compatibility spellings retained during migration. Additional lifecycle fixtures should be added only with a deterministic oracle for cleanup, concurrency, or shutdown behavior.
 
 The canonical semantics are defined by `oreslang-common-source/docs/GENERATORS_V1.md`.
 
