@@ -1,19 +1,15 @@
 // 30: actor-critical-integrated
-// LLVM critical-state-counter-runtime fixture updated to canonical lifecycle spelling and integer oracle
-define actor Counter as
+// Canonical public actor: message-only API; all mutable state changes use handle_state.
+define pub actor Counter as
   state {
     count: int = 0;
   }
 
-  pub increment(): int using state.read, state.write {
-    return self.handle_state(critical |s| -> {
+  receive(ActorMail<String> mail): void {
+    const next = self.handle_state(critical |s| -> {
       s.count = s.count + 1;
       return s.count;
     });
-  }
-
-  receive(ActorMail<String> mail): void {
-    val next = self.increment();
     self.send(next);
     if (next == 3) {
       self.end();
@@ -23,16 +19,14 @@ define actor Counter as
 end
 
 pub async fnc main(): int {
-  val worker = spawn Counter();
-  await worker.get_ready();
+  const worker = spawn Counter();
   await worker.get_ready();
   worker.send("first");
   worker.send("second");
   worker.send("third");
-  val a = (await worker.outputs.next()).value.unwrap();
-  val b = (await worker.outputs.next()).value.unwrap();
-  val c = (await worker.outputs.next()).value.unwrap();
-  await worker.get_done();
+  const a = (await worker.outputs.next()).value.unwrap();
+  const b = (await worker.outputs.next()).value.unwrap();
+  const c = (await worker.outputs.next()).value.unwrap();
   await worker.get_done();
   return a.value + b.value + c.value + 36;
 }

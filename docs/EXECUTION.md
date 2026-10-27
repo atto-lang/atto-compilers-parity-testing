@@ -1,27 +1,66 @@
 # Execution and parity gate
 
-The checked-in corpus is fail-closed. The default CI audits source presence and enumerates 48 logical cases across five backend slots (240 records). It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
+The checked-in corpus is fail-closed. The default CI audits 31 legacy programs, 16 positive multi-file checks and 2 negative probes, yielding 49 logical cases and 245 backend/case pairs. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
 
 ## Rust-only tooling
 
-Oreslang organization policy prohibits Python tooling. The parity harness is implemented in Rust under `tools/parity-runner`.
-
-The runner audits 30 reference-grounded single-file cases, 16 positive multi-file checks, and 2 explicit negative syntax probes. For each positive multi-file check it recursively follows relative imports, requires at least a four-file reachable graph, validates exactly three unique direct imports from `main.ores`, and records a SHA-256 over the complete reachable graph.
-
-Positive multi-file execution expects exit 0 plus `PARITY_OK|<check-name>|`. Negative probes remain fail-closed until the backend adapter also classifies the expected diagnostic.
+Oreslang organization policy prohibits Python tooling. The parity harness is implemented in Rust under `tools/parity-runner`. Do not introduce Python, Python actions, or Python helper scripts.
 
 ## Exploratory execution
 
-Backend command templates are `ORES_PARITY_<BACKEND>_COMPILE` and `ORES_PARITY_<BACKEND>_RUN`, with `{source}`, `{artifact}`, and `{workdir}` tokens. Supported backend names are LLVM, JAVA, WASM, DOTNET, and JS.
+Each backend uses two command templates:
 
-Exploratory matching is **not** a parity pass. `task-blocks`, `named-parameters`, and `optional-parameters` are explicit convergence probes and do not claim current-main acceptance.
+- `ORES_PARITY_<BACKEND>_COMPILE`
+- `ORES_PARITY_<BACKEND>_RUN`
 
-## Runner evidence
+Tokens: `{source}`, `{artifact}`, `{workdir}`. Templates are split into argv without a shell. Supported backend names are LLVM, JAVA, WASM, DOTNET and JS.
 
-The parity repository's source-org Actions jobs have repeatedly failed before any step was created: `runner_id=0`, blank runner name, `steps=[]`. That is infrastructure failure, not corpus evidence.
+Example:
 
-A source-free canary in `sonus-auris/sonus-auris.infra` succeeded on run `40219779480`, hosted runner `1000027553`. No Oreslang compiler or parity source was copied cross-organization. Alternate capacity therefore exists, but private-source transfer still requires explicit authorization.
+```sh
+export ORES_PARITY_JS_COMPILE='node /absolute/oreslang-source.js/bin/oreslang-jsc.mjs {source} --out={artifact}.mjs'
+export ORES_PARITY_JS_RUN='node /absolute/run-esm-main.mjs {artifact}.mjs'
+cargo run --manifest-path tools/parity-runner/Cargo.toml -- --execute --allow-unvalidated --output js-exploratory.json
+```
+
+Exploratory matching is **not** a parity pass.
+
+## Promotion gate
+
+A case becomes `validated` only after canonical syntax is confirmed against the reference frontend, its semantic oracle is independently reviewed, and the named feature is genuinely exercised. Negative tests require a diagnostic category, not merely nonzero exit status. Unsupported features, skips, timeouts, missing runners and infrastructure failures never count as passes.
+
+For funded-runner fallback, mirror only an identical authorized Git tree into an approved test organization, verify tree/blob identity, prohibit secrets in untrusted workflows, and record exact compiler/runtime SHAs. Mirroring a private tree discloses it to the destination organization, so authorization is required.
 
 ## Known debt
 
-Legacy cases 27 and 30 intentionally remain candidates pending executable reference validation. The next execution stage needs exact backend adapters, diagnostic classification, optimization-matrix runs, scheduler fuzzing, and memory/ownership sanitizer coverage.
+Cases 24, 25, 29 and 30 are coverage placeholders and case 23 needs a precise actor-isolation violation. Several frontier cases need canonical grammar repair. The next stage replaces these with real semantic tests and adds backend-specific adapters.
+
+Case 31 is the Java-reference `do select ... over ... end` target. Explicit fail-closed rejection on LLVM/Wasm/.NET/JS is useful capability evidence, but remains a parity gap rather than a pass until those backends execute the same source semantics.
+
+## Intentional capability rejects
+
+When an execution case is expected to succeed eventually but a backend still
+fails at a reviewed select capability boundary, the runner records
+`intentional_capability_reject` instead of the less-informative
+`compile_failure`. The diagnostic still must classify as
+`unsupported_select`.
+
+This status is **not a parity pass**. It remains a hard failure for an executed
+required-parity run; it exists only to distinguish a deliberate fail-closed
+backend boundary from malformed parsing, crashes, wrong diagnostics, or
+semantic execution failures.
+
+
+## Multi-file corpus
+
+The Rust runner requires exactly three distinct direct local imports in each positive
+check, fingerprints the full reachable local import graph (including cycles), and
+pins the `PARITY_OK|<check-name>|` stdout prefix. This adds 16 whole-program
+probes and two explicit compile-reject probes for `nb match` / `nb switch`.
+Those two probes must receive classified negative diagnostics before any pass
+claim, and currently remain `unvalidated`. A compiler returning a generic
+nonzero exit does not constitute parity.
+
+Case 31 (static select delimiter equivalence) remains a Java-reference target,
+not five-backend execution proof. The `intentional_capability_reject` status
+is a fail-closed gap, never a passing record.

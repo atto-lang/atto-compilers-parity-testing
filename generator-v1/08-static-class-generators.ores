@@ -1,0 +1,33 @@
+// generator-v1 08: static class generators have no receiver loan
+define class Sequences as
+  pub static gen* values(): Iterator<int> {
+    yield 20;
+    yield 22;
+    return;
+  }
+  pub static async gen* events(): AsyncIterator<int> {
+    yield 20;
+    yield 22;
+    return;
+  }
+  pub static suspend gen* cooperative(): AsyncIterator<int> {
+    rt cooperate;
+    yield 20;
+    yield 22;
+    return;
+  }
+end
+
+pub async fnc main(): int {
+  let int total = 0;
+  for const value of Sequences.values() {
+    total = total + value;
+  }
+  for await const value of Sequences.events() {
+    total = total + value;
+  }
+  for await const value of Sequences.cooperative() {
+    total = total + value;
+  }
+  return total;
+}

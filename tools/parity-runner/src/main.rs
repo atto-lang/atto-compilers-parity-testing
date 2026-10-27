@@ -27,6 +27,7 @@ struct LegacyCase {
     path: String,
     expected_kind: String,
     expected_value: Option<i32>,
+    expected_diagnostic_category: Option<String>,
     validation_status: String,
     features: Vec<String>,
 }
@@ -74,6 +75,7 @@ struct TestCase {
     graph_files: Option<Vec<String>>,
     expected_kind: String,
     expected_value: Option<i32>,
+    expected_diagnostic_category: Option<String>,
     expected_stdout_prefix: Option<String>,
     validation_status: String,
     features: Vec<String>,
@@ -100,6 +102,8 @@ struct Record {
     graph_files: Option<Vec<String>>,
     validation_status: String,
     features: Vec<String>,
+    expected_diagnostic_category: Option<String>,
+    actual_diagnostic_category: Option<String>,
     status: String,
     compile: Option<Invocation>,
     run: Option<Invocation>,
@@ -132,6 +136,50 @@ fn hex(bytes: &[u8]) -> String {
         out.push(H[(b & 0x0f) as usize] as char);
     }
     out
+}
+
+
+fn ascii_lower_hex(input: &str) -> Option<String> {
+    if input.len() % 2 != 0 {
+        return None;
+    }
+    let bytes = input.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len() / 2);
+    let nibble = |value: u8| -> Option<u8> {
+        match value {
+            b'0'..=b'9' => Some(value - b'0'),
+            b'a'..=b'f' => Some(value - b'a' + 10),
+            b'A'..=b'F' => Some(value - b'A' + 10),
+            _ => None,
+        }
+    };
+    for pair in bytes.chunks_exact(2) {
+        let high = nibble(pair[0])?;
+        let low = nibble(pair[1])?;
+        decoded.push((high << 4 | low).to_ascii_lowercase());
+    }
+    Some(hex(&decoded))
+}
+
+type DiagnosticRules = BTreeMap<String, BTreeMap<String, Vec<String>>>;
+
+fn classify_diagnostic(
+    rules: &DiagnosticRules,
+    backend: &str,
+    invocation: &Invocation,
+) -> Option<String> {
+    let backend_rules = rules.get(backend)?;
+    let raw = format!("{}{}", invocation.stdout_hex, invocation.stderr_hex);
+    let haystack = ascii_lower_hex(&raw)?;
+    for (category, needles) in backend_rules {
+        for needle in needles {
+            let encoded = hex(needle.to_ascii_lowercase().as_bytes());
+            if haystack.contains(&encoded) {
+                return Some(category.clone());
+            }
+        }
+    }
+    None
 }
 
 fn sha256_file(path: &Path) -> Result<String, String> {
@@ -255,6 +303,7 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
             graph_files: None,
             expected_kind: case.expected_kind.clone(),
             expected_value: case.expected_value,
+            expected_diagnostic_category: case.expected_diagnostic_category.clone(),
             expected_stdout_prefix: None,
             validation_status: case.validation_status.clone(),
             features: case.features.clone(),
@@ -332,6 +381,7 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
             graph_files: Some(graph_files),
             expected_kind: "exit".into(),
             expected_value: Some(0),
+            expected_diagnostic_category: None,
             expected_stdout_prefix: Some(expectation.stable_stdout_prefix.clone()),
             validation_status: if expectation.verified {
                 "validated".into()
@@ -362,6 +412,7 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
                 graph_files: None,
                 expected_kind: "compile_reject".into(),
                 expected_value: None,
+                expected_diagnostic_category: None,
                 expected_stdout_prefix: None,
                 validation_status: "unvalidated".into(),
                 features: negative_features,
@@ -520,6 +571,7 @@ fn temp_dir(case_id: &str, backend: &str) -> Result<PathBuf, String> {
 
 fn evaluate_case(
     case: &TestCase,
+    diagnostic_rules: &DiagnosticRules,
     backend: &str,
     env_name: &str,
     execute: bool,
@@ -536,6 +588,8 @@ fn evaluate_case(
         graph_files: case.graph_files.clone(),
         validation_status: case.validation_status.clone(),
         features: case.features.clone(),
+        expected_diagnostic_category: case.expected_diagnostic_category.clone(),
+        actual_diagnostic_category: None,
         status: "not_run".into(),
         compile: None,
         run: None,
@@ -572,13 +626,46 @@ fn evaluate_case(
     if compile_status != "completed" {
         record.status = "compile_infrastructure_failure".into();
     } else if case.expected_kind == "compile_reject" {
-        record.status = if compile_exit == Some(0) {
-            "unexpected_compile_success".into()
+        if compile_exit == Some(0) {
+            record.status = "unexpected_compile_success".into();
         } else {
-            "rejection_unclassified".into()
-        };
+            record.actual_diagnostic_category = record
+                .compile
+                .as_ref()
+                .and_then(|c| classify_diagnostic(diagnostic_rules, backend, c));
+            record.status = match (
+                case.expected_diagnostic_category.as_deref(),
+                record.actual_diagnostic_category.as_deref(),
+            ) {
+                (Some(expected), Some(actual)) if expected == actual => {
+                    if case.validation_status == "validated" {
+                        "expected_reject".into()
+                    } else {
+                        "exploratory_expected_reject_not_parity_pass".into()
+                    }
+                }
+                (_, Some(_)) => "wrong_diagnostic".into(),
+                _ => "rejection_unclassified".into(),
+            };
+        }
     } else if compile_exit != Some(0) {
-        record.status = "compile_failure".into();
+        record.actual_diagnostic_category = record
+            .compile
+            .as_ref()
+            .and_then(|c| classify_diagnostic(diagnostic_rules, backend, c));
+        let select_case = case.features.iter().any(|feature| {
+            matches!(
+                feature.as_str(),
+                "select" | "do-select" | "nb-select" | "do-nb-select"
+            )
+        });
+        record.status = if select_case
+            && record.actual_diagnostic_category.as_deref() == Some("unsupported_select")
+        {
+            "intentional_capability_reject".into()
+        } else {
+            "compile_failure".into()
+        };
     } else {
         let run_argv = expand(
             run_template.as_ref().expect("checked above"),
@@ -637,12 +724,17 @@ fn main() -> Result<(), String> {
         .canonicalize()
         .map_err(|e| e.to_string())?;
     let (cases, corpus) = load_cases(&root)?;
+    let diagnostic_rules: DiagnosticRules = serde_json::from_str(
+        &fs::read_to_string(root.join("diagnostics.json")).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
     let timeout = Duration::from_secs(timeout_seconds);
     let mut records = Vec::new();
     for case in &cases {
         for &(backend, env_name) in &BACKENDS {
             records.push(evaluate_case(
                 case,
+                &diagnostic_rules,
                 backend,
                 env_name,
                 execute,
@@ -679,6 +771,9 @@ fn main() -> Result<(), String> {
         matches!(
             record.status.as_str(),
             "compile_failure"
+                | "intentional_capability_reject"
+                | "wrong_diagnostic"
+                | "rejection_unclassified"
                 | "wrong_result"
                 | "wrong_stdout"
                 | "unexpected_compile_success"
@@ -694,7 +789,37 @@ fn main() -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{hex, import_target, lowercase_kebab};
+    use super::{ascii_lower_hex, classify_diagnostic, hex, import_target, lowercase_kebab, Invocation};
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn diagnostic_classification_is_ascii_case_insensitive() {
+        let mut backend = BTreeMap::new();
+        backend.insert(
+            "unsupported_select".to_string(),
+            vec!["static select requires checked channel/future arbitration".to_string()],
+        );
+        let mut rules = BTreeMap::new();
+        rules.insert("dotnet".to_string(), backend);
+        let invocation = Invocation {
+            status: "completed".into(),
+            exit_code: Some(1),
+            stdout_hex: String::new(),
+            stderr_hex: hex(b"Static select requires checked Channel/Future arbitration in .NET"),
+            duration_ms: 1,
+            error: None,
+        };
+        assert_eq!(
+            classify_diagnostic(&rules, "dotnet", &invocation).as_deref(),
+            Some("unsupported_select")
+        );
+    }
+
+    #[test]
+    fn ascii_lower_hex_rejects_malformed_capture() {
+        assert!(ascii_lower_hex("0").is_none());
+        assert!(ascii_lower_hex("zz").is_none());
+    }
 
     #[test]
     fn parses_relative_import_target() {

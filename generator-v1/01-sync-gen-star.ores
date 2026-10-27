@@ -1,0 +1,13 @@
+// generator-v1 01: canonical sync gen*
+pub gen* values(): Iterator<int> {
+  yield 20;
+  yield 22;
+  return;
+}
+pub fnc main(): int {
+  let int total = 0;
+  for const value of values() {
+    total = total + value;
+  }
+  return total;
+}

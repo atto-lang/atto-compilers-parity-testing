@@ -1,14 +1,15 @@
-pub actor Counter
-  let int count;
-
-  on_start(): void {
-    self.count = 0;
-    return;
+// Canonical public counter actor: all mutable state changes use handle_state.
+define pub actor Counter as
+  state {
+    count: int = 0;
   }
 
   receive(ActorMail<int> mail): void {
-    self.count = self.count + mail.value;
-    self.send(self.count);
+    const next = self.handle_state(critical |s| -> {
+      s.count = s.count + mail.value;
+      return s.count;
+    });
+    self.send(next);
     self.end();
     return;
   }

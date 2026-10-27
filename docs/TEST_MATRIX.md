@@ -1,4 +1,4 @@
-# 30-program design
+# 31-program design
 
 This corpus is a feature ladder, not 30 variations of arithmetic.
 
@@ -10,15 +10,22 @@ This corpus is a feature ladder, not 30 variations of arithmetic.
 | 18-22 | structural data, tuples, ownership and closures |
 | 23-27 | cleanup, exceptions, async and channels |
 | 28-30 | actor lifecycle, lexical isolation and critical state |
+| 31 | static select outer-delimiter parity (`{ ... }` vs `over ... end`) |
 
-All five backends are targets for every case. A backend that does not implement a case is a **parity gap**, not a skip/pass. The `validation_status` field records how strongly the source is grounded today; only independently executed and oracle-checked cases should later be promoted to validated.
+All five backends are targets for every case. A backend that does not implement a case is a **parity gap**, not a skip/pass. The validation_status field records how strongly the source is grounded today; only independently executed and oracle-checked cases should later be promoted to validated.
 
 Cases 27 and 30 intentionally remain candidates because their exact source/runtime contracts still require executable reference validation. They are real stress programs, not placeholders.
 
+Case 31 is a Java reference-test target. Backends that currently reject static select must report that as a parity gap; an explicit fail-closed diagnostic is better than accidental parsing or fake execution, but it does not count as feature parity.
+
 ## Multi-file whole-program layer
 
-The `checks/` tree adds 16 positive whole-program checks and 2 negative syntax probes. Each positive `main.ores` imports exactly three unique local source files and asserts its semantic oracle internally.
+The `checks/` tree adds 16 positive programs and two negative syntax probes.
+Positive `main.ores` files each import three unique local files and assert
+their semantic expectations. The Rust runner fingerprints the recursively
+reachable graph and records those files for each backend result.
 
-This layer targets interactions single-file fixtures miss: import SCCs, precedence/associativity, deterministic fuzz/metamorphic invariants, mutexes, task/async boundaries, actors, procedural match/switch, named and optional parameter convergence, parameter-order syntax, lambdas, mutual recursion, and nominal/interface/trait casting.
-
-The runner fingerprints the recursively reachable source graph and records its files in every backend result.
+The 49-case, five-backend audit matrix contains 245 records. A not-run record
+is corpus inventory, not compiler/runtime conformance. Ordinary match/switch
+suspension remains distinct from the rejected `nb match` / `nb switch`
+spellings. The modern actor counter uses `handle_state` for mutation.
