@@ -1,0 +1,8 @@
+// generator-v1 09: receiver-bound generator methods require continuation-safe self lifetime
+define class Counter as
+  pub gen* values(): Iterator<int> {
+    yield 42;
+    return;
+  }
+end
+pub fnc main(): int { return 0; }

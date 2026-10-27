@@ -1,0 +1,25 @@
+// generator-v1 10: compatibility spellings remain source-compatible
+fnc gen* first(): Iterator<int> {
+  yield 10;
+  return;
+}
+generator routine second(): int {
+  yield 10;
+  return;
+}
+routine generator* third(): Iterator<int> {
+  yield 10;
+  return;
+}
+async fnc gen* fourth(): AsyncIterator<int> {
+  yield 12;
+  return;
+}
+pub async fnc main(): int {
+  let int total = 0;
+  for const value of first() { total = total + value; }
+  for const value of second() { total = total + value; }
+  for const value of third() { total = total + value; }
+  for await const value of fourth() { total = total + value; }
+  return total;
+}
