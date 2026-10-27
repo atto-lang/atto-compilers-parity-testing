@@ -9,13 +9,23 @@
     "java": {
       "state": "not_executed",
       "implementation_pull_request": 2113,
-      "head": "889ea2f8621d0e6cea078c5fec2efda2ccc504d8",
-      "note": "Canonical bare gen* and suspend gen* implementation plus a JVM/AOT/hybrid guest fixture are present on the PR head. Source fast-ci/ci are zero-step NOT_EXECUTED; private cross-org execution remains authorization-gated.",
-      "tree": "d22095691b4d110800cc4e0647897a48e8232a66",
+      "head": "38fe96a27b7c33f5a51c3e350a45bf750f979429",
+      "note": "Canonical free generator implementation is on #2113; the safe static class generator slice is stacked in #2117. Both source heads are zero-step NOT_EXECUTED. Instance generator methods remain fail-closed until receiver lifetime is continuation-safe.",
+      "tree": "a579087745503a0b1ef4d690ea69c540875b73bb",
       "ci_evidence": {
-        "fast_ci_run": 40424991900,
-        "ci_run": 40424991904,
+        "fast_ci_run": 40427018510,
+        "ci_run": 40427018578,
         "executed_steps": false
+      },
+      "static_class_generators": {
+        "state": "not_executed",
+        "pull_request": 2117,
+        "head": "4c0952b627cd4224fa9a949659e7ae8324a94f42",
+        "tree": "3e7a130cdb846c153993e3243f397ed935759eb9",
+        "fast_ci_run": 40427663817,
+        "ci_run": 40427663685,
+        "executed_steps": false,
+        "instance_methods": "unsupported_receiver_lifetime_gate"
       }
     },
     "llvm": {
