@@ -1,6 +1,6 @@
 # Generator v1 parity corpus
 
-This directory is an additive generator-specific corpus. It does not change the existing 30-program manifest.
+This directory is an additive generator-specific corpus. It does not change the root parity manifest; the select-delimiter corpus and this generator corpus remain additive.
 
 Every file is supplied byte-for-byte to Java/Graal, LLVM, WebAssembly, .NET Native AOT, and JavaScript. Unsupported features and infrastructure failures are parity gaps, not passes.
 
