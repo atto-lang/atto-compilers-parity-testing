@@ -20,11 +20,18 @@
       "static_class_generators": {
         "state": "not_executed",
         "pull_request": 2117,
-        "head": "4c0952b627cd4224fa9a949659e7ae8324a94f42",
-        "tree": "3e7a130cdb846c153993e3243f397ed935759eb9",
-        "fast_ci_run": 40427663817,
-        "ci_run": 40427663685,
+        "head": "a0b786a066f720a17425aa0843ea8066ed318226",
+        "tree": "169a5ca18aa49c5001c5885641303e18cdec6403",
+        "fast_ci_run": 40428141630,
+        "ci_run": 40428141615,
         "executed_steps": false,
+        "modes": [
+          "sync",
+          "async",
+          "suspend"
+        ],
+        "fixture": "generator-v1/08-static-class-generators.ores",
+        "expected": "exit:126",
         "instance_methods": "unsupported_receiver_lifetime_gate"
       }
     },
