@@ -9,12 +9,12 @@
     "java": {
       "state": "not_executed",
       "implementation_pull_request": 2113,
-      "head": "38fe96a27b7c33f5a51c3e350a45bf750f979429",
-      "note": "Canonical free generator implementation is on #2113; the safe static class generator slice is stacked in #2117. Both source heads are zero-step NOT_EXECUTED. Instance generator methods remain fail-closed until receiver lifetime is continuation-safe.",
-      "tree": "a579087745503a0b1ef4d690ea69c540875b73bb",
+      "head": "5e4a53b7f117b4f1046851f2b52778e5c0d65de5",
+      "note": "Canonical free generator implementation is on #2113. The head now also deterministically rejects overlapping sync/async pulls instead of admitting unbounded waiting runtime tasks. Static class generators remain stacked in #2117. Current #2113 source-org workflows have not produced executable steps; instance generator methods remain fail-closed until receiver lifetime is continuation-safe.",
+      "tree": null,
       "ci_evidence": {
-        "fast_ci_run": 40427018510,
-        "ci_run": 40427018578,
+        "head": "5e4a53b7f117b4f1046851f2b52778e5c0d65de5",
+        "workflow_runs_seen": 0,
         "executed_steps": false
       },
       "static_class_generators": {
@@ -39,15 +39,15 @@
       "state": "unsupported",
       "tracking_issue": 1062,
       "hardening_pull_request": 1069,
-      "head": "5ca0ff0b5cd09edc1cca8dd64839c53f01266a89",
-      "note": "Native generator frame/continuation lowering is not implemented. The current-main hardening PR gives canonical generator-v1 spellings one compiler-owned diagnostic and native CTest rejection gates."
+      "head": "72c4f354f651c9652c450fd19efc1f608a5ba01d",
+      "note": "Native generator frame/continuation lowering is not implemented. #1069 now gives canonical and legacy prefix/postfix generator-v1 spellings one compiler-owned diagnostic and six native CTest rejection gates; source-org execution remains unavailable."
     },
     "wasm": {
       "state": "unsupported",
       "tracking_issue": 136,
       "hardening_pull_request": 142,
-      "head": "f1e257148f76becd6fc958533ed9dfb17e12124b",
-      "note": "Language support is gated by the pinned real LLVM compiler. The current-main hardening PR requires the real compiler-owned generator-v1 rejection and rechecks compiler identity after each negative case."
+      "head": "b744fe74f8b7f531b5efdd84475b1215b56e3b50",
+      "note": "Language support is gated by the pinned real LLVM compiler. #142 now verifies canonical and legacy generator spellings through that compiler-owned gate and rechecks the pinned compiler hash after every negative case; source-org execution remains unavailable."
     },
     "dotnet": {
       "state": "unsupported",
@@ -87,5 +87,9 @@
       "pull_request": 25,
       "source_transferred": false
     }
+  },
+  "audit_updates": {
+    "suspend_fixture": "g03 corrected: suspend callables expose T directly; suspension is an effect, not Future<T>, so the fixture now calls a cooperating suspend fnc without await.",
+    "concurrent_pull_policy": "Java #2113 chooses deterministic rejection for overlapping Iterator.next()/AsyncIterator.next() calls, satisfying the bounded-admission branch of generator-v1."
   }
 }
