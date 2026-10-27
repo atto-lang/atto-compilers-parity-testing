@@ -93,6 +93,19 @@
         "ownership",
         "diagnostic"
       ]
+    },
+    {
+      "id": "g10",
+      "path": "generator-v1/10-legacy-spellings.ores",
+      "expected": "exit:42",
+      "features": [
+        "legacy-generator-spellings",
+        "fnc-gen-star",
+        "generator-routine",
+        "routine-generator-star",
+        "async-fnc-gen-star",
+        "compatibility"
+      ]
     }
   ],
   "status_vocabulary": [
