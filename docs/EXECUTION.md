@@ -31,6 +31,23 @@ A case becomes `validated` only after canonical syntax is confirmed against the 
 
 For funded-runner fallback, mirror only an identical authorized Git tree into an approved test organization, verify tree/blob identity, prohibit secrets in untrusted workflows, and record exact compiler/runtime SHAs. Mirroring a private tree discloses it to the destination organization, so authorization is required.
 
+## Bounded compiler and guest output
+
+Each compiler and guest process has independent **1 MiB stdout and 1 MiB
+stderr** capture budgets. The parity runner continues draining both pipes after
+the limit to avoid deadlocking a child that fills OS pipe buffers, but stores
+only bounded prefixes. If either stream crosses its budget, the invocation
+records `output_limit_exceeded` with no usable exit status. The case is a
+`compile_infrastructure_failure` or `runtime_infrastructure_failure`,
+**never** `pass`, `expected_reject` or a valid diagnostic classification.
+Timeouts and missing runners remain non-passes.
+
+This guards the evidence harness against uncontrolled compiler diagnostics or
+guest output; it is not evidence that any backend compiled a particular
+`.ores` program. The unit tests include exact-boundary, oversized stdout,
+oversized stderr, and timeout cases. Only actual runner steps on an exact
+source head constitute executed test evidence.
+
 ## Known debt
 
 The Java reference adapter can now execute the full corpus exploratorily; see
