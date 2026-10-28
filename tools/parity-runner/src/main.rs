@@ -138,7 +138,6 @@ fn hex(bytes: &[u8]) -> String {
     out
 }
 
-
 fn ascii_lower_hex(input: &str) -> Option<String> {
     if input.len() % 2 != 0 {
         return None;
@@ -349,8 +348,7 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
             ));
         }
 
-        let direct_imports: BTreeSet<PathBuf> =
-            local_imports(&entry, root)?.into_iter().collect();
+        let direct_imports: BTreeSet<PathBuf> = local_imports(&entry, root)?.into_iter().collect();
         if direct_imports.len() != expectation.imported_files {
             return Err(format!(
                 "{}: main imports {} local files, expected {}",
@@ -789,7 +787,9 @@ fn main() -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{ascii_lower_hex, classify_diagnostic, hex, import_target, lowercase_kebab, Invocation};
+    use super::{
+        ascii_lower_hex, classify_diagnostic, hex, import_target, lowercase_kebab, Invocation,
+    };
     use std::collections::BTreeMap;
 
     #[test]
