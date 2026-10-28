@@ -1,0 +1,156 @@
+{
+  "adapter_sha256": "04c8cc39fbe03128eeb664c601ce1459b70fc3452776ed2684bd755efd5bc057",
+  "compiler": {
+    "classpath": [
+      "/Users/alexandermills/codes/ores-truffle-oreslang/java-parity-reference-20261028/target/oreslang-source-0.1.0-SNAPSHOT.jar",
+      "/Users/alexandermills/.m2/repository/org/tomlj/tomlj/1.1.1/tomlj-1.1.1.jar",
+      "/Users/alexandermills/.m2/repository/org/antlr/antlr4-runtime/4.11.1/antlr4-runtime-4.11.1.jar",
+      "/Users/alexandermills/.m2/repository/org/checkerframework/checker-qual/3.21.2/checker-qual-3.21.2.jar",
+      "/Users/alexandermills/.m2/repository/org/graalvm/truffle/truffle-api/25.3.4.1/truffle-api-25.3.4.1.jar",
+      "/Users/alexandermills/.m2/repository/org/graalvm/sdk/collections/25.3.4.1/collections-25.3.4.1.jar",
+      "/Users/alexandermills/.m2/repository/org/graalvm/sdk/jniutils/25.3.4.1/jniutils-25.3.4.1.jar",
+      "/Users/alexandermills/.m2/repository/org/graalvm/truffle/truffle-runtime/25.3.4.1/truffle-runtime-25.3.4.1.jar",
+      "/Users/alexandermills/.m2/repository/org/graalvm/truffle/truffle-compiler/25.3.4.1/truffle-compiler-25.3.4.1.jar",
+      "/Users/alexandermills/.m2/repository/org/graalvm/polyglot/polyglot/25.3.4.1/polyglot-25.3.4.1.jar",
+      "/Users/alexandermills/.m2/repository/org/graalvm/sdk/nativeimage/25.3.4.1/nativeimage-25.3.4.1.jar",
+      "/Users/alexandermills/.m2/repository/org/graalvm/sdk/word/25.3.4.1/word-25.3.4.1.jar",
+      "/Users/alexandermills/.m2/repository/org/graalvm/truffle/truffle-enterprise/25.3.4.1/truffle-enterprise-25.3.4.1.jar",
+      "/Users/alexandermills/.m2/repository/org/graalvm/sdk/nativebridge/25.3.4.1/nativebridge-25.3.4.1.jar",
+      "/Users/alexandermills/.m2/repository/org/junit/jupiter/junit-jupiter/5.11.4/junit-jupiter-5.11.4.jar",
+      "/Users/alexandermills/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.11.4/junit-jupiter-api-5.11.4.jar",
+      "/Users/alexandermills/.m2/repository/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar",
+      "/Users/alexandermills/.m2/repository/org/junit/platform/junit-platform-commons/1.11.4/junit-platform-commons-1.11.4.jar",
+      "/Users/alexandermills/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar",
+      "/Users/alexandermills/.m2/repository/org/junit/jupiter/junit-jupiter-params/5.11.4/junit-jupiter-params-5.11.4.jar",
+      "/Users/alexandermills/.m2/repository/org/junit/jupiter/junit-jupiter-engine/5.11.4/junit-jupiter-engine-5.11.4.jar",
+      "/Users/alexandermills/.m2/repository/org/junit/platform/junit-platform-engine/1.11.4/junit-platform-engine-1.11.4.jar"
+    ],
+    "compiler_commit": "3210aeff07597035a4ed815ebbdf39720a3266c1",
+    "compiler_root": "/Users/alexandermills/codes/ores-truffle-oreslang/java-parity-reference-20261028",
+    "compiler_tree": "527bbb6b8d97a04fa897ccce23d440388a082873",
+    "files": [
+      {
+        "path": "/Users/alexandermills/codes/ores-truffle-oreslang/java-parity-reference-20261028/target/oreslang-source-0.1.0-SNAPSHOT.jar",
+        "sha256": "8241519475816c6c7da6fa35f6f36188dd707b25c4dcf5be189f181d8906badf"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/tomlj/tomlj/1.1.1/tomlj-1.1.1.jar",
+        "sha256": "383b7c66966c42ee4913ec977a7b6573631866bddc5318ec4a6215b688dd0d6c"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/antlr/antlr4-runtime/4.11.1/antlr4-runtime-4.11.1.jar",
+        "sha256": "e06c6553c1ccc14d36052ec4b0fc6f13b808cf957b5b1dc3f61bf401996ada59"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/checkerframework/checker-qual/3.21.2/checker-qual-3.21.2.jar",
+        "sha256": "7e8554c902b9b839e61396cfe3a64c84ecabfb8eb652c410bfd8e4f5c1a8ece8"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/graalvm/truffle/truffle-api/25.3.4.1/truffle-api-25.3.4.1.jar",
+        "sha256": "f9efa18b1cb6c4e39862f5ac83a88ee4c9e31252c52c2ee5192c2a707cd9b27f"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/graalvm/sdk/collections/25.3.4.1/collections-25.3.4.1.jar",
+        "sha256": "3d0d2287f0217e7e765a47d69681c0ac1bb4ef50d70c9440449e86045bbe158f"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/graalvm/sdk/jniutils/25.3.4.1/jniutils-25.3.4.1.jar",
+        "sha256": "b1d78402c744e5022fcb19f620644ab38b834c024020f3570dadaaf9cbe77067"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/graalvm/truffle/truffle-runtime/25.3.4.1/truffle-runtime-25.3.4.1.jar",
+        "sha256": "d74ff0b8eb9a5fec4a571f78bc21750ee41dfd454877b8cce8b33641efd90ae3"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/graalvm/truffle/truffle-compiler/25.3.4.1/truffle-compiler-25.3.4.1.jar",
+        "sha256": "a422df88ffaabe4669b8b6e5d63f04f2a8152e5fe763b3bfbf3dc58d7e5dd41c"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/graalvm/polyglot/polyglot/25.3.4.1/polyglot-25.3.4.1.jar",
+        "sha256": "befec2cbfb6ca279a73ee20626718a917ab1d1a3970793698ddc11b4d41e0356"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/graalvm/sdk/nativeimage/25.3.4.1/nativeimage-25.3.4.1.jar",
+        "sha256": "a4315500775e98d16f083812bf5b8b664d84abad736da14ebbea5b38d7752b0f"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/graalvm/sdk/word/25.3.4.1/word-25.3.4.1.jar",
+        "sha256": "fe1c3723e27907789732ac9f3d639ba6055d459529cfcfbd96156e73911ee7b7"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/graalvm/truffle/truffle-enterprise/25.3.4.1/truffle-enterprise-25.3.4.1.jar",
+        "sha256": "a070fa1bb5cff043b071db8e3c35f5b2ed208494edace448a37f03b44a726273"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/graalvm/sdk/nativebridge/25.3.4.1/nativebridge-25.3.4.1.jar",
+        "sha256": "6ac104859f9a735741bdcb0912231ee3abbc58df16a60508b154166993affc93"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/junit/jupiter/junit-jupiter/5.11.4/junit-jupiter-5.11.4.jar",
+        "sha256": "aa880e4afba87d447357e4c1fc098c5cb1d200cb9403496c00d3b35a5bd0e8db"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/junit/jupiter/junit-jupiter-api/5.11.4/junit-jupiter-api-5.11.4.jar",
+        "sha256": "ab83ef9e51ac4597d59d26b4b58812129550e2f579a404c8af7d09f5ce5b4293"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/opentest4j/opentest4j/1.3.0/opentest4j-1.3.0.jar",
+        "sha256": "48e2df636cab6563ced64dcdff8abb2355627cb236ef0bf37598682ddf742f1b"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/junit/platform/junit-platform-commons/1.11.4/junit-platform-commons-1.11.4.jar",
+        "sha256": "9edd969b0d0670c54105bc91ae79bd1c6f503e12115faba82073b84c86bbc334"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/apiguardian/apiguardian-api/1.1.2/apiguardian-api-1.1.2.jar",
+        "sha256": "b509448ac506d607319f182537f0b35d71007582ec741832a1f111e5b5b70b38"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/junit/jupiter/junit-jupiter-params/5.11.4/junit-jupiter-params-5.11.4.jar",
+        "sha256": "02a6e015de7ce94ac7f256e7fa05b8091dea861fe79a555a7993313d0f6c7d96"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/junit/jupiter/junit-jupiter-engine/5.11.4/junit-jupiter-engine-5.11.4.jar",
+        "sha256": "cdf8ac59f3fad774ca738ad03890950eeb91833ef0e8908753177edd26f1581c"
+      },
+      {
+        "path": "/Users/alexandermills/.m2/repository/org/junit/platform/junit-platform-engine/1.11.4/junit-platform-engine-1.11.4.jar",
+        "sha256": "b1dd998f64f9acadc15966d9cd3d08074662677b3e390f0a38fcbf0bb4c72330"
+      },
+      {
+        "path": "/Library/Java/JavaVirtualMachines/temurin-25.jdk/Contents/Home/bin/java",
+        "sha256": "83c9c5310d044e7c4262432854eb1bc5f49763d7c1e9971777a646c91b96c06d"
+      },
+      {
+        "path": "/Users/alexandermills/codes/ores-truffle-oreslang/java-parity-reference-20261028/target/native/liboresthread.dylib",
+        "sha256": "33202c289581aa8e57b400d78c9300c4508dae811b058ec5cd981bf33d5bcf6a"
+      },
+      {
+        "path": "/Library/Java/JavaVirtualMachines/temurin-25.jdk/Contents/Home/release",
+        "sha256": "e5e50f3c36e9ce7ac50ccbc499c8299880e8fb8fee57bb3a7a2b890477ce8498"
+      },
+      {
+        "path": "/Library/Java/JavaVirtualMachines/temurin-25.jdk/Contents/Home/lib/modules",
+        "sha256": "74e8a4881f09f0d56c3e27e0075f60534bc4d9a908f3d179586d6515f89f9825"
+      },
+      {
+        "path": "/Library/Java/JavaVirtualMachines/temurin-25.jdk/Contents/Home/lib/server/libjvm.dylib",
+        "sha256": "c0c9cc842a9d33857be8262157d19ee9c1e15caf99a9bde784033b351b5dd117"
+      }
+    ],
+    "java": "/Library/Java/JavaVirtualMachines/temurin-25.jdk/Contents/Home/bin/java",
+    "java_version": "openjdk version \"25.0.4.1\" 2026-08-18 LTS\nOpenJDK Runtime Environment Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS)\nOpenJDK 64-Bit Server VM Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS, mixed mode, sharing)",
+    "maven_version": "Apache Maven 3.10.0 (c43a36b8d67be7e0805a411bc0898af1a51f5472)\nMaven home: /opt/homebrew/Cellar/maven/3.10.0/libexec\nJava version: 25.0.4.1, vendor: Eclipse Adoptium, runtime: /Library/Java/JavaVirtualMachines/temurin-25.jdk/Contents/Home\nDefault locale: en_US, platform encoding: UTF-8, time zone: America/Lima\nOS name: \"mac os x\", version: \"26.6.2\", arch: \"aarch64\", family: \"mac\"",
+    "mode": "aot",
+    "native_library": "/Users/alexandermills/codes/ores-truffle-oreslang/java-parity-reference-20261028/target/native/liboresthread.dylib"
+  },
+  "corpus_commit": "c86f298b47f3b5b17684c84efb89298abfcf11da",
+  "corpus_tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "corpus_tracked_dirty": false,
+  "corpus_tree": "1cff761c89bb656e0cee94e51586356b5f9900c0",
+  "report_sha256": "5f30170c64cbeb8c5248905f7af126466c5dec3dc089ca1a608f908ca5dec02b",
+  "runner_exit_code": 1,
+  "runner_sha256": "39e174bfb364d7e322aaebec37ec9b3c946381aee08156af24b44925129ce944",
+  "schema_version": 1,
+  "scope": "java-reference-exploratory-not-parity-proof"
+}
