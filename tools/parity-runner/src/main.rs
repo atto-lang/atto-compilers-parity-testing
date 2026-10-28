@@ -950,11 +950,8 @@ mod tests {
         let capture = super::read_bounded(std::io::Cursor::new(input)).unwrap();
         assert_eq!(capture.bytes.len(), super::MAX_CAPTURE_BYTES);
         assert!(capture.exceeded);
-        let exact = super::read_bounded(std::io::Cursor::new(vec![
-            b'y';
-            super::MAX_CAPTURE_BYTES
-        ]))
-        .unwrap();
+        let exact_input = vec![b'y'; super::MAX_CAPTURE_BYTES];
+        let exact = super::read_bounded(std::io::Cursor::new(exact_input)).unwrap();
         assert!(!exact.exceeded);
         assert_eq!(exact.bytes.len(), super::MAX_CAPTURE_BYTES);
     }
@@ -973,7 +970,11 @@ mod tests {
             );
             assert_eq!(result.status, "output_limit_exceeded");
             assert_eq!(result.exit_code, None);
-            assert!(result.error.as_ref().unwrap().contains("cannot certify parity"));
+            assert!(result
+                .error
+                .as_deref()
+                .unwrap()
+                .contains("cannot certify parity"));
             assert!(result.stdout_hex.len() <= 2 * super::MAX_CAPTURE_BYTES);
             assert!(result.stderr_hex.len() <= 2 * super::MAX_CAPTURE_BYTES);
         }
