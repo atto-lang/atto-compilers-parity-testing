@@ -15,9 +15,9 @@ jobs:
       - name: Format-check parity runner
         run: cargo fmt --manifest-path tools/parity-runner/Cargo.toml -- --check
       - name: Test parity runner
-        run: cargo test --manifest-path tools/parity-runner/Cargo.toml
+        run: cargo test --manifest-path tools/parity-runner/Cargo.toml --locked
       - name: Build parity runner
-        run: cargo build --manifest-path tools/parity-runner/Cargo.toml
+        run: cargo build --manifest-path tools/parity-runner/Cargo.toml --locked --bins
       - name: Audit 49 x 5 matrix without making compiler claims
         run: |
           cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml -- --output parity-results.json

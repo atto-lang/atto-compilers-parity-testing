@@ -16,6 +16,7 @@
     {
       "path": "checks/nb-match/reject-nb-match.ores",
       "expected": "compile-reject",
+      "expected_diagnostic_category": "unsupported_nb_prefix",
       "reason": "nb is not a match prefix in current grammar"
     }
   ]

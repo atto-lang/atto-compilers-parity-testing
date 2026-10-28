@@ -11,3 +11,7 @@ Every positive multi-file entry point imports exactly three local source files, 
 See `docs/TEST_MATRIX.md`, `docs/EXECUTION.md`, `docs/BACKEND_ADAPTERS.md`, `manifest.json`, `checks/manifest.json`, and `checks/README.md`.
 
 Tooling follows the Oreslang Rust-only tooling policy; Python is prohibited.
+
+For pinned Java reference execution and compiler/runtime identity receipts, see
+[`docs/JAVA_REFERENCE.md`](docs/JAVA_REFERENCE.md). Reference matches remain
+exploratory until their syntax and semantic oracles are independently validated.
