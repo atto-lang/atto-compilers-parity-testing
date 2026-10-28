@@ -21,14 +21,19 @@ Available placeholders are `{source}`, `{artifact}`, and `{workdir}`. Templates 
 
 ### Java reference CLI
 
-A trusted Java checkout can use Maven directly for the reference interpreter:
+Use the Rust `java-reference` adapter described in [JAVA_REFERENCE.md](JAVA_REFERENCE.md).
+It builds a clean pinned compiler checkout, fingerprints the launcher inputs,
+and invokes the standalone Java CLI directly. Maven is used only during preparation;
+`exec:java` does not preserve the guest program's process exit-status boundary.
 
 ```sh
-export ORES_PARITY_JAVA_COMPILE='mvn -q -f /abs/oreslang-source.java/pom.xml -DskipTests exec:java "-Dexec.args=--check {source}"'
-export ORES_PARITY_JAVA_RUN='mvn -q -f /abs/oreslang-source.java/pom.xml -DskipTests exec:java "-Dexec.args={source}"'
+cargo build --release --locked --manifest-path tools/parity-runner/Cargo.toml --bins
+tools/parity-runner/target/release/java-reference prepare /abs/java-checkout COMMIT /abs/jdk /abs/java-bundle.json
+tools/parity-runner/target/release/java-reference execute /abs/java-bundle.json /abs/java-results.json
 ```
 
-A previously built `ores-aot` or `ores-hybrid` CLI can replace Maven while preserving the same `--check` / execute boundary. Record the executable SHA and build mode separately.
+This runs the JVM reference with `--mode=aot` (guest JIT disabled), not a Native Image executable.
+Its results are exploratory, never five-backend parity proof.
 
 ### LLVM native
 

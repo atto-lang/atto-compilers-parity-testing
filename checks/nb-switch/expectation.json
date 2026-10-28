@@ -16,6 +16,7 @@
     {
       "path": "checks/nb-switch/reject-nb-switch.ores",
       "expected": "compile-reject",
+      "expected_diagnostic_category": "unsupported_nb_prefix",
       "reason": "nb is not a switch prefix in current grammar"
     }
   ]

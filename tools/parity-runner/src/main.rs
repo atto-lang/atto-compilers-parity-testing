@@ -3,6 +3,7 @@ use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
@@ -60,6 +61,7 @@ struct Expectation {
 #[derive(Debug, Deserialize)]
 struct NegativeExpectation {
     path: String,
+    expected_diagnostic_category: Option<String>,
     #[allow(dead_code)]
     reason: Option<String>,
 }
@@ -410,7 +412,7 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
                 graph_files: None,
                 expected_kind: "compile_reject".into(),
                 expected_value: None,
-                expected_diagnostic_category: None,
+                expected_diagnostic_category: negative.expected_diagnostic_category.clone(),
                 expected_stdout_prefix: None,
                 validation_status: "unvalidated".into(),
                 features: negative_features,
@@ -473,13 +475,18 @@ fn invoke(argv: &[String], workdir: &Path, timeout: Duration) -> Invocation {
         };
     }
     let start = Instant::now();
-    let mut child = match Command::new(&argv[0])
+    let mut command = Command::new(&argv[0]);
+    command
         .args(&argv[1..])
         .current_dir(workdir)
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
+        .stderr(Stdio::piped());
+    #[cfg(unix)]
     {
+        use std::os::unix::process::CommandExt;
+        command.process_group(0);
+    }
+    let mut child = match command.spawn() {
         Ok(child) => child,
         Err(error) => {
             return Invocation {
@@ -492,44 +499,46 @@ fn invoke(argv: &[String], workdir: &Path, timeout: Duration) -> Invocation {
             }
         }
     };
-    loop {
+    // Drain both pipes while the child runs; a compiler can fill either pipe.
+    let mut stdout = child.stdout.take().expect("piped stdout");
+    let mut stderr = child.stderr.take().expect("piped stderr");
+    let stdout_reader = std::thread::spawn(move || {
+        let mut bytes = Vec::new();
+        stdout.read_to_end(&mut bytes).map(|_| bytes)
+    });
+    let stderr_reader = std::thread::spawn(move || {
+        let mut bytes = Vec::new();
+        stderr.read_to_end(&mut bytes).map(|_| bytes)
+    });
+    let mut timed_out = false;
+    let status = loop {
         match child.try_wait() {
-            Ok(Some(_)) => break,
+            Ok(Some(status)) => break Ok(status),
             Ok(None) if start.elapsed() >= timeout => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return Invocation {
-                    status: "timeout".into(),
-                    exit_code: None,
-                    stdout_hex: String::new(),
-                    stderr_hex: String::new(),
-                    duration_ms: start.elapsed().as_millis(),
-                    error: None,
-                };
+                timed_out = true;
+                terminate(&mut child);
+                break child.wait();
             }
             Ok(None) => std::thread::sleep(Duration::from_millis(20)),
             Err(error) => {
-                return Invocation {
-                    status: "infrastructure_error".into(),
-                    exit_code: None,
-                    stdout_hex: String::new(),
-                    stderr_hex: String::new(),
-                    duration_ms: start.elapsed().as_millis(),
-                    error: Some(error.to_string()),
-                }
+                terminate(&mut child);
+                let _ = child.wait();
+                break Err(error);
             }
         }
-    }
-    match child.wait_with_output() {
-        Ok(output) => Invocation {
-            status: "completed".into(),
-            exit_code: output.status.code(),
-            stdout_hex: hex(&output.stdout),
-            stderr_hex: hex(&output.stderr),
+    };
+    let stdout = stdout_reader.join().expect("stdout reader panicked");
+    let stderr = stderr_reader.join().expect("stderr reader panicked");
+    match (status, stdout, stderr) {
+        (Ok(status), Ok(stdout), Ok(stderr)) => Invocation {
+            status: if timed_out { "timeout" } else { "completed" }.into(),
+            exit_code: if timed_out { None } else { status.code() },
+            stdout_hex: hex(&stdout),
+            stderr_hex: hex(&stderr),
             duration_ms: start.elapsed().as_millis(),
             error: None,
         },
-        Err(error) => Invocation {
+        (Err(error), _, _) | (_, Err(error), _) | (_, _, Err(error)) => Invocation {
             status: "infrastructure_error".into(),
             exit_code: None,
             stdout_hex: String::new(),
@@ -538,6 +547,16 @@ fn invoke(argv: &[String], workdir: &Path, timeout: Duration) -> Invocation {
             error: Some(error.to_string()),
         },
     }
+}
+
+fn terminate(child: &mut std::process::Child) {
+    // The adapter launches Java as a child. Kill its isolated process group so
+    // a timeout cannot leave Java running or keep the capture pipes open.
+    #[cfg(unix)]
+    unsafe {
+        libc::killpg(child.id() as libc::pid_t, libc::SIGKILL);
+    }
+    let _ = child.kill();
 }
 
 fn safe_temp_component(value: &str) -> String {
@@ -621,7 +640,7 @@ fn evaluate_case(
     let compile_exit = compile.exit_code;
     record.compile = Some(compile);
 
-    if compile_status != "completed" {
+    if compile_status != "completed" || compile_exit.is_none() || compile_exit == Some(125) {
         record.status = "compile_infrastructure_failure".into();
     } else if case.expected_kind == "compile_reject" {
         if compile_exit == Some(0) {
@@ -676,7 +695,8 @@ fn evaluate_case(
         let run_exit = run.exit_code;
         let stdout_hex = run.stdout_hex.clone();
         record.run = Some(run);
-        record.status = if run_status != "completed" {
+        record.status = if run_status != "completed" || run_exit.is_none() || run_exit == Some(125)
+        {
             "runtime_infrastructure_failure".into()
         } else if run_exit != case.expected_value {
             "wrong_result".into()
@@ -702,6 +722,16 @@ fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     let execute = args.iter().any(|arg| arg == "--execute");
     let allow_unvalidated = args.iter().any(|arg| arg == "--allow-unvalidated");
+    let selected_backend = args
+        .iter()
+        .position(|arg| arg == "--backend")
+        .map(|index| {
+            args.get(index + 1)
+                .filter(|name| BACKENDS.iter().any(|(backend, _)| backend == name))
+                .cloned()
+                .ok_or_else(|| "--backend requires llvm, java, wasm, dotnet, or js".to_string())
+        })
+        .transpose()?;
     let output = args
         .windows(2)
         .find(|window| window[0] == "--output")
@@ -730,6 +760,12 @@ fn main() -> Result<(), String> {
     let mut records = Vec::new();
     for case in &cases {
         for &(backend, env_name) in &BACKENDS {
+            if selected_backend
+                .as_deref()
+                .is_some_and(|selected| selected != backend)
+            {
+                continue;
+            }
             records.push(evaluate_case(
                 case,
                 &diagnostic_rules,
@@ -751,7 +787,15 @@ fn main() -> Result<(), String> {
         executed: execute,
         cases: cases.len(),
         corpus,
-        backends: BACKENDS.iter().map(|entry| entry.0.to_string()).collect(),
+        backends: BACKENDS
+            .iter()
+            .filter(|entry| {
+                selected_backend
+                    .as_deref()
+                    .is_none_or(|name| name == entry.0)
+            })
+            .map(|entry| entry.0.to_string())
+            .collect(),
         records,
         summary,
     };
@@ -777,6 +821,8 @@ fn main() -> Result<(), String> {
                 | "unexpected_compile_success"
                 | "compile_infrastructure_failure"
                 | "runtime_infrastructure_failure"
+                | "backend_not_configured"
+                | "unvalidated"
         )
     });
     if hard_fail {
@@ -842,5 +888,41 @@ mod tests {
     #[test]
     fn hex_encoding_is_stable() {
         assert_eq!(hex(b"PARITY_OK"), "5041524954595f4f4b");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn drains_output_larger_than_pipe_buffers() {
+        let result = super::invoke(
+            &[
+                "sh".into(),
+                "-c".into(),
+                "head -c 131072 /dev/zero; head -c 131072 /dev/zero >&2".into(),
+            ],
+            &std::env::temp_dir(),
+            std::time::Duration::from_secs(5),
+        );
+        assert_eq!(result.status, "completed");
+        assert_eq!(result.exit_code, Some(0));
+        assert_eq!(result.stdout_hex.len(), 262144);
+        assert_eq!(result.stderr_hex.len(), 262144);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn timeout_terminates_launcher_children_and_retains_diagnostics() {
+        let start = std::time::Instant::now();
+        let result = super::invoke(
+            &[
+                "sh".into(),
+                "-c".into(),
+                "echo before-timeout >&2; sleep 10".into(),
+            ],
+            &std::env::temp_dir(),
+            std::time::Duration::from_millis(100),
+        );
+        assert_eq!(result.status, "timeout");
+        assert!(result.stderr_hex.contains(&hex(b"before-timeout")));
+        assert!(start.elapsed() < std::time::Duration::from_secs(3));
     }
 }

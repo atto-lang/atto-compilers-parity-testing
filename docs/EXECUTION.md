@@ -33,7 +33,10 @@ For funded-runner fallback, mirror only an identical authorized Git tree into an
 
 ## Known debt
 
-Cases 24, 25, 29 and 30 are coverage placeholders and case 23 needs a precise actor-isolation violation. Several frontier cases need canonical grammar repair. The next stage replaces these with real semantic tests and adds backend-specific adapters.
+The Java reference adapter can now execute the full corpus exploratorily; see
+`JAVA_REFERENCE.md`. No cases are promoted by adapter execution alone. The first
+pinned reference run exposed corpus/compiler syntax and type-checking gaps;
+these must be resolved against canonical contracts without backend-specific rewrites.
 
 Case 31 is the Java-reference `do select ... over ... end` target. Explicit fail-closed rejection on LLVM/Wasm/.NET/JS is useful capability evidence, but remains a parity gap rather than a pass until those backends execute the same source semantics.
 
@@ -57,8 +60,8 @@ The Rust runner requires exactly three distinct direct local imports in each pos
 check, fingerprints the full reachable local import graph (including cycles), and
 pins the `PARITY_OK|<check-name>|` stdout prefix. This adds 16 whole-program
 probes and two explicit compile-reject probes for `nb match` / `nb switch`.
-Those two probes must receive classified negative diagnostics before any pass
-claim, and currently remain `unvalidated`. A compiler returning a generic
+Those two probes now carry the `unsupported_nb_prefix` diagnostic category and
+currently remain `unvalidated`. A compiler returning a generic
 nonzero exit does not constitute parity.
 
 Case 31 (static select delimiter equivalence) remains a Java-reference target,
