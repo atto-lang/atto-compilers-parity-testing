@@ -1,0 +1,7 @@
+pub async fnc nested_task_case(): int {
+  let Task<int> outer = task {
+    let Task<int> inner = task { return 40; };
+    return (await inner) + 2;
+  };
+  return await outer;
+}

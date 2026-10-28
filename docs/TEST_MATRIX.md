@@ -17,3 +17,15 @@ All five backends are targets for every case. A backend that does not implement 
 Cases 27 and 30 intentionally remain candidates because their exact source/runtime contracts still require executable reference validation. They are real stress programs, not placeholders.
 
 Case 31 is a Java reference-test target. Backends that currently reject static select must report that as a parity gap; an explicit fail-closed diagnostic is better than accidental parsing or fake execution, but it does not count as feature parity.
+
+## Multi-file whole-program layer
+
+The `checks/` tree adds 16 positive programs and two negative syntax probes.
+Positive `main.ores` files each import three unique local files and assert
+their semantic expectations. The Rust runner fingerprints the recursively
+reachable graph and records those files for each backend result.
+
+The 49-case, five-backend audit matrix contains 245 records. A not-run record
+is corpus inventory, not compiler/runtime conformance. Ordinary match/switch
+suspension remains distinct from the rejected `nb match` / `nb switch`
+spellings. The modern actor counter uses `handle_state` for mutation.

@@ -1,0 +1,6 @@
+pub define trait Scored as
+  fnc score() => int;
+end
+pub define class ScoreBox implements Scored as
+  pub score(): int { return 22; }
+end

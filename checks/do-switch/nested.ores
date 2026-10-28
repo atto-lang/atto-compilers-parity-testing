@@ -1,0 +1,11 @@
+pub fnc nested_do_switch(int value): int {
+  do switch value
+    case 4 -> {
+      do switch value - 2
+        case 2 -> { return 42; }
+        default -> { return 0; }
+      end
+    }
+    default -> { return 0; }
+  end
+}

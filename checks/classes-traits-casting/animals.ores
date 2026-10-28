@@ -1,0 +1,5 @@
+pub define class Animal as
+end
+pub define class Dog extends Animal as
+  pub bark(): int { return 7; }
+end

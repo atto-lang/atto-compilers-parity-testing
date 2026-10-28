@@ -1,0 +1,6 @@
+pub fnc procedural_match(Option<int> value): int {
+  do match value over {
+    on Some(n) { return n + 1; }
+    on None { return 0; }
+  }
+}

@@ -1,0 +1,31 @@
+import fnc await_subject_case from "./subject.ores";
+import fnc await_guard_case from "./guard.ores";
+import fnc await_arm_case from "./arm.ores";
+
+fnc assert_eq_int(String label, int actual, int expected): void {
+  if actual != expected then
+    stdio.stdout.write("PARITY_FAIL|nb-match|");
+    stdio.stdout.write(label);
+    stdio.stdout.write("|actual=");
+    stdio.stdout.write(actual);
+    stdio.stdout.write("|expected=");
+    stdio.stdout.println(expected);
+    val Result<bool, String> failure = Err(label);
+    failure.expect("cross-compiler parity assertion failed");
+  fi
+  return;
+}
+
+fnc parity_ok(int checksum): void {
+  stdio.stdout.write("PARITY_OK|nb-match|");
+  stdio.stdout.println(checksum);
+  return;
+}
+
+pub async routine main(): void {
+  assert_eq_int("await-subject", await await_subject_case(), 42);
+  assert_eq_int("await-guard", await await_guard_case(), 42);
+  assert_eq_int("await-arm", await await_arm_case(), 42);
+  parity_ok(126);
+  return;
+}

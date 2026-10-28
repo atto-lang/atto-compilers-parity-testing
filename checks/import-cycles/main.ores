@@ -1,0 +1,31 @@
+import fnc a_value from "./a.ores";
+import fnc b_value from "./b.ores";
+import fnc c_value from "./c.ores";
+
+fnc assert_eq_int(String label, int actual, int expected): void {
+  if actual != expected then
+    stdio.stdout.write("PARITY_FAIL|import-cycles|");
+    stdio.stdout.write(label);
+    stdio.stdout.write("|actual=");
+    stdio.stdout.write(actual);
+    stdio.stdout.write("|expected=");
+    stdio.stdout.println(expected);
+    val Result<bool, String> failure = Err(label);
+    failure.expect("cross-compiler parity assertion failed");
+  fi
+  return;
+}
+
+fnc parity_ok(int checksum): void {
+  stdio.stdout.write("PARITY_OK|import-cycles|");
+  stdio.stdout.println(checksum);
+  return;
+}
+
+pub fnc main(): void {
+  assert_eq_int("a", a_value(), 42);
+  assert_eq_int("b", b_value(), 32);
+  assert_eq_int("c", c_value(), 12);
+  parity_ok(a_value() + b_value() + c_value());
+  return;
+}

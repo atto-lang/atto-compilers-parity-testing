@@ -1,0 +1,7 @@
+async fnc delayed_switch(int value): int { return value; }
+pub async fnc await_switch_arm(int selector): int {
+  switch selector
+    case 1 -> { return await delayed_switch(42); }
+    default -> { return 0; }
+  end
+}

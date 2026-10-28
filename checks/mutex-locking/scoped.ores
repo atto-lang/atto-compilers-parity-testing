@@ -1,0 +1,14 @@
+define class ScopedCounter as
+  pub let int value = 40;
+end
+pub fnc scoped_mutex_case(): int {
+  val mutex = Mutex.new(new ScopedCounter());
+  mutex.with_lock(|counter| -> {
+    counter.value = counter.value + 2;
+    return;
+  });
+  val guard = mutex.lock();
+  val int result = guard.value;
+  guard.release();
+  return result;
+}

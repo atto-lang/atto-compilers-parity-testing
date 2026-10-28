@@ -1,6 +1,6 @@
 # Execution and parity gate
 
-The checked-in corpus is fail-closed. The default CI audits source presence and enumerates the 155 backend/case pairs. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
+The checked-in corpus is fail-closed. The default CI audits 31 legacy programs, 16 positive multi-file checks and 2 negative probes, yielding 49 logical cases and 245 backend/case pairs. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
 
 ## Rust-only tooling
 
@@ -50,3 +50,17 @@ required-parity run; it exists only to distinguish a deliberate fail-closed
 backend boundary from malformed parsing, crashes, wrong diagnostics, or
 semantic execution failures.
 
+
+## Multi-file corpus
+
+The Rust runner requires exactly three distinct direct local imports in each positive
+check, fingerprints the full reachable local import graph (including cycles), and
+pins the `PARITY_OK|<check-name>|` stdout prefix. This adds 16 whole-program
+probes and two explicit compile-reject probes for `nb match` / `nb switch`.
+Those two probes must receive classified negative diagnostics before any pass
+claim, and currently remain `unvalidated`. A compiler returning a generic
+nonzero exit does not constitute parity.
+
+Case 31 (static select delimiter equivalence) remains a Java-reference target,
+not five-backend execution proof. The `intentional_capability_reject` status
+is a fail-closed gap, never a passing record.

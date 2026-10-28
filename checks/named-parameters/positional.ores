@@ -1,0 +1,2 @@
+fnc encode(int a, int b, int c): int { return a * 100 + b * 10 + c; }
+pub fnc positional_case(): int { return encode(1, 2, 3); }
