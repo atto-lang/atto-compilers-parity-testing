@@ -38,10 +38,8 @@ fn adapter_error_is_infrastructure_failure_even_for_negative_probes() {
 
 #[test]
 fn required_inventory_includes_forge_but_not_optional_js() {
-    let output = std::env::temp_dir().join(format!(
-        "ores-parity-required-{}.json",
-        std::process::id()
-    ));
+    let output =
+        std::env::temp_dir().join(format!("ores-parity-required-{}.json", std::process::id()));
     let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
         .args(["--output"])
         .arg(&output)
@@ -55,8 +53,8 @@ fn required_inventory_includes_forge_but_not_optional_js() {
         report["backends"],
         serde_json::json!(["llvm", "java", "wasm", "dotnet", "forge"])
     );
-    let manifest_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../manifest.json");
+    let manifest_path =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../manifest.json");
     let manifest: serde_json::Value =
         serde_json::from_slice(&std::fs::read(manifest_path).unwrap()).unwrap();
     assert_eq!(report["backends"], manifest["policy"]["target_backends"]);
@@ -78,10 +76,7 @@ fn required_inventory_includes_forge_but_not_optional_js() {
 
 #[test]
 fn optional_js_requires_explicit_selection() {
-    let output = std::env::temp_dir().join(format!(
-        "ores-parity-js-{}.json",
-        std::process::id()
-    ));
+    let output = std::env::temp_dir().join(format!("ores-parity-js-{}.json", std::process::id()));
     let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
         .args(["--backend", "js", "--output"])
         .arg(&output)
@@ -99,8 +94,7 @@ fn optional_js_requires_explicit_selection() {
 #[test]
 fn forge_diagnostic_rules_never_classify_generic_parse_errors_as_unknown_names() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../diagnostics.json");
-    let rules: serde_json::Value =
-        serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+    let rules: serde_json::Value = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
     assert_eq!(rules["forge"]["integer_range"][0], "invalid i64");
     assert_eq!(rules["forge"]["arity"][0], "function arity mismatch:");
     assert_eq!(
@@ -118,7 +112,13 @@ fn missing_required_forge_adapter_is_a_hard_failure() {
         std::process::id()
     ));
     let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
-        .args(["--backend", "forge", "--execute", "--allow-unvalidated", "--output"])
+        .args([
+            "--backend",
+            "forge",
+            "--execute",
+            "--allow-unvalidated",
+            "--output",
+        ])
         .arg(&output)
         .env_remove("ORES_PARITY_FORGE_COMPILE")
         .env_remove("ORES_PARITY_FORGE_RUN")
