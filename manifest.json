@@ -4,8 +4,8 @@
   "policy": {
     "canonical_source": "identical .ores bytes are supplied to each backend",
     "target_backends": [
-      "java",
       "llvm",
+      "java",
       "wasm",
       "dotnet",
       "forge"
