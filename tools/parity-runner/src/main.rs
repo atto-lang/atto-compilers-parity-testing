@@ -736,7 +736,9 @@ fn main() -> Result<(), String> {
             args.get(index + 1)
                 .filter(|name| BACKENDS.iter().any(|(backend, _)| backend == name))
                 .cloned()
-                .ok_or_else(|| "--backend requires llvm, java, wasm, dotnet, forge, or js".to_string())
+                .ok_or_else(|| {
+                    "--backend requires llvm, java, wasm, dotnet, forge, or js".to_string()
+                })
         })
         .transpose()?;
     let output = args
