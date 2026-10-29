@@ -721,6 +721,10 @@ fn evaluate_case(
     Ok(record)
 }
 
+fn is_verified_execution_status(status: &str) -> bool {
+    matches!(status, "pass" | "expected_reject")
+}
+
 fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     let execute = args.iter().any(|arg| arg == "--execute");
@@ -817,22 +821,14 @@ fn main() -> Result<(), String> {
         serde_json::to_string(&report.summary).map_err(|e| e.to_string())?
     );
 
-    let hard_fail = report.records.iter().any(|record| {
-        matches!(
-            record.status.as_str(),
-            "compile_failure"
-                | "intentional_capability_reject"
-                | "wrong_diagnostic"
-                | "rejection_unclassified"
-                | "wrong_result"
-                | "wrong_stdout"
-                | "unexpected_compile_success"
-                | "compile_infrastructure_failure"
-                | "runtime_infrastructure_failure"
-                | "backend_not_configured"
-                | "unvalidated"
-        )
-    });
+    // Inventory-only audits are intentionally not execution claims. When
+    // execution is requested, only validated passes may exit successfully.
+    // Unrecognized or exploratory statuses must fail closed.
+    let hard_fail = execute
+        && report
+            .records
+            .iter()
+            .any(|record| !is_verified_execution_status(&record.status));
     if hard_fail {
         std::process::exit(1);
     }
@@ -842,9 +838,29 @@ fn main() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        ascii_lower_hex, classify_diagnostic, hex, import_target, lowercase_kebab, Invocation,
+        ascii_lower_hex, classify_diagnostic, hex, import_target, is_verified_execution_status,
+        lowercase_kebab, Invocation,
     };
     use std::collections::BTreeMap;
+
+    #[test]
+    fn exploratory_and_unrecognized_execution_results_fail_closed() {
+        assert!(is_verified_execution_status("pass"));
+        assert!(is_verified_execution_status("expected_reject"));
+        for status in [
+            "not_run",
+            "unvalidated",
+            "exploratory_match_not_parity_pass",
+            "exploratory_expected_reject_not_parity_pass",
+            "intentional_capability_reject",
+            "backend_not_configured",
+            "compile_infrastructure_failure",
+            "runtime_infrastructure_failure",
+            "unknown_future_status",
+        ] {
+            assert!(!is_verified_execution_status(status), "{status}");
+        }
+    }
 
     #[test]
     fn diagnostic_classification_is_ascii_case_insensitive() {
