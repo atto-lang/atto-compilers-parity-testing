@@ -95,3 +95,18 @@ fn optional_js_requires_explicit_selection() {
     assert_eq!(report["records"].as_array().unwrap().len(), 53);
     assert_eq!(report["summary"]["not_run"], 53);
 }
+
+#[test]
+fn forge_diagnostic_rules_never_classify_generic_parse_errors_as_unknown_names() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../diagnostics.json");
+    let rules: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+    assert_eq!(rules["forge"]["integer_range"][0], "invalid i64");
+    assert_eq!(rules["forge"]["arity"][0], "function arity mismatch:");
+    assert_eq!(
+        rules["forge"]["duplicate_symbol"][0],
+        "duplicate function at byte"
+    );
+    assert!(rules["forge"].get("unknown_identifier").is_none());
+    assert!(rules["forge"].get("type_mismatch").is_none());
+}
