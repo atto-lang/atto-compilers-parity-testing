@@ -51,6 +51,8 @@ The compile script fails closed if the source subset is unsupported and never fa
 
 Forge is an independent compiler/backend and **must not** be represented by JS or LLVM evidence. The current C++20 bootstrap supports checked signed-i64 arithmetic, but its normal `run` command prints the interpreted value and exits 0. This is not the process-exit contract used by the legacy parity corpus. A reviewed Forge adapter must validate the compiler binary SHA and compilation profile, preserve genuine negative diagnostic output, and translate only a successfully executed, exact integer result into the legacy exit oracle. It must distinguish interpreter evidence from real emitted native code, refuse unsupported/multi-file graphs, and fail closed. No such adapter or native five-backend execution proof is claimed by this change.
 
+Forge's current compiler provides specific diagnostic needles for out-of-range i64 literals, duplicate functions and call arity. These are indexed in `diagnostics.json`; no generic `expected integer` error is accepted as `unknown_identifier`, and unsupported-feature diagnostics remain gaps. The current `15-arity-reject` fixture also uses type-first parameters, which Forge's name-first scalar bootstrap does not admit. A different earlier syntax error must not be misclassified as an arity pass.
+
 ### JavaScript (optional)
 
 The JS CLI publishes executable ESM atomically. A run adapter must import that module and call exported `main()`; simply invoking the generated module is not enough because it exports `main` rather than automatically calling it.
