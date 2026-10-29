@@ -20,10 +20,14 @@ Example:
 ```sh
 export ORES_PARITY_JS_COMPILE='node /absolute/oreslang-source.js/bin/oreslang-jsc.mjs {source} --out={artifact}.mjs'
 export ORES_PARITY_JS_RUN='node /absolute/run-esm-main.mjs {artifact}.mjs'
-cargo run --manifest-path tools/parity-runner/Cargo.toml -- --execute --allow-unvalidated --output js-exploratory.json
+cargo run --manifest-path tools/parity-runner/Cargo.toml -- --backend js --execute --allow-unvalidated --output js-exploratory.json
 ```
 
-Exploratory matching is **not** a parity pass.
+Exploratory matching is **not** a parity pass. An executed run returns success only
+when **every selected result** is `pass` or `expected_reject` with validated
+semantics; exploratory matches, unknown statuses and infrastructure failures exit
+nonzero, even when a report is successfully written. A no-`--execute` corpus
+inventory may exit successfully, but records only `not_run` cases.
 
 ## Promotion gate
 
