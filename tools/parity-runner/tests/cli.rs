@@ -110,3 +110,25 @@ fn forge_diagnostic_rules_never_classify_generic_parse_errors_as_unknown_names()
     assert!(rules["forge"].get("unknown_identifier").is_none());
     assert!(rules["forge"].get("type_mismatch").is_none());
 }
+
+#[test]
+fn missing_required_forge_adapter_is_a_hard_failure() {
+    let output = std::env::temp_dir().join(format!(
+        "ores-parity-forge-missing-{}.json",
+        std::process::id()
+    ));
+    let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .args(["--backend", "forge", "--execute", "--allow-unvalidated", "--output"])
+        .arg(&output)
+        .env_remove("ORES_PARITY_FORGE_COMPILE")
+        .env_remove("ORES_PARITY_FORGE_RUN")
+        .status()
+        .unwrap();
+    assert!(!status.success());
+    let report: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+    std::fs::remove_file(output).unwrap();
+    assert_eq!(report["backends"], serde_json::json!(["forge"]));
+    assert_eq!(report["records"].as_array().unwrap().len(), 53);
+    assert_eq!(report["summary"]["backend_not_configured"], 53);
+}
