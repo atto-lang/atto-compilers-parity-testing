@@ -55,8 +55,10 @@ fn required_inventory_includes_forge_but_not_optional_js() {
         report["backends"],
         serde_json::json!(["llvm", "java", "wasm", "dotnet", "forge"])
     );
+    let manifest_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../manifest.json");
     let manifest: serde_json::Value =
-        serde_json::from_slice(&std::fs::read("../../manifest.json").unwrap()).unwrap();
+        serde_json::from_slice(&std::fs::read(manifest_path).unwrap()).unwrap();
     assert_eq!(report["backends"], manifest["policy"]["target_backends"]);
     assert_eq!(report["corpus"]["legacy_cases"], 35);
     assert_eq!(report["cases"], 53);
