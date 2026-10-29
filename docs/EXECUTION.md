@@ -1,6 +1,6 @@
 # Execution and parity gate
 
-The checked-in corpus is fail-closed. The default CI audits 31 legacy programs, 16 positive multi-file checks and 2 negative probes, yielding 49 logical cases and 245 backend/case pairs. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
+The checked-in corpus is fail-closed. The default CI audits 35 legacy programs (including four unvalidated signed-i64 boundary candidates), 16 positive multi-file checks and 2 negative probes, yielding 53 logical cases and 265 required backend/case pairs across Java, LLVM, WASM, .NET and Forge. JavaScript is an optional sixth target (`--backend js`), not a substitute for Forge. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
 
 ## Rust-only tooling
 
@@ -13,7 +13,7 @@ Each backend uses two command templates:
 - `ORES_PARITY_<BACKEND>_COMPILE`
 - `ORES_PARITY_<BACKEND>_RUN`
 
-Tokens: `{source}`, `{artifact}`, `{workdir}`. Templates are split into argv without a shell. Supported backend names are LLVM, JAVA, WASM, DOTNET and JS.
+Tokens: `{source}`, `{artifact}`, `{workdir}`. Templates are split into argv without a shell. Supported backend names are LLVM, JAVA, WASM, DOTNET, FORGE and optional JS. The default report includes only the five required backends.
 
 Example:
 
@@ -33,7 +33,7 @@ For funded-runner fallback, mirror only an identical authorized Git tree into an
 
 ## Known debt
 
-The Java reference adapter can now execute the full corpus exploratorily; see
+The pinned Java reference adapter previously attempted the 49-case corpus exploratorily; it has **not** yet run the four new candidates (32–35); see
 `JAVA_REFERENCE.md`. No cases are promoted by adapter execution alone. The first
 pinned reference run exposed corpus/compiler syntax and type-checking gaps;
 these must be resolved against canonical contracts without backend-specific rewrites.

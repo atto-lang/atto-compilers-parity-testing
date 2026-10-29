@@ -35,3 +35,42 @@ fn adapter_error_is_infrastructure_failure_even_for_negative_probes() {
     assert!(!status.success());
     assert_eq!(report["summary"]["compile_infrastructure_failure"], 49);
 }
+
+#[test]
+fn required_inventory_includes_forge_but_not_optional_js() {
+    let output = std::env::temp_dir().join(format!("ores-parity-required-{}.json", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .args(["--output"])
+        .arg(&output)
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: serde_json::Value = serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+    std::fs::remove_file(output).unwrap();
+    assert_eq!(report["backends"], serde_json::json!(["llvm", "java", "wasm", "dotnet", "forge"]));
+    assert_eq!(report["corpus"]["legacy_cases"], 35);
+    assert_eq!(report["cases"], 53);
+    assert_eq!(report["records"].as_array().unwrap().len(), 265);
+    assert_eq!(report["summary"]["not_run"], 265);
+    let candidates: Vec<_> = report["records"].as_array().unwrap().iter()
+        .filter(|r| ["32", "33", "34", "35"].contains(&r["case_id"].as_str().unwrap_or("")))
+        .collect();
+    assert_eq!(candidates.len(), 20);
+    assert!(candidates.iter().all(|r| r["validation_status"] == "candidate" && r["status"] == "not_run"));
+}
+
+#[test]
+fn optional_js_requires_explicit_selection() {
+    let output = std::env::temp_dir().join(format!("ores-parity-js-{}.json", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .args(["--backend", "js", "--output"])
+        .arg(&output)
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: serde_json::Value = serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+    std::fs::remove_file(output).unwrap();
+    assert_eq!(report["backends"], serde_json::json!(["js"]));
+    assert_eq!(report["records"].as_array().unwrap().len(), 53);
+    assert_eq!(report["summary"]["not_run"], 53);
+}

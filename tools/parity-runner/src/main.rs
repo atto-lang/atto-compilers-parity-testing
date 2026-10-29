@@ -8,11 +8,14 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-const BACKENDS: [(&str, &str); 5] = [
+// The five oreslang-source.* backends are mandatory. JavaScript is
+// independently selectable for exploratory transpiler coverage.
+const BACKENDS: [(&str, &str); 6] = [
     ("llvm", "LLVM"),
     ("java", "JAVA"),
     ("wasm", "WASM"),
     ("dotnet", "DOTNET"),
+    ("forge", "FORGE"),
     ("js", "JS"),
 ];
 
@@ -729,7 +732,7 @@ fn main() -> Result<(), String> {
             args.get(index + 1)
                 .filter(|name| BACKENDS.iter().any(|(backend, _)| backend == name))
                 .cloned()
-                .ok_or_else(|| "--backend requires llvm, java, wasm, dotnet, or js".to_string())
+                .ok_or_else(|| "--backend requires llvm, java, wasm, dotnet, forge, or js".to_string())
         })
         .transpose()?;
     let output = args
@@ -760,6 +763,10 @@ fn main() -> Result<(), String> {
     let mut records = Vec::new();
     for case in &cases {
         for &(backend, env_name) in &BACKENDS {
+            // Omit the optional JS transpiler from default required parity.
+            if selected_backend.is_none() && backend == "js" {
+                continue;
+            }
             if selected_backend
                 .as_deref()
                 .is_some_and(|selected| selected != backend)
@@ -790,9 +797,10 @@ fn main() -> Result<(), String> {
         backends: BACKENDS
             .iter()
             .filter(|entry| {
-                selected_backend
-                    .as_deref()
-                    .is_none_or(|name| name == entry.0)
+                (selected_backend.is_some() || entry.0 != "js")
+                    && selected_backend
+                        .as_deref()
+                        .is_none_or(|name| name == entry.0)
             })
             .map(|entry| entry.0.to_string())
             .collect(),

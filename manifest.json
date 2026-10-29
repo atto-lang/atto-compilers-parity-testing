@@ -8,12 +8,15 @@
       "llvm",
       "wasm",
       "dotnet",
-      "js"
+      "forge"
     ],
     "required_parity": true,
     "unsupported_is_pass": false,
     "infrastructure_failure_is_pass": false,
-    "negative_tests_require_diagnostic_classification": true
+    "negative_tests_require_diagnostic_classification": true,
+    "optional_backends": [
+      "js"
+    ]
   },
   "backend_snapshot": {
     "captured_on": "2026-10-25",
@@ -41,6 +44,12 @@
       "repo": "ores-truffle-oreslang/oreslang-source.js",
       "tree": "fce498c3984870f03e4b0a07e844f6907a1918ad",
       "role": "ESM transpiler; scalar/program-v2 subsets"
+    },
+    "forge": {
+      "repo": "ores-truffle-oreslang/oreslang-source.forge",
+      "tree": "f687891a68fba9b364b4e4144d47a08d1db26323",
+      "captured_on": "2026-10-29",
+      "role": "independent C++20 interpreter/native-assembly bootstrap; not a full compiler"
     }
   },
   "cases": [
@@ -579,6 +588,78 @@
       "expected_diagnostic_category": null,
       "validation_status": "reference_test",
       "source_basis": "Java PR #2079 SelectOverEndSyntaxTest and delimiter-equivalence contract",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "32",
+      "name": "signed-min-boundary",
+      "path": "programs/32-signed-min-boundary.ores",
+      "group": "scalar",
+      "features": [
+        "int",
+        "checked-i64",
+        "signed-min",
+        "boundary"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "Derived integer boundary/metamorphic oracle (2026-10-29); independently validated compiler execution pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "33",
+      "name": "signed-max-boundary",
+      "path": "programs/33-signed-max-boundary.ores",
+      "group": "scalar",
+      "features": [
+        "int",
+        "checked-i64",
+        "signed-max",
+        "boundary"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "Derived integer boundary/metamorphic oracle (2026-10-29); independently validated compiler execution pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "34",
+      "name": "checked-wide-multiply",
+      "path": "programs/34-checked-wide-multiply.ores",
+      "group": "scalar",
+      "features": [
+        "int",
+        "checked-i64",
+        "wide-multiply",
+        "exactness"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "Derived integer boundary/metamorphic oracle (2026-10-29); independently validated compiler execution pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "35",
+      "name": "checked-negative-products",
+      "path": "programs/35-checked-negative-products.ores",
+      "group": "scalar",
+      "features": [
+        "int",
+        "checked-i64",
+        "negative-multiply",
+        "parentheses"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "Derived integer boundary/metamorphic oracle (2026-10-29); independently validated compiler execution pending",
       "required_on_all_backends": true
     }
   ]
