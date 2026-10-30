@@ -29,8 +29,8 @@ The tiers are monotonic and fail closed.
 | --- | --- |
 | `RUNNER_EXECUTED` | Exact repo/head/tree/workflow/run/attempt, positive runner identity on the same job, and at least one completed meaningful non-housekeeping step. |
 | `HOST_TESTS_EXECUTED` | Everything above plus a meaningful step categorized `host_compiler_tests`. |
-| `NATIVE_COMPILER_BUILT` | Everything above plus `native_compiler_build`, compiler identity/SHA-256, and an unexpired artifact whose SHA-256 matches the compiler provenance. |
-| `ORES_GUEST_EXECUTED` | Everything above plus `compiled_ores_guest_runtime_execution`, exact guest source/artifact SHA-256, and exact exit/stdout oracle equality. |
+| `NATIVE_COMPILER_BUILT` | Everything above plus `native_compiler_build`, `artifacts_verified=true`, compiler identity/SHA-256, and an unexpired artifact whose SHA-256 matches the compiler provenance. |
+| `ORES_GUEST_EXECUTED` | Everything above plus `compiled_ores_guest_runtime_execution`, `artifacts_verified=true`, exact guest source/artifact SHA-256, exact exit/stdout oracle equality, and binding to the matching executed parity-report cell. |
 
 A workflow/job conclusion alone never establishes a tier. A listed but
 unstarted step, zero-step job, missing runner identity, `runner_id=0`, blank
@@ -65,8 +65,14 @@ double-counting caused by naming drift.
 the bundle.
 
 Only `ORES_GUEST_EXECUTED` is eligible to support a compiled Oreslang guest
-runtime parity claim, and even then the parity runner must independently match
-the same logical corpus case/backend cell and its source hash/oracle.
+runtime parity claim. Validation of that tier requires
+`--report <parity-results.json>`; the validator binds the evidence to exactly
+one executed parity-report cell with the same normalized backend, case ID,
+source SHA-256, runtime exit code, and stdout bytes.
+
+The source-side `RUNNER_EXECUTED` verifier emits `artifacts_verified=false`.
+That means an empty `artifacts` array is explicitly **not** a verified
+no-artifacts result.
 
 Inventory-only `not_run` records, interpreter-only Forge results, source-free
 canaries, carrier harness tests, and structural manifest checks must never be
