@@ -45,6 +45,8 @@ records `output_limit_exceeded` with no usable exit status. The case is a
 `compile_infrastructure_failure` or `runtime_infrastructure_failure`,
 **never** `pass`, `expected_reject` or a valid diagnostic classification.
 
+Timeouts and missing runners remain non-passes.
+
 This guards the evidence harness against uncontrolled compiler diagnostics or
 guest output; it is not evidence that any backend compiled a particular
 `.ores` program. The unit tests include exact-boundary, oversized stdout,
