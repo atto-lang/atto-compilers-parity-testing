@@ -1,0 +1,40 @@
+{
+  "schema": "oreslang-parity-execution-evidence-v1",
+  "claim_tier": "RUNNER_EXECUTED",
+  "backend": "java",
+  "repository": "ores-truffle-oreslang/oreslang-source.java",
+  "repository_id": 1400792274,
+  "run_id": 17,
+  "run_attempt": 2,
+  "workflow_id": 991,
+  "workflow_path": ".github/workflows/ci.yml",
+  "workflow_run_path": ".github/workflows/ci.yml",
+  "event": "push",
+  "head_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "head_tree": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "workflow_blob_sha": "cccccccccccccccccccccccccccccccccccccccc",
+  "verified_jobs": 1,
+  "successful_non_housekeeping_steps": 1,
+  "jobs": [
+    {
+      "job_id": 31,
+      "job_name": "unit",
+      "runner_id": 1000002089,
+      "runner_name": "Synthetic Runner Fixture",
+      "conclusion": "success",
+      "started_at": "2026-10-16T10:00:00Z",
+      "completed_at": "2026-10-16T10:03:00Z",
+      "meaningful_steps": [
+        {
+          "name": "Execute synthetic contract test",
+          "category": "indeterminate",
+          "conclusion": "success",
+          "started_at": "2026-10-16T10:01:00Z",
+          "completed_at": "2026-10-16T10:02:00Z"
+        }
+      ]
+    }
+  ],
+  "artifacts": [],
+  "statement": "GITHUB_RUN_EXECUTION_VERIFIED_NOT_GUEST_PARITY_CERTIFIED"
+}
