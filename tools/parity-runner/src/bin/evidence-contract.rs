@@ -409,6 +409,9 @@ fn validate_report(evidence: &Evidence, parity_backend: &str, path: &str) -> Res
     }
     let report: serde_json::Value =
         serde_json::from_slice(&raw).map_err(|e| format!("invalid parity report JSON: {e}"))?;
+    if report.get("schema_version").and_then(|value| value.as_u64()) != Some(2) {
+        return Err("compiled guest evidence requires parity report schema v2".into());
+    }
     if report.get("executed") != Some(&serde_json::Value::Bool(true)) {
         return Err("compiled guest evidence requires an executed parity report".into());
     }
@@ -443,8 +446,19 @@ fn validate_report(evidence: &Evidence, parity_backend: &str, path: &str) -> Res
         return Err("compiled guest evidence must match exactly one parity-report cell".into());
     }
     let record = matches[0];
-    if record.get("status").and_then(|v| v.as_str()) != Some("pass") {
+    if record.get("status").and_then(|v| v.as_str()) != Some("pass")
+        || record.get("validation_status").and_then(|v| v.as_str()) != Some("validated")
+    {
         return Err("compiled guest parity-report cell is not a validated pass".into());
+    }
+    let compile = record
+        .get("compile")
+        .and_then(|value| value.as_object())
+        .ok_or("compiled guest parity-report cell has no compiler invocation")?;
+    if compile.get("status").and_then(|v| v.as_str()) != Some("completed")
+        || compile.get("exit_code").and_then(|v| v.as_i64()) != Some(0)
+    {
+        return Err("compiled guest parity-report compiler did not succeed".into());
     }
     let invocation = record
         .get("run")

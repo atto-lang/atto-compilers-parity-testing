@@ -194,6 +194,11 @@ fn guest_report() -> Value {
             "backend": "llvm",
             "source_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
             "status": "pass",
+            "validation_status": "validated",
+            "compile": {
+                "status": "completed",
+                "exit_code": 0
+            },
             "run": {
                 "status": "completed",
                 "exit_code": 42,
@@ -301,5 +306,41 @@ fn impossible_utc_calendar_instants_cannot_prove_execution() {
         output.status.success(),
         "rejected valid leap day: {}",
         String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn guest_report_cannot_self_promote_unvalidated_or_uncompiled_cases() {
+    let evidence = guest_bundle();
+    let mut report = guest_report();
+    report["records"][0]["validation_status"] = json!("candidate");
+    assert!(
+        !run_with_report("guest-candidate-fake-pass", &evidence, Some(&report))
+            .status
+            .success()
+    );
+
+    let mut report = guest_report();
+    report["records"][0]["compile"]["status"] = json!("timeout");
+    assert!(
+        !run_with_report("guest-compile-timeout", &evidence, Some(&report))
+            .status
+            .success()
+    );
+
+    let mut report = guest_report();
+    report["records"][0]["compile"]["exit_code"] = json!(1);
+    assert!(
+        !run_with_report("guest-compile-error", &evidence, Some(&report))
+            .status
+            .success()
+    );
+
+    let mut report = guest_report();
+    report["schema_version"] = json!(3);
+    assert!(
+        !run_with_report("guest-wrong-schema", &evidence, Some(&report))
+            .status
+            .success()
     );
 }
