@@ -48,18 +48,33 @@ fn base(backend: &str) -> Value {
     })
 }
 
-fn run(name: &str, value: &Value) -> std::process::Output {
+fn run_with_report(name: &str, value: &Value, report: Option<&Value>) -> std::process::Output {
     let path = std::env::temp_dir().join(format!(
         "ores-evidence-contract-{}-{name}.json",
         std::process::id()
     ));
     std::fs::write(&path, serde_json::to_vec_pretty(value).unwrap()).unwrap();
-    let output = Command::new(env!("CARGO_BIN_EXE_evidence-contract"))
-        .arg(&path)
-        .output()
-        .unwrap();
+    let mut command = Command::new(env!("CARGO_BIN_EXE_evidence-contract"));
+    command.arg(&path);
+    let report_path = report.map(|report| {
+        let path = std::env::temp_dir().join(format!(
+            "ores-evidence-report-{}-{name}.json",
+            std::process::id()
+        ));
+        std::fs::write(&path, serde_json::to_vec_pretty(report).unwrap()).unwrap();
+        command.arg("--report").arg(&path);
+        path
+    });
+    let output = command.output().unwrap();
     std::fs::remove_file(path).unwrap();
+    if let Some(path) = report_path {
+        std::fs::remove_file(path).unwrap();
+    }
     output
+}
+
+fn run(name: &str, value: &Value) -> std::process::Output {
+    run_with_report(name, value, None)
 }
 
 #[test]
@@ -162,9 +177,31 @@ fn guest_bundle() -> Value {
     value
 }
 
+fn guest_report() -> Value {
+    json!({
+        "schema_version": 2,
+        "executed": true,
+        "backends": ["llvm"],
+        "records": [{
+            "suite": "legacy",
+            "case_id": "checked-i64-smoke",
+            "backend": "llvm",
+            "source_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "status": "pass",
+            "run": {
+                "status": "completed",
+                "exit_code": 42,
+                "stdout_hex": "34320a"
+            }
+        }]
+    })
+}
+
 #[test]
 fn full_compiled_guest_bundle_with_exact_oracle_is_accepted() {
-    let output = run("guest-valid", &guest_bundle());
+    let evidence = guest_bundle();
+    let report = guest_report();
+    let output = run_with_report("guest-valid", &evidence, Some(&report));
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
     let result: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(result["claim_tier"], "ORES_GUEST_EXECUTED");
@@ -172,10 +209,17 @@ fn full_compiled_guest_bundle_with_exact_oracle_is_accepted() {
 }
 
 #[test]
-fn guest_oracle_mismatch_is_rejected() {
-    let mut value = guest_bundle();
-    value["guest"]["exit_code"] = json!(41);
-    assert!(!run("guest-oracle", &value).status.success());
+fn compiled_guest_tier_requires_parity_report_binding() {
+    assert!(!run("guest-no-report", &guest_bundle()).status.success());
+}
+
+#[test]
+fn guest_oracle_that_disagrees_with_parity_report_is_rejected() {
+    let mut evidence = guest_bundle();
+    evidence["guest"]["exit_code"] = json!(41);
+    evidence["guest"]["expected_exit_code"] = json!(41);
+    let report = guest_report();
+    assert!(!run_with_report("guest-report-mismatch", &evidence, Some(&report)).status.success());
 }
 
 #[test]
