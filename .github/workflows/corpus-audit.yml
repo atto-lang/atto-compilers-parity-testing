@@ -28,6 +28,10 @@ jobs:
         run: |
           cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml --bin evidence-contract -- \
             evidence/fixtures/synthetic-runner-executed.json
+      - name: Validate recorded Java attempt-2 host execution bundle
+        run: |
+          cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml --bin evidence-contract -- \
+            evidence/java-fast-ci-38338581442-attempt2.json
       - name: Audit 53 x 5 required-backend matrix without compiler claims
         run: |
           cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml -- --output parity-results.json
