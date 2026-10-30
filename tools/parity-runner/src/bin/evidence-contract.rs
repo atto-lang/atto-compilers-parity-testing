@@ -40,6 +40,7 @@ struct Evidence {
     verified_jobs: usize,
     successful_non_housekeeping_steps: usize,
     jobs: Vec<JobEvidence>,
+    artifacts_verified: bool,
     #[serde(default)]
     artifacts: Vec<ArtifactEvidence>,
     #[serde(default)]
@@ -316,6 +317,9 @@ fn validate(e: &Evidence) -> Result<&'static str, String> {
     }
 
     if rank >= 2 {
+        if !e.artifacts_verified {
+            return Err("compiler/guest tiers require verified artifact enumeration".into());
+        }
         if !categories.contains("native_compiler_build") {
             return Err("NATIVE_COMPILER_BUILT requires a native compiler build step".into());
         }
