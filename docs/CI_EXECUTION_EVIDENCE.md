@@ -77,3 +77,30 @@ no-artifacts result.
 Inventory-only `not_run` records, interpreter-only Forge results, source-free
 canaries, carrier harness tests, and structural manifest checks must never be
 reported as compiled guest parity.
+
+
+## Recorded real attempt-2 characterization
+
+`evidence/java-fast-ci-38338581442-attempt2.json` records authenticated
+read-only GitHub metadata for Java `fast-ci` run `38338581442` at source
+head `a458279b7a419b3c5ecf50be4f06844f4faf3fd5`.
+
+The same immutable run ID demonstrates why attempt-specific job endpoints are
+mandatory:
+
+- attempt 1 job `115104196564`: failure, `runner_id=0`, blank runner name,
+  zero steps — not executed;
+- attempt 2 job `115354362474`: success, runner `1000133153`, with real
+  executed steps including `Verify compiler/runtime tests`;
+- the exact workflow blob is
+  `4d562c7b49d75a997d849aba7fd2ffa3b24441db` and exact source tree is
+  `f5bff562aa2555ad2dfabb9e106635aa4f4b8e2a`;
+- the run artifact endpoint was fully enumerated and returned zero artifacts,
+  so this recorded bundle can set `artifacts_verified=true` with an empty
+  artifact list.
+
+The bundle is classified `HOST_TESTS_EXECUTED`. The historical workflow also
+ran Oreslang examples, but that step is deliberately categorized
+`indeterminate`: there is no exact compiler-binary/artifact provenance tying
+those example invocations to a compiled guest artifact, so it is **not**
+`NATIVE_COMPILER_BUILT` or `ORES_GUEST_EXECUTED` evidence.
