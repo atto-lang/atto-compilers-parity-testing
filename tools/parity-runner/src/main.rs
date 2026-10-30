@@ -466,6 +466,37 @@ fn expand(
         .collect())
 }
 
+// Source compilers and guest programs are not trusted to emit bounded output.
+// Drain to EOF even after the capture limit, so a full pipe cannot block a
+// child, but never promote truncated diagnostics to parity success.
+const MAX_CAPTURE_BYTES: usize = 1024 * 1024;
+
+struct BoundedCapture {
+    bytes: Vec<u8>,
+    exceeded: bool,
+}
+
+fn read_bounded(mut pipe: impl Read) -> std::io::Result<BoundedCapture> {
+    let mut bytes = Vec::new();
+    let mut exceeded = false;
+    let mut chunk = [0u8; 8192];
+    loop {
+        let count = match pipe.read(&mut chunk) {
+            Ok(0) => break,
+            Ok(n) => n,
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(error) => return Err(error),
+        };
+        let remaining = MAX_CAPTURE_BYTES.saturating_sub(bytes.len());
+        let accepted = count.min(remaining);
+        bytes.extend_from_slice(&chunk[..accepted]);
+        if count > accepted {
+            exceeded = true;
+        }
+    }
+    Ok(BoundedCapture { bytes, exceeded })
+}
+
 fn invoke(argv: &[String], workdir: &Path, timeout: Duration) -> Invocation {
     if argv.is_empty() {
         return Invocation {
@@ -502,17 +533,11 @@ fn invoke(argv: &[String], workdir: &Path, timeout: Duration) -> Invocation {
             }
         }
     };
-    // Drain both pipes while the child runs; a compiler can fill either pipe.
-    let mut stdout = child.stdout.take().expect("piped stdout");
-    let mut stderr = child.stderr.take().expect("piped stderr");
-    let stdout_reader = std::thread::spawn(move || {
-        let mut bytes = Vec::new();
-        stdout.read_to_end(&mut bytes).map(|_| bytes)
-    });
-    let stderr_reader = std::thread::spawn(move || {
-        let mut bytes = Vec::new();
-        stderr.read_to_end(&mut bytes).map(|_| bytes)
-    });
+    // Independently drain both pipes with fixed storage while the child runs.
+    let stdout = child.stdout.take().expect("piped stdout");
+    let stderr = child.stderr.take().expect("piped stderr");
+    let stdout_reader = std::thread::spawn(move || read_bounded(stdout));
+    let stderr_reader = std::thread::spawn(move || read_bounded(stderr));
     let mut timed_out = false;
     let status = loop {
         match child.try_wait() {
@@ -533,11 +558,22 @@ fn invoke(argv: &[String], workdir: &Path, timeout: Duration) -> Invocation {
     let stdout = stdout_reader.join().expect("stdout reader panicked");
     let stderr = stderr_reader.join().expect("stderr reader panicked");
     match (status, stdout, stderr) {
+        (Ok(_), Ok(stdout), Ok(stderr)) if stdout.exceeded || stderr.exceeded => Invocation {
+            status: "output_limit_exceeded".into(),
+            exit_code: None,
+            stdout_hex: hex(&stdout.bytes),
+            stderr_hex: hex(&stderr.bytes),
+            duration_ms: start.elapsed().as_millis(),
+            error: Some(format!(
+                "compiler or guest output exceeded {} bytes per stream; truncated output cannot certify parity",
+                MAX_CAPTURE_BYTES
+            )),
+        },
         (Ok(status), Ok(stdout), Ok(stderr)) => Invocation {
             status: if timed_out { "timeout" } else { "completed" }.into(),
             exit_code: if timed_out { None } else { status.code() },
-            stdout_hex: hex(&stdout),
-            stderr_hex: hex(&stderr),
+            stdout_hex: hex(&stdout.bytes),
+            stderr_hex: hex(&stderr.bytes),
             duration_ms: start.elapsed().as_millis(),
             error: None,
         },
@@ -932,6 +968,42 @@ mod tests {
         assert_eq!(result.exit_code, Some(0));
         assert_eq!(result.stdout_hex.len(), 262144);
         assert_eq!(result.stderr_hex.len(), 262144);
+    }
+
+    #[test]
+    fn bounded_capture_drains_and_rejects_oversized_bytes() {
+        let input = vec![b'x'; super::MAX_CAPTURE_BYTES + 8193];
+        let capture = super::read_bounded(std::io::Cursor::new(input)).unwrap();
+        assert_eq!(capture.bytes.len(), super::MAX_CAPTURE_BYTES);
+        assert!(capture.exceeded);
+        let exact_input = vec![b'y'; super::MAX_CAPTURE_BYTES];
+        let exact = super::read_bounded(std::io::Cursor::new(exact_input)).unwrap();
+        assert!(!exact.exceeded);
+        assert_eq!(exact.bytes.len(), super::MAX_CAPTURE_BYTES);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn oversized_compiler_stdout_and_stderr_never_certify_parity() {
+        for command in [
+            "head -c 1048577 /dev/zero",
+            "head -c 1048577 /dev/zero >&2",
+        ] {
+            let result = super::invoke(
+                &["sh".into(), "-c".into(), command.into()],
+                &std::env::temp_dir(),
+                std::time::Duration::from_secs(5),
+            );
+            assert_eq!(result.status, "output_limit_exceeded");
+            assert_eq!(result.exit_code, None);
+            assert!(result
+                .error
+                .as_deref()
+                .unwrap()
+                .contains("cannot certify parity"));
+            assert!(result.stdout_hex.len() <= 2 * super::MAX_CAPTURE_BYTES);
+            assert!(result.stderr_hex.len() <= 2 * super::MAX_CAPTURE_BYTES);
+        }
     }
 
     #[cfg(unix)]
