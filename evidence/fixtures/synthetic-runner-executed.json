@@ -35,6 +35,7 @@
       ]
     }
   ],
+  "artifacts_verified": false,
   "artifacts": [],
   "statement": "GITHUB_RUN_EXECUTION_VERIFIED_NOT_GUEST_PARITY_CERTIFIED"
 }
