@@ -1,0 +1,2 @@
+namespace billing;
+pub fnc function2(): int { return 2; }
