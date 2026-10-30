@@ -148,37 +148,40 @@ fn lower_hex(value: &str, len: usize) -> bool {
 }
 
 fn utc_timestamp(value: &str) -> bool {
+    // Require real Gregorian UTC dates, not only a fixed timestamp shape.
     if value.len() != 20 {
         return false;
     }
     let bytes = value.as_bytes();
     for (index, byte) in bytes.iter().enumerate() {
         match index {
-            4 | 7 => {
-                if *byte != b'-' {
-                    return false;
-                }
-            }
-            10 => {
-                if *byte != b'T' {
-                    return false;
-                }
-            }
-            13 | 16 => {
-                if *byte != b':' {
-                    return false;
-                }
-            }
-            19 => {
-                if *byte != b'Z' {
-                    return false;
-                }
-            }
+            4 | 7 if *byte != b'-' => return false,
+            10 if *byte != b'T' => return false,
+            13 | 16 if *byte != b':' => return false,
+            19 if *byte != b'Z' => return false,
+            4 | 7 | 10 | 13 | 16 | 19 => {}
             _ if !byte.is_ascii_digit() => return false,
             _ => {}
         }
     }
-    true
+    let year = value[0..4].parse::<u32>().unwrap_or(0);
+    let month = value[5..7].parse::<u32>().unwrap_or(0);
+    let day = value[8..10].parse::<u32>().unwrap_or(0);
+    let hour = value[11..13].parse::<u32>().unwrap_or(24);
+    let minute = value[14..16].parse::<u32>().unwrap_or(60);
+    let second = value[17..19].parse::<u32>().unwrap_or(60);
+    if year == 0 || hour > 23 || minute > 59 || second > 59 {
+        return false;
+    }
+    let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+    let days = match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 if leap => 29,
+        2 => 28,
+        _ => return false,
+    };
+    day >= 1 && day <= days
 }
 
 fn safe_workflow_path(path: &str) -> bool {

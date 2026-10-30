@@ -264,3 +264,42 @@ fn duplicate_job_identity_is_rejected() {
     value["successful_non_housekeeping_steps"] = json!(2);
     assert!(!run("duplicate-job", &value).status.success());
 }
+
+#[test]
+fn impossible_utc_calendar_instants_cannot_prove_execution() {
+    // Equal endpoints isolate date validity from chronological checks.
+    for (index, stamp) in [
+        "0000-01-01T12:00:00Z",
+        "2026-00-01T12:00:00Z",
+        "2026-13-01T12:00:00Z",
+        "2026-01-00T12:00:00Z",
+        "2026-02-29T12:00:00Z",
+        "2026-04-31T12:00:00Z",
+        "2026-01-01T24:00:00Z",
+        "2026-01-01T12:60:00Z",
+        "2026-01-01T12:00:60Z",
+        "1900-02-29T12:00:00Z",
+    ]
+    .iter()
+    .enumerate()
+    {
+        let mut evidence = base("java");
+        evidence["jobs"][0]["started_at"] = json!(stamp);
+        evidence["jobs"][0]["completed_at"] = json!(stamp);
+        evidence["jobs"][0]["meaningful_steps"][0]["started_at"] = json!(stamp);
+        evidence["jobs"][0]["meaningful_steps"][0]["completed_at"] = json!(stamp);
+        let output = run(&format!("invalid-utc-{index}"), &evidence);
+        assert!(!output.status.success(), "accepted invalid date: {stamp}");
+    }
+    let mut leap = base("java");
+    for field in ["started_at", "completed_at"] {
+        leap["jobs"][0][field] = json!("2024-02-29T12:00:00Z");
+        leap["jobs"][0]["meaningful_steps"][0][field] = json!("2024-02-29T12:00:00Z");
+    }
+    let output = run("valid-leap-day", &leap);
+    assert!(
+        output.status.success(),
+        "rejected valid leap day: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
