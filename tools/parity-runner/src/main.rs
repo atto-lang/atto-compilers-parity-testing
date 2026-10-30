@@ -985,10 +985,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn oversized_compiler_stdout_and_stderr_never_certify_parity() {
-        for command in [
-            "head -c 1048577 /dev/zero",
-            "head -c 1048577 /dev/zero >&2",
-        ] {
+        for command in ["head -c 1048577 /dev/zero", "head -c 1048577 /dev/zero >&2"] {
             let result = super::invoke(
                 &["sh".into(), "-c".into(), command.into()],
                 &std::env::temp_dir(),
