@@ -81,7 +81,11 @@ fn run(name: &str, value: &Value) -> std::process::Output {
 #[test]
 fn valid_runner_execution_is_accepted_and_net_normalizes_to_dotnet() {
     let output = run("net-valid", &base("net"));
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let result: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(result["valid"], true);
     assert_eq!(result["source_backend"], "net");
@@ -204,7 +208,11 @@ fn full_compiled_guest_bundle_with_exact_oracle_is_accepted() {
     let evidence = guest_bundle();
     let report = guest_report();
     let output = run_with_report("guest-valid", &evidence, Some(&report));
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let result: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(result["claim_tier"], "ORES_GUEST_EXECUTED");
     assert_eq!(result["parity_backend"], "llvm");
@@ -221,7 +229,11 @@ fn guest_oracle_that_disagrees_with_parity_report_is_rejected() {
     evidence["guest"]["exit_code"] = json!(41);
     evidence["guest"]["expected_exit_code"] = json!(41);
     let report = guest_report();
-    assert!(!run_with_report("guest-report-mismatch", &evidence, Some(&report)).status.success());
+    assert!(
+        !run_with_report("guest-report-mismatch", &evidence, Some(&report))
+            .status
+            .success()
+    );
 }
 
 #[test]
@@ -229,7 +241,11 @@ fn compiler_or_guest_tier_requires_verified_artifact_enumeration() {
     let mut value = guest_bundle();
     value["artifacts_verified"] = json!(false);
     let report = guest_report();
-    assert!(!run_with_report("artifacts-unverified", &value, Some(&report)).status.success());
+    assert!(
+        !run_with_report("artifacts-unverified", &value, Some(&report))
+            .status
+            .success()
+    );
 }
 
 #[test]
