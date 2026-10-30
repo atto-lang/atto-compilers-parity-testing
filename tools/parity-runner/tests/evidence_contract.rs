@@ -43,6 +43,7 @@ fn base(backend: &str) -> Value {
                 "completed_at": "2026-10-16T10:02:00Z"
             }]
         }],
+        "artifacts_verified": false,
         "artifacts": [],
         "statement": "GITHUB_RUN_EXECUTION_VERIFIED_NOT_GUEST_PARITY_CERTIFIED"
     })
@@ -144,6 +145,7 @@ fn guest_bundle() -> Value {
             "completed_at": "2026-10-16T10:02:40Z"
         }
     ]);
+    value["artifacts_verified"] = json!(true);
     value["artifacts"] = json!([
         {
             "id": 501,
@@ -220,6 +222,14 @@ fn guest_oracle_that_disagrees_with_parity_report_is_rejected() {
     evidence["guest"]["expected_exit_code"] = json!(41);
     let report = guest_report();
     assert!(!run_with_report("guest-report-mismatch", &evidence, Some(&report)).status.success());
+}
+
+#[test]
+fn compiler_or_guest_tier_requires_verified_artifact_enumeration() {
+    let mut value = guest_bundle();
+    value["artifacts_verified"] = json!(false);
+    let report = guest_report();
+    assert!(!run_with_report("artifacts-unverified", &value, Some(&report)).status.success());
 }
 
 #[test]
