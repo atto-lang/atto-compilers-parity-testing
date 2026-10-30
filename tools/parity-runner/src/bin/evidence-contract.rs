@@ -107,11 +107,31 @@ struct GuestEvidence {
 
 fn backend_identity(name: &str) -> Option<(&'static str, u64, &'static str)> {
     match name {
-        "java" => Some(("ores-truffle-oreslang/oreslang-source.java", 1400792274, "java")),
-        "llvm" => Some(("ores-truffle-oreslang/oreslang-source.llvm", 1410897874, "llvm")),
-        "net" => Some(("ores-truffle-oreslang/oreslang-source.net", 1419704375, "dotnet")),
-        "wasm" => Some(("ores-truffle-oreslang/oreslang-source.wasm", 1419858954, "wasm")),
-        "forge" => Some(("ores-truffle-oreslang/oreslang-source.forge", 1419703674, "forge")),
+        "java" => Some((
+            "ores-truffle-oreslang/oreslang-source.java",
+            1400792274,
+            "java",
+        )),
+        "llvm" => Some((
+            "ores-truffle-oreslang/oreslang-source.llvm",
+            1410897874,
+            "llvm",
+        )),
+        "net" => Some((
+            "ores-truffle-oreslang/oreslang-source.net",
+            1419704375,
+            "dotnet",
+        )),
+        "wasm" => Some((
+            "ores-truffle-oreslang/oreslang-source.wasm",
+            1419858954,
+            "wasm",
+        )),
+        "forge" => Some((
+            "ores-truffle-oreslang/oreslang-source.forge",
+            1419703674,
+            "forge",
+        )),
         _ => None,
     }
 }
@@ -168,7 +188,9 @@ fn safe_workflow_path(path: &str) -> bool {
     {
         return false;
     }
-    !path.split('/').any(|part| part.is_empty() || part == "." || part == "..")
+    !path
+        .split('/')
+        .any(|part| part.is_empty() || part == "." || part == "..")
 }
 
 fn safe_run_path(actual: &str, workflow: &str) -> bool {
@@ -179,7 +201,9 @@ fn safe_run_path(actual: &str, workflow: &str) -> bool {
         return false;
     };
     !rest.is_empty()
-        && !rest.split('/').any(|part| part.is_empty() || part == "." || part == "..")
+        && !rest
+            .split('/')
+            .any(|part| part.is_empty() || part == "." || part == "..")
         && rest
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || b"_-./".contains(&b))
@@ -197,7 +221,10 @@ fn housekeeping(name: &str) -> bool {
 }
 
 fn tier_rank(tier: &str) -> Option<u8> {
-    TIERS.iter().position(|candidate| *candidate == tier).map(|n| n as u8)
+    TIERS
+        .iter()
+        .position(|candidate| *candidate == tier)
+        .map(|n| n as u8)
 }
 
 fn artifact<'a>(evidence: &'a Evidence, id: u64) -> Option<&'a ArtifactEvidence> {
@@ -323,7 +350,10 @@ fn validate(e: &Evidence) -> Result<&'static str, String> {
         if !categories.contains("native_compiler_build") {
             return Err("NATIVE_COMPILER_BUILT requires a native compiler build step".into());
         }
-        let compiler = e.compiler.as_ref().ok_or("compiler provenance is required")?;
+        let compiler = e
+            .compiler
+            .as_ref()
+            .ok_or("compiler provenance is required")?;
         if compiler.artifact_id == 0
             || !nonblank(&compiler.identity)
             || !lower_hex(&compiler.sha256, 64)
@@ -341,7 +371,10 @@ fn validate(e: &Evidence) -> Result<&'static str, String> {
         if !categories.contains("compiled_ores_guest_runtime_execution") {
             return Err("ORES_GUEST_EXECUTED requires a compiled guest execution step".into());
         }
-        let guest = e.guest.as_ref().ok_or("compiled guest provenance is required")?;
+        let guest = e
+            .guest
+            .as_ref()
+            .ok_or("compiled guest provenance is required")?;
         if !nonblank(&guest.case_id)
             || !lower_hex(&guest.source_sha256, 64)
             || !lower_hex(&guest.artifact_sha256, 64)
@@ -380,7 +413,10 @@ fn validate_report(evidence: &Evidence, parity_backend: &str, path: &str) -> Res
         .get("backends")
         .and_then(|value| value.as_array())
         .ok_or("parity report has no backend list")?;
-    if !backends.iter().any(|value| value.as_str() == Some(parity_backend)) {
+    if !backends
+        .iter()
+        .any(|value| value.as_str() == Some(parity_backend))
+    {
         return Err("parity report does not include evidence backend".into());
     }
     let guest = evidence
@@ -413,8 +449,7 @@ fn validate_report(evidence: &Evidence, parity_backend: &str, path: &str) -> Res
         .ok_or("compiled guest parity-report cell has no runtime invocation")?;
     if invocation.get("status").and_then(|v| v.as_str()) != Some("completed")
         || invocation.get("exit_code").and_then(|v| v.as_i64()) != Some(guest.exit_code as i64)
-        || invocation.get("stdout_hex").and_then(|v| v.as_str())
-            != Some(guest.stdout_hex.as_str())
+        || invocation.get("stdout_hex").and_then(|v| v.as_str()) != Some(guest.stdout_hex.as_str())
     {
         return Err("compiled guest runtime evidence disagrees with parity report".into());
     }
@@ -429,7 +464,9 @@ fn run() -> Result<(), String> {
     let mut report_path = None;
     while let Some(arg) = args.next() {
         if arg != "--report" || report_path.is_some() {
-            return Err("usage: evidence-contract <evidence.json> [--report <parity-results.json>]".into());
+            return Err(
+                "usage: evidence-contract <evidence.json> [--report <parity-results.json>]".into(),
+            );
         }
         report_path = Some(
             args.next()
