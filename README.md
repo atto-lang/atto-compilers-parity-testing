@@ -8,7 +8,12 @@ The 31-program original feature ladder covers scalar execution, control flow, di
 
 Every positive multi-file entry point imports exactly three local source files, performs in-program assertions, and emits a stable `PARITY_OK|<name>|` prefix. The Rust runner recursively fingerprints the complete reachable import graph, including cycles, so a result is tied to all source bytes involved.
 
-See `docs/TEST_MATRIX.md`, `docs/EXECUTION.md`, `docs/BACKEND_ADAPTERS.md`, `manifest.json`, `checks/manifest.json`, and `checks/README.md`.
+See `docs/TEST_MATRIX.md`, `docs/EXECUTION.md`, `docs/BACKEND_ADAPTERS.md`, `docs/CI_EXECUTION_EVIDENCE.md`, `manifest.json`, `checks/manifest.json`, and `checks/README.md`.
+
+CI execution evidence is tiered separately from corpus status. Source-side exact-run
+verification begins at `RUNNER_EXECUTED`; compiler/guest tiers require stronger
+artifact/provenance evidence, and `ORES_GUEST_EXECUTED` must also bind to the
+matching executed parity-report cell.
 
 Tooling follows the Oreslang Rust-only tooling policy; Python is prohibited.
 
