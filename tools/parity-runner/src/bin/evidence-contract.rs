@@ -362,11 +362,75 @@ fn validate(e: &Evidence) -> Result<&'static str, String> {
     Ok(parity_backend)
 }
 
+fn validate_report(evidence: &Evidence, parity_backend: &str, path: &str) -> Result<(), String> {
+    let raw = fs::read(path).map_err(|e| format!("failed to read parity report: {e}"))?;
+    if raw.is_empty() || raw.len() > 16 * 1024 * 1024 {
+        return Err("parity report is empty or oversized".into());
+    }
+    let report: serde_json::Value =
+        serde_json::from_slice(&raw).map_err(|e| format!("invalid parity report JSON: {e}"))?;
+    if report.get("executed") != Some(&serde_json::Value::Bool(true)) {
+        return Err("compiled guest evidence requires an executed parity report".into());
+    }
+    let backends = report
+        .get("backends")
+        .and_then(|value| value.as_array())
+        .ok_or("parity report has no backend list")?;
+    if !backends.iter().any(|value| value.as_str() == Some(parity_backend)) {
+        return Err("parity report does not include evidence backend".into());
+    }
+    let guest = evidence
+        .guest
+        .as_ref()
+        .ok_or("compiled guest provenance is required")?;
+    let records = report
+        .get("records")
+        .and_then(|value| value.as_array())
+        .ok_or("parity report has no records")?;
+    let matches: Vec<_> = records
+        .iter()
+        .filter(|record| {
+            record.get("backend").and_then(|v| v.as_str()) == Some(parity_backend)
+                && record.get("case_id").and_then(|v| v.as_str()) == Some(guest.case_id.as_str())
+                && record.get("source_sha256").and_then(|v| v.as_str())
+                    == Some(guest.source_sha256.as_str())
+        })
+        .collect();
+    if matches.len() != 1 {
+        return Err("compiled guest evidence must match exactly one parity-report cell".into());
+    }
+    let record = matches[0];
+    if record.get("status").and_then(|v| v.as_str()) != Some("pass") {
+        return Err("compiled guest parity-report cell is not a validated pass".into());
+    }
+    let invocation = record
+        .get("run")
+        .and_then(|value| value.as_object())
+        .ok_or("compiled guest parity-report cell has no runtime invocation")?;
+    if invocation.get("status").and_then(|v| v.as_str()) != Some("completed")
+        || invocation.get("exit_code").and_then(|v| v.as_i64()) != Some(guest.exit_code as i64)
+        || invocation.get("stdout_hex").and_then(|v| v.as_str())
+            != Some(guest.stdout_hex.as_str())
+    {
+        return Err("compiled guest runtime evidence disagrees with parity report".into());
+    }
+    Ok(())
+}
+
 fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
-    let path = args.next().ok_or("usage: evidence-contract <evidence.json>")?;
-    if args.next().is_some() {
-        return Err("usage: evidence-contract <evidence.json>".into());
+    let path = args
+        .next()
+        .ok_or("usage: evidence-contract <evidence.json> [--report <parity-results.json>]")?;
+    let mut report_path = None;
+    while let Some(arg) = args.next() {
+        if arg != "--report" || report_path.is_some() {
+            return Err("usage: evidence-contract <evidence.json> [--report <parity-results.json>]".into());
+        }
+        report_path = Some(
+            args.next()
+                .ok_or("--report requires a parity-results.json path")?,
+        );
     }
     let raw = fs::read(&path).map_err(|e| format!("failed to read evidence: {e}"))?;
     if raw.is_empty() || raw.len() > 1024 * 1024 {
@@ -375,6 +439,12 @@ fn run() -> Result<(), String> {
     let evidence: Evidence =
         serde_json::from_slice(&raw).map_err(|e| format!("invalid evidence JSON: {e}"))?;
     let parity_backend = validate(&evidence)?;
+    if evidence.claim_tier == "ORES_GUEST_EXECUTED" {
+        let path = report_path
+            .as_deref()
+            .ok_or("ORES_GUEST_EXECUTED requires --report binding")?;
+        validate_report(&evidence, parity_backend, path)?;
+    }
     println!(
         "{}",
         json!({
