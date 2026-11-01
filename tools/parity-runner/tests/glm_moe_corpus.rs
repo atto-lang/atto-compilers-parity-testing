@@ -236,3 +236,16 @@ fn each_glm_source_blob_is_distinct_and_has_one_portable_guest_entry() {
     }
     assert_eq!(hashes.len(), 20);
 }
+
+
+#[test]
+fn fixed_gate_guest_requires_bounded_post_sgd_before_returning_success() {
+    let guest = fs::read_to_string(root().join("programs/51-glm-fixed-gate-sgd-loss.ores"))
+        .unwrap();
+    assert!(guest.contains("fnc bounded_post_sgd("));
+    assert!(guest.contains("const float updated = weight - rate * gradient;"));
+    assert!(guest.contains("updated <= 1000000000.0"));
+    assert!(guest.contains("!bounded_post_sgd(1000000000.0, -1000000000.0, 1.0)"));
+    assert!(guest.contains("!bounded_post_sgd(-1000000000.0, 1000000000.0, 1.0)"));
+    assert!(guest.contains("new_loss == 0.47265625"));
+}
