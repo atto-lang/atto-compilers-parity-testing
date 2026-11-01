@@ -250,15 +250,15 @@ fn local_imports(path: &Path, root: &Path) -> Result<Vec<PathBuf>, String> {
         if !meta.file_type().is_file() {
             return Err(format!("local import is not a regular file: {target}"));
         }
-        let candidate = candidate
-            .canonicalize()
+        let candidate_text = candidate
+            .strip_prefix(root)
+            .map_err(|_| format!("import escapes repository root: {target}"))?
+            .to_str()
+            .ok_or_else(|| "non-UTF8 import path".to_string())?;
+        // Use the same no-symlink admission policy for the whole graph,
+        // not just for entrypoints listed in the manifest.
+        let candidate = safe_file(root, candidate_text)
             .map_err(|e| format!("{} imports {target}: {e}", path.display()))?;
-        if !candidate.starts_with(root) || !candidate.is_file() {
-            return Err(format!(
-                "invalid local import from {}: {target}",
-                path.display()
-            ));
-        }
         result.push(candidate);
     }
     Ok(result)
@@ -648,17 +648,26 @@ fn safe_temp_component(value: &str) -> String {
 }
 
 fn temp_dir(case_id: &str, backend: &str) -> Result<PathBuf, String> {
-    let path = env::temp_dir().join(format!(
-        "ores-parity-{}-{}-{}",
-        std::process::id(),
-        safe_temp_component(case_id),
-        safe_temp_component(backend)
-    ));
-    if path.exists() {
-        fs::remove_dir_all(&path).map_err(|e| e.to_string())?;
+    // Never delete an existing path: an attacker-controlled symlink/directory
+    // collision must not cause destructive cleanup outside the test sandbox.
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    use std::sync::atomic::Ordering;
+    let root = env::temp_dir();
+    for _ in 0..128 {
+        let sequence = NEXT.fetch_add(1, Ordering::Relaxed);
+        let path = root.join(format!(
+            "ores-parity-{}-{}-{}-{sequence}",
+            std::process::id(),
+            safe_temp_component(case_id),
+            safe_temp_component(backend)
+        ));
+        match fs::create_dir(&path) {
+            Ok(()) => return Ok(path),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(format!("cannot create isolated test directory: {error}")),
+        }
     }
-    fs::create_dir_all(&path).map_err(|e| e.to_string())?;
-    Ok(path)
+    Err("exhausted collision-free temporary directory attempts".into())
 }
 
 // Cranelift's native JIT CLI returns process status zero and prints the
