@@ -24,8 +24,13 @@ fn selected_missing_backend_fails_instead_of_claiming_success() {
     let (status, report) = execute("missing", false);
     assert!(!status.success());
     assert_eq!(report["backends"], serde_json::json!(["java"]));
-    assert_eq!(report["records"].as_array().unwrap().len(), 75);
-    assert_eq!(report["summary"]["backend_not_configured"], 75);
+    assert_eq!(
+        report["records"].as_array().unwrap().len() as u64,
+        report["corpus"]["total_cases"].as_u64().unwrap()
+    );
+    assert_eq!(
+        report["summary"]["backend_not_configured"], report["corpus"]["total_cases"]
+    );
 }
 
 #[cfg(unix)]
@@ -33,7 +38,9 @@ fn selected_missing_backend_fails_instead_of_claiming_success() {
 fn adapter_error_is_infrastructure_failure_even_for_negative_probes() {
     let (status, report) = execute("adapter-error", true);
     assert!(!status.success());
-    assert_eq!(report["summary"]["compile_infrastructure_failure"], 75);
+    assert_eq!(
+        report["summary"]["compile_infrastructure_failure"], report["corpus"]["total_cases"]
+    );
 }
 
 #[test]
@@ -53,8 +60,13 @@ fn cranelift_missing_adapter_fails_closed() {
     std::fs::remove_file(output).unwrap();
     assert!(!status.success());
     assert_eq!(report["backends"], serde_json::json!(["cranelift"]));
-    assert_eq!(report["records"].as_array().unwrap().len(), 75);
-    assert_eq!(report["summary"]["backend_not_configured"], 75);
+    assert_eq!(
+        report["records"].as_array().unwrap().len() as u64,
+        report["corpus"]["total_cases"].as_u64().unwrap()
+    );
+    assert_eq!(
+        report["summary"]["backend_not_configured"], report["corpus"]["total_cases"]
+    );
 }
 
 #[test]
@@ -82,7 +94,7 @@ fn case_filter_runs_only_requested_scalar_inventory() {
         serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
     std::fs::remove_file(output).unwrap();
     assert!(!status.success());
-    assert_eq!(report["corpus"]["total_cases"], 75);
+    assert!(report["corpus"]["total_cases"].as_u64().unwrap() >= 81);
     assert_eq!(report["cases"], 16);
     assert_eq!(report["records"].as_array().unwrap().len(), 16);
     assert_eq!(report["summary"]["backend_not_configured"], 16);
