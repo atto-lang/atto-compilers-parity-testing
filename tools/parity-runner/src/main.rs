@@ -19,7 +19,13 @@ const BACKENDS: [(&str, &str); 6] = [
 
 #[derive(Debug, Deserialize)]
 struct LegacyManifest {
+    policy: LegacyPolicy,
     cases: Vec<LegacyCase>,
+}
+
+#[derive(Debug, Deserialize)]
+struct LegacyPolicy {
+    target_backends: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -171,8 +177,9 @@ fn classify_diagnostic(
     invocation: &Invocation,
 ) -> Option<String> {
     let backend_rules = rules.get(backend)?;
-    let raw = format!("{}{}", invocation.stdout_hex, invocation.stderr_hex);
-    let haystack = ascii_lower_hex(&raw)?;
+    // A guest/source can echo arbitrary text on stdout. A negative compile
+    // test is admissible only on the compiler's stderr diagnostic channel.
+    let haystack = ascii_lower_hex(&invocation.stderr_hex)?;
     for (category, needles) in backend_rules {
         for needle in needles {
             let encoded = hex(needle.to_ascii_lowercase().as_bytes());
@@ -286,11 +293,21 @@ fn lowercase_kebab(name: &str) -> bool {
         })
 }
 
+fn validate_backend_policy(policy: &LegacyPolicy) -> Result<(), String> {
+    let declared: BTreeSet<_> = policy.target_backends.iter().map(String::as_str).collect();
+    let supported: BTreeSet<_> = BACKENDS.iter().map(|(backend, _)| *backend).collect();
+    if declared.len() != policy.target_backends.len() || declared != supported {
+        return Err("manifest target_backends must enumerate each runner backend exactly once".into());
+    }
+    Ok(())
+}
+
 fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
     let legacy: LegacyManifest = serde_json::from_str(
         &fs::read_to_string(root.join("manifest.json")).map_err(|e| e.to_string())?,
     )
     .map_err(|e| e.to_string())?;
+    validate_backend_policy(&legacy.policy)?;
 
     let mut cases = Vec::new();
     for case in &legacy.cases {
@@ -682,6 +699,16 @@ fn evaluate_case(
     } else if case.expected_kind == "compile_reject" {
         if compile_exit == Some(0) {
             record.status = "unexpected_compile_success".into();
+        } else if fs::read_dir(&workdir)
+            .map_err(|e| e.to_string())?
+            .next()
+            .transpose()
+            .map_err(|e| e.to_string())?
+            .is_some()
+        {
+            // No emitted guest binaries, partial modules, symlinks, or
+            // published release pointers may survive a rejected source.
+            record.status = "rejected_with_artifacts".into();
         } else {
             record.actual_diagnostic_category = record
                 .compile
@@ -846,22 +873,14 @@ fn main() -> Result<(), String> {
         serde_json::to_string(&report.summary).map_err(|e| e.to_string())?
     );
 
-    let hard_fail = report.records.iter().any(|record| {
-        matches!(
-            record.status.as_str(),
-            "compile_failure"
-                | "intentional_capability_reject"
-                | "wrong_diagnostic"
-                | "rejection_unclassified"
-                | "wrong_result"
-                | "wrong_stdout"
-                | "unexpected_compile_success"
-                | "compile_infrastructure_failure"
-                | "runtime_infrastructure_failure"
-                | "backend_not_configured"
-                | "unvalidated"
-        )
-    });
+    // --execute is a certification attempt, not an inventory command. Even
+    // exploratory matches, intentional unsupported cases and unknown future
+    // statuses must return a failing process code. Inventory mode remains
+    // explicitly non-executing and may exit zero.
+    let hard_fail = execute && (report.records.is_empty()
+        || report.records.iter().any(|record| {
+            !matches!(record.status.as_str(), "pass" | "expected_reject")
+        }));
     if hard_fail {
         std::process::exit(1);
     }
@@ -871,7 +890,8 @@ fn main() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        ascii_lower_hex, classify_diagnostic, hex, import_target, lowercase_kebab, Invocation,
+        ascii_lower_hex, classify_diagnostic, hex, import_target, lowercase_kebab,
+        validate_backend_policy, Invocation, LegacyPolicy,
     };
     use std::collections::BTreeMap;
 
@@ -896,6 +916,42 @@ mod tests {
             classify_diagnostic(&rules, "dotnet", &invocation).as_deref(),
             Some("unsupported_select")
         );
+    }
+
+    #[test]
+    fn stdout_spoofing_cannot_classify_compiler_diagnostics() {
+        let mut backend = BTreeMap::new();
+        backend.insert("integer_range".to_string(), vec!["signed 64-bit".to_string()]);
+        let mut rules = BTreeMap::new();
+        rules.insert("java".to_string(), backend);
+        let mut invocation = Invocation {
+            status: "completed".into(),
+            exit_code: Some(1),
+            stdout_hex: hex(b"integer literal overflows signed 64-bit"),
+            stderr_hex: hex(b"unrelated compiler failure"),
+            duration_ms: 0,
+            error: None,
+        };
+        assert_eq!(classify_diagnostic(&rules, "java", &invocation), None);
+        invocation.stderr_hex = hex(b"integer literal overflows signed 64-bit");
+        assert_eq!(
+            classify_diagnostic(&rules, "java", &invocation).as_deref(),
+            Some("integer_range")
+        );
+    }
+
+    #[test]
+    fn manifest_backend_roster_is_exact_and_unique() {
+        let mut roster = LegacyPolicy {
+            target_backends: super::BACKENDS.iter().map(|(name, _)| name.to_string()).collect(),
+        };
+        assert!(validate_backend_policy(&roster).is_ok());
+        roster.target_backends.pop();
+        assert!(validate_backend_policy(&roster).is_err());
+        roster.target_backends.push("java".into());
+        assert!(validate_backend_policy(&roster).is_err());
+        roster.target_backends.push("cranelift".into());
+        assert!(validate_backend_policy(&roster).is_err());
     }
 
     #[test]
