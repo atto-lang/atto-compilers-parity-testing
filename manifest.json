@@ -796,6 +796,90 @@
       "validation_status": "candidate",
       "source_basis": "2026-11-01 byte-identical five-backend immutable-scalar guest candidate; Cranelift real-JIT tests authored, all five backend evidence pending",
       "required_on_all_backends": true
+    },
+    {
+      "id": "45",
+      "name": "cast-int-literal",
+      "path": "programs/45-cast-int-literal.ores",
+      "group": "scalar",
+      "features": [
+        "identity-cast",
+        "int",
+        "precedence"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 five-backend checked-i64 identity-cast candidate, no executed guest evidence",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "46",
+      "name": "chained-cast-int",
+      "path": "programs/46-chained-cast-int.ores",
+      "group": "scalar",
+      "features": [
+        "identity-cast",
+        "cast-chain"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 five-backend checked-i64 identity-cast candidate, no executed guest evidence",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "47",
+      "name": "grouped-cast-multiply",
+      "path": "programs/47-grouped-cast-multiply.ores",
+      "group": "scalar",
+      "features": [
+        "identity-cast",
+        "multiplication",
+        "parentheses"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 five-backend checked-i64 identity-cast candidate, no executed guest evidence",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "48",
+      "name": "readonly-local-cast",
+      "path": "programs/48-readonly-local-cast.ores",
+      "group": "scalar",
+      "features": [
+        "immutable-default",
+        "identity-cast",
+        "local-reference"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 five-backend checked-i64 identity-cast candidate, no executed guest evidence",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "49",
+      "name": "const-typed-identity",
+      "path": "programs/49-const-typed-identity.ores",
+      "group": "scalar",
+      "features": [
+        "const",
+        "identity-cast",
+        "annotated-local"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 five-backend checked-i64 identity-cast candidate, no executed guest evidence",
+      "required_on_all_backends": true
     }
   ]
 }
