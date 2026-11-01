@@ -117,6 +117,8 @@ struct Corpus {
     legacy_cases: usize,
     multifile_checks: usize,
     negative_probes: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    external_orm_cases: Option<usize>,
     total_cases: usize,
 }
 
@@ -442,6 +444,7 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
         legacy_cases: legacy.cases.len(),
         multifile_checks: checks_manifest.checks.len(),
         negative_probes,
+        external_orm_cases: None,
         total_cases: cases.len(),
     };
     Ok((cases, corpus))
@@ -686,6 +689,10 @@ fn evaluate_case(
         return Ok(record);
     }
 
+    if !external_orm::still_bound(case) {
+        record.status = "compile_infrastructure_failure".into();
+        return Ok(record);
+    }
     let workdir = temp_dir(&case.case_id, backend)?;
     let artifact = workdir.join("program");
     let compile_argv = expand(
@@ -698,6 +705,11 @@ fn evaluate_case(
     let compile_status = compile.status.clone();
     let compile_exit = compile.exit_code;
     record.compile = Some(compile);
+    if !external_orm::still_bound(case) {
+        record.status = "compile_infrastructure_failure".into();
+        let _ = fs::remove_dir_all(workdir);
+        return Ok(record);
+    }
 
     if compile_status != "completed" || compile_exit.is_none() || compile_exit == Some(125) {
         record.status = "compile_infrastructure_failure".into();
@@ -754,6 +766,11 @@ fn evaluate_case(
         let run_exit = run.exit_code;
         let stdout_hex = run.stdout_hex.clone();
         record.run = Some(run);
+        if !external_orm::still_bound(case) {
+            record.status = "runtime_infrastructure_failure".into();
+            let _ = fs::remove_dir_all(workdir);
+            return Ok(record);
+        }
         record.status = if run_status != "completed" || run_exit.is_none() || run_exit == Some(125)
         {
             "runtime_infrastructure_failure".into()
@@ -849,6 +866,7 @@ fn main() -> Result<(), String> {
     let (mut cases, mut corpus) = load_cases(&root)?;
     if let (Some(path), Some(head)) = (orm_roots.first(), orm_heads.first()) {
         let extra = external_orm::load(Path::new(path), head)?;
+        corpus.external_orm_cases = Some(extra.len());
         corpus.total_cases += extra.len();
         cases.extend(extra);
     }

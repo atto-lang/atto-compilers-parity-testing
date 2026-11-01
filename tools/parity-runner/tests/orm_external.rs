@@ -56,6 +56,7 @@ fn four_real_orm_source_candidates_are_not_compiler_evidence() {
     assert!(ok);
     assert_eq!(r["cases"], 59);
     assert_eq!(r["corpus"]["total_cases"], 59);
+    assert_eq!(r["corpus"]["external_orm_cases"], 4);
     assert_eq!(r["executed"], false);
     assert_eq!(r["summary"]["not_run"], 4);
     assert_eq!(r["records"].as_array().unwrap().len(), 4);

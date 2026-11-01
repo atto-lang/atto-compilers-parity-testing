@@ -20,6 +20,40 @@ fn git(root: &Path, args: &[&str]) -> Result<std::process::Output, String> {
         .map_err(|e| format!("ORM Git admission unavailable: {e}"))
 }
 
+
+// Check both module and guest bytes before compile and after guest completion.
+// This guards source changes after initial Git admission; it does not make a
+// race-free sandbox or provide any backend-specific compiler capability.
+pub(super) fn still_bound(case: &TestCase) -> bool {
+    if case.suite != "external-orm-exact-head" {
+        return true;
+    }
+    let Some(root) = case.source.parent().and_then(|p| p.parent()) else {
+        return false;
+    };
+    let Some(paths) = &case.graph_files else {
+        return false;
+    };
+    let Some(expected) = &case.graph_sha256 else {
+        return false;
+    };
+    let mut files = Vec::new();
+    for path in paths {
+        let Ok(file) = safe_file(root, path) else {
+            return false;
+        };
+        let Ok(meta) = fs::symlink_metadata(&file) else {
+            return false;
+        };
+        if !meta.is_file() || meta.file_type().is_symlink() {
+            return false;
+        }
+        files.push(file);
+    }
+    fingerprint_graph(&files, root).is_ok_and(|actual| actual == *expected)
+        && sha256_file(&case.source).is_ok_and(|actual| actual == case.source_sha256)
+}
+
 pub(super) fn load(source_root: &Path, head: &str) -> Result<Vec<TestCase>, String> {
     if head.len() != 40 || !head.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()) {
         return Err("--orm-head must be a full lowercase 40-hex Git commit".into());
