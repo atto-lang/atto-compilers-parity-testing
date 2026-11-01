@@ -7,9 +7,17 @@ fnc checked_result_fallback_is_explicit(): TestOutcome {
     && Result.unwrap_or(accepted, 12) == 41,
     "Result fallback must preserve Ok and replace Err without implicit coercion");
 }
+fnc option_fallback_is_explicit(): TestOutcome {
+  val Option<int> valid = Some(9);
+  val Option<int> missing = None;
+  return expect_true(Option.unwrap_or(valid, -1) == 9 &&
+    Option.unwrap_or(missing, -1) == -1,
+    "portable Option fallback must distinguish present and absent values");
+}
 pub routine main(): void {
   val TestSuite suite = new TestSuite("cross-compiler-parity", arr[
-    new TestCase("checked_result_fallback_is_explicit", checked_result_fallback_is_explicit, false, "")
+    new TestCase("checked_result_fallback_is_explicit", checked_result_fallback_is_explicit, false, ""),
+    new TestCase("option_fallback_is_explicit", option_fallback_is_explicit, false, "")
   ]);
   val TestOptions options = new TestOptions("", false, true);
   val RunSummary summary = run_suite(rt borrow suite, rt borrow options);
