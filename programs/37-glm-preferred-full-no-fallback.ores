@@ -1,0 +1,4 @@
+// 37: GLM/MoE shared-source parity candidate. No backend-specific rewriting.
+// Return 42 on correct semantic behavior, 1 on mismatch. Compiler-backed evidence pending.
+fnc route(int a, int b, int load0, int load1, int cap): int { if (a >= b) { if (load0 >= cap) { return -1; } fi return 0; } fi if (load1 >= cap) { return -1; } fi return 1; }
+pub fnc main(): int { if (route(7, 6, 2, 0, 2) == -1) { return 42; } fi return 1; }
