@@ -107,6 +107,8 @@ struct Record {
     features: Vec<String>,
     expected_diagnostic_category: Option<String>,
     actual_diagnostic_category: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    compiler_binary_sha256: Option<String>,
     status: String,
     compile: Option<Invocation>,
     run: Option<Invocation>,
@@ -748,6 +750,7 @@ fn evaluate_case(
         features: case.features.clone(),
         expected_diagnostic_category: case.expected_diagnostic_category.clone(),
         actual_diagnostic_category: None,
+        compiler_binary_sha256: None,
         status: "not_run".into(),
         compile: None,
         run: None,
@@ -793,6 +796,7 @@ fn evaluate_case(
             let _ = fs::remove_dir_all(&workdir);
             return Ok(record);
         }
+        record.compiler_binary_sha256 = Some(compiler_pin);
     }
     let compile = invoke(&compile_argv, &workdir, timeout);
     if backend == "cranelift" {
