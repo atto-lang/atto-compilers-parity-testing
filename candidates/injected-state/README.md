@@ -32,3 +32,47 @@ A negative counts only after the same source has passed parsing of the candidate
 Related work: [Java compiler baseline #2317](https://github.com/ores-truffle-oreslang/oreslang-source.java/pull/2317), [Java guarded mutable sharing #2385](https://github.com/ores-truffle-oreslang/oreslang-source.java/pull/2385), [Java runtime state-loan hardening #2363](https://github.com/ores-truffle-oreslang/oreslang-source.java/pull/2363), [LLVM native borrow #1194](https://github.com/ores-truffle-oreslang/oreslang-source.llvm/pull/1194), [WASM provenance #187](https://github.com/ores-truffle-oreslang/oreslang-source.wasm/pull/187), and [.NET provenance #261](https://github.com/ores-truffle-oreslang/oreslang-source.net/pull/261).
 
 **Verification:** authoring/source contract only. No five-toolchain execution or parity result is claimed.
+
+
+## Optional five-backend candidate execution (still unverified)
+
+The Rust-only `tools/parity-runner/src/bin/injected-state-candidate.rs` now
+runs **only** this optional injection corpus, not the mandatory parity matrix.
+A default no-compiler audit emits 35 explicit `not_run` records:
+
+```sh
+cargo run --locked --manifest-path tools/parity-runner/Cargo.toml \
+  --bin injected-state-candidate
+```
+
+For each requested toolchain (JAVA, LLVM, WASM, CRANELIFT, DOTNET), a reviewed
+adapter sets `ORES_INJECTED_<BACKEND>_COMPILE` and
+`ORES_INJECTED_<BACKEND>_RUN` to direct, shell-word-split argv templates.
+The runner supports `{source}`, `{artifact}` and `{workdir}` placeholders.
+
+```sh
+cargo run --locked --manifest-path tools/parity-runner/Cargo.toml \
+  --bin injected-state-candidate -- --execute > injected-state-results.json
+```
+
+Positive control: the actual compiler must publish a nonempty artifact at
+`{artifact}`; running that artifact must exit 0 and write exactly `2`
+without additional stdout/stderr. Negative controls must reject in the real
+type/ownership stage and produce a single reviewed stderr marker
+`ORES_SEMANTIC_REJECT:type:<category>` or
+`ORES_SEMANTIC_REJECT:ownership:<category>`. Unsupported syntax, a parser
+error, a generic nonzero exit, an incorrect diagnostic phase, signals, or
+generated files in the workdir never count as semantic rejection.
+
+The runner hashes all seven unchanged source files **before** executing any
+backend; it verifies them after each invocation, bounds process time to
+30 seconds and each stdout/stderr stream to 1 MiB, and records receipts per
+backend. Backend adapters must additionally enforce their subprocess-tree
+timeouts and prevent artifacts outside the assigned workdir.
+
+Even matched results are recorded as `candidate_observed_run` or
+`candidate_observed_reject`, **not PASS**. The JSON report explicitly keeps
+`parity_pass: false` and `required_parity: false`. Harness unit tests
+using synthetic compiler results are never evidence of an actual Oreslang
+compiler or runtime. Do not transfer private source to another organization
+without independent security authorization.
