@@ -796,7 +796,9 @@ fn main() -> Result<(), String> {
             args.get(index + 1)
                 .filter(|name| BACKENDS.iter().any(|(backend, _)| backend == name))
                 .cloned()
-                .ok_or_else(|| "--backend requires llvm, java, wasm, dotnet, cranelift, or js".to_string())
+                .ok_or_else(|| {
+                    "--backend requires llvm, java, wasm, dotnet, cranelift, or js".to_string()
+                })
         })
         .transpose()?;
     let output = args
@@ -894,7 +896,8 @@ fn main() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        ascii_lower_hex, classify_diagnostic, hex, import_target, lowercase_kebab, promotable_status, Invocation,
+        ascii_lower_hex, classify_diagnostic, hex, import_target, lowercase_kebab,
+        promotable_status, Invocation,
     };
     use std::collections::BTreeMap;
 
@@ -919,7 +922,10 @@ mod tests {
     fn six_backends_include_separate_cranelift() {
         let backends = super::BACKENDS;
         assert_eq!(backends.len(), 6);
-        assert!(backends.iter().any(|(name, env)| *name == "cranelift" && *env == "CRANELIFT"));
+        let found = backends
+            .iter()
+            .any(|(name, env)| *name == "cranelift" && *env == "CRANELIFT");
+        assert!(found);
     }
 
     #[test]
@@ -933,7 +939,11 @@ mod tests {
             std::process::id()
         ));
         std::fs::create_dir_all(root.join("checks/nested")).unwrap();
-        std::fs::write(root.join("checks/nested/real.ores"), "pub fnc main(): int { return 42; }").unwrap();
+        std::fs::write(
+            root.join("checks/nested/real.ores"),
+            "pub fnc main(): int { return 42; }",
+        )
+        .unwrap();
         assert!(super::safe_file(&root, "checks/nested/real.ores").is_ok());
         for invalid in [
             "../outside.ores",
@@ -943,7 +953,9 @@ mod tests {
         ] {
             assert!(super::safe_file(&root, invalid).is_err(), "{invalid}");
         }
-        assert!(super::checked_repo_path(&root, std::path::Path::new("../escape.ores")).is_err());
+        assert!(
+            super::checked_repo_path(&root, std::path::Path::new("../escape.ores")).is_err()
+        );
         #[cfg(unix)]
         {
             use std::os::unix::fs::symlink;
