@@ -1,0 +1,13 @@
+// Actor-owned count: no shared mutable state or host-language test implementation.
+define pub actor SequencedCounter as
+  state { count: int = 0; }
+  receive(ActorMail<int> mail): void {
+    const next = self.handle_state(critical |s| -> {
+      s.count = s.count + mail.value;
+      return s.count;
+    });
+    self.send(next);
+    if next == 3; do self.end(); fi
+    return;
+  }
+end
