@@ -8,12 +8,13 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-const BACKENDS: [(&str, &str); 5] = [
+const BACKENDS: [(&str, &str); 6] = [
     ("llvm", "LLVM"),
     ("java", "JAVA"),
     ("wasm", "WASM"),
     ("dotnet", "DOTNET"),
     ("js", "JS"),
+    ("cranelift", "CRANELIFT"),
 ];
 
 #[derive(Debug, Deserialize)]
@@ -195,8 +196,15 @@ fn sha256_bytes(bytes: &[u8]) -> Result<String, String> {
 }
 
 fn safe_file(root: &Path, path_text: &str) -> Result<PathBuf, String> {
-    let path = root
-        .join(path_text)
+    // Never follow a file symlink, even if its target stays in this repository.
+    // Exact source identities must refer to regular repository files.
+    let raw = root.join(path_text);
+    let metadata = fs::symlink_metadata(&raw)
+        .map_err(|e| format!("{path_text}: {e}"))?;
+    if !metadata.file_type().is_file() {
+        return Err(format!("source is not a regular file: {path_text}"));
+    }
+    let path = raw
         .canonicalize()
         .map_err(|e| format!("{path_text}: {e}"))?;
     if !path.starts_with(root) || !path.is_file() {
@@ -292,7 +300,27 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
     .map_err(|e| e.to_string())?;
 
     let mut cases = Vec::new();
+    let mut legacy_ids = BTreeSet::new();
+    let mut legacy_paths = BTreeSet::new();
     for case in &legacy.cases {
+        if !legacy_ids.insert(case.id.as_str()) {
+            return Err(format!("duplicate legacy case id: {}", case.id));
+        }
+        if !legacy_paths.insert(case.path.as_str()) {
+            return Err(format!("duplicate legacy source path: {}", case.path));
+        }
+        if !case.path.starts_with("programs/")
+            || !case.path.ends_with(".ores")
+            || case.name.is_empty()
+            || case.features.is_empty()
+        {
+            return Err(format!("invalid legacy case metadata: {}", case.id));
+        }
+        if !matches!(case.expected_kind.as_str(), "exit" | "compile_reject")
+            || (case.expected_kind == "exit") != case.expected_value.is_some()
+        {
+            return Err(format!("invalid legacy expectation: {}", case.id));
+        }
         let source = safe_file(root, &case.path)?;
         cases.push(TestCase {
             suite: "legacy".into(),
@@ -765,7 +793,7 @@ fn main() -> Result<(), String> {
             args.get(index + 1)
                 .filter(|name| BACKENDS.iter().any(|(backend, _)| backend == name))
                 .cloned()
-                .ok_or_else(|| "--backend requires llvm, java, wasm, dotnet, or js".to_string())
+                .ok_or_else(|| "--backend requires llvm, java, wasm, dotnet, js, or cranelift".to_string())
         })
         .transpose()?;
     let output = args
@@ -859,6 +887,8 @@ fn main() -> Result<(), String> {
                 | "runtime_infrastructure_failure"
                 | "backend_not_configured"
                 | "unvalidated"
+                | "exploratory_match_not_parity_pass"
+                | "exploratory_expected_reject_not_parity_pass"
         )
     });
     if hard_fail {
