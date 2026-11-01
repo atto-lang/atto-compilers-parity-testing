@@ -14,6 +14,19 @@
   "reference_contract": "oreslang-platform-conformance#297",
   "cases": [
     {
+      "id": "canonical_with_trait_injected_singleton_reject",
+      "path": "trait-with-injected-singleton-unsupported.ores",
+      "git_blob_sha": "52785087b8343613c338ace4553fe9736dad2cd9",
+      "expected": "UNSUPPORTED_AT_FRONTEND",
+      "diagnostics": {
+        "java": "ORES-SINGLETON-UNSUPPORTED",
+        "llvm": "ORES-SINGLETON-UNSUPPORTED",
+        "wasm": "ORES-SINGLETON-UNSUPPORTED",
+        "cranelift": "DECL_KIND_UNSUPPORTED",
+        "net": "ORES-SINGLETON-UNSUPPORTED"
+      }
+    },
+    {
       "id": "trait_injected_singleton_reject",
       "path": "trait-injected-singleton-unsupported.ores",
       "git_blob_sha": "9f0f0a35db63264e7fd57ffe0a9986333e21f2a6",
