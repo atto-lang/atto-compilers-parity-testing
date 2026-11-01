@@ -77,3 +77,45 @@ That needs a dedicated adapter wrapper or a richer parity-runner pipeline. Do no
 ## Promotion rules
 
 An adapter is executable evidence only when it records the exact compiler/runtime SHA, compiles the unchanged source graph, classifies negative diagnostics, and runs the produced program where the backend claims execution support. Compile-only support, an unsupported feature, a skipped test, or a missing runner is a parity gap rather than a pass.
+
+### Cranelift source-local native scalar admission
+
+The experimental Cranelift CLI supports `orescranelift ir source.ores` to
+compile its supported scalar subset into Cranelift IR, and
+`orescranelift run source.ores` to **execute native JIT code**. It prints
+the scalar i64 result as one decimal line and exits 0. Other backends use
+the guest process-exit oracle. The runner treats those two conventions
+differently and strictly, without accepting extra stdout.
+
+Build the real Cranelift backend at an independently pinned source commit,
+then review its binary digest before using it:
+
+```sh
+# Run from the compiler-parity repository root.
+compiler=/absolute/oreslang-source.cranelift/target/release/orescranelift
+test -x "$compiler"
+export ORES_PARITY_CRANELIFT_COMPILER_SHA256="$(sha256sum "$compiler" | cut -d' ' -f1)"
+export ORES_PARITY_CRANELIFT_COMPILE="$compiler ir {source}"
+export ORES_PARITY_CRANELIFT_RUN="$compiler run {source}"
+cargo run --locked --manifest-path tools/parity-runner/Cargo.toml -- \
+  --backend cranelift --case 01 --execute --allow-unvalidated \
+  --output cranelift-scalar-exploratory.json
+```
+
+The runner requires the **same absolute, regular, executable binary** in
+both command templates, matches the pinned SHA-256 before compilation, after
+compilation and after guest execution, and refuses `sh` or PATH wrappers
+under this adapter. It also re-verifies the unchanged source graph around
+both invocations. Any mismatch is `compiler_identity_unverified`,
+`compiler_identity_changed` or `source_identity_changed`, never a pass.
+
+A genuine native result of `42\\n` is recorded as an exploratory match
+for currently unvalidated case 01, and the executable runner intentionally
+exits nonzero. Review and validate the oracle, independently verify compiler
+provenance, and execute all required toolchains before promotion. This
+adapter does **not** support module imports, actors, channels, suspension,
+or ownership semantics in the current Cranelift prototype.
+
+`--case` selects exactly one corpus case by ID; it does not drop other
+cases from the full 67-case audit inventory. Without `--case`, all six
+backend/case combinations remain required.
