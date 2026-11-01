@@ -63,6 +63,26 @@ Do **not** weaken `run-guest.mjs` by omitting its SHA pin. Close this gap either
 
 The current Wasm bridge also documents that relative source imports require a future pinned module-graph gate, so multi-file checks should presently report an unsupported parity gap rather than being flattened or rewritten.
 
+## Real SHA-256 pin for Wasm artifacts
+
+The Rust runner now accepts `{artifact_sha256}` in a backend **run** template.
+It computes the SHA-256 over an ordinary nonempty regular emitted artifact
+after successful compilation, rejects missing/empty/symlink output, and passes
+the digest as an argv token to the pinned Wasm runner. Hashing mock bytes in
+the Rust unit tests demonstrates only host admission, **not native guest
+execution**. The compiler must actually emit the file at `{artifact}`.
+
+Example after pinning a real LLVM-to-Wasm compiler and Wasm runner:
+
+```sh
+export ORES_PARITY_WASM_COMPILE='node /abs/wasm/scripts/compile-ores.mjs --compiler=/abs/llvmc --source={source} --output={artifact}'
+export ORES_PARITY_WASM_RUN='node /abs/wasm/scripts/run-guest.mjs --wasm={artifact} --sha256={artifact_sha256}'
+```
+
+This does not fix the separate multi-file source graph omission in the Wasm
+bridge. Until unchanged four-file Oreslang imports compile and run, the
+new ORM case remains a failing parity gate.
+
 ### .NET Native AOT gap
 
 `oresnet compile` emits `OresGenerated.dll`, not the final executable. The repository's verified path is:

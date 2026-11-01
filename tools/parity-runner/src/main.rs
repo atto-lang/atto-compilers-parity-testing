@@ -451,16 +451,46 @@ fn expand(
     source: &Path,
     artifact: &Path,
     workdir: &Path,
+    artifact_sha256: Option<&str>,
 ) -> Result<Vec<String>, String> {
+    if template.contains("{artifact_sha256}") && artifact_sha256.is_none() {
+        return Err("artifact digest is not available before successful compilation".into());
+    }
     let parts = shell_words::split(template).map_err(|e| e.to_string())?;
     Ok(parts
         .into_iter()
         .map(|p| {
+            // Expand the digest before the shorter {artifact} token, so the
+            // pinned bytes cannot be confused with an unresolved placeholder.
+            let p = if let Some(digest) = artifact_sha256 {
+                p.replace("{artifact_sha256}", digest)
+            } else {
+                p
+            };
             p.replace("{source}", &source.to_string_lossy())
                 .replace("{artifact}", &artifact.to_string_lossy())
                 .replace("{workdir}", &workdir.to_string_lossy())
         })
         .collect())
+}
+
+// A runnable Wasm artifact is a regular file, not a symlink to an arbitrary
+// path. Every run command containing {artifact_sha256} must bind actual bytes
+// AFTER compile and BEFORE run. This digest is evidence input, not an
+// attestation of compilation or a substitute for guest execution.
+fn artifact_digest_if_requested(template: &str, artifact: &Path) -> Result<Option<String>, String> {
+    if !template.contains("{artifact_sha256}") {
+        return Ok(None);
+    }
+    let meta = fs::symlink_metadata(artifact)
+        .map_err(|error| format!("compiled artifact missing: {error}"))?;
+    if !meta.file_type().is_file() || meta.file_type().is_symlink() {
+        return Err("compiled artifact must be an ordinary regular file".into());
+    }
+    if meta.len() == 0 {
+        return Err("compiled artifact is empty".into());
+    }
+    sha256_file(artifact).map(Some)
 }
 
 // Source compilers and guest programs are not trusted to emit bounded output.
@@ -670,6 +700,7 @@ fn evaluate_case(
         &case.source,
         &artifact,
         &workdir,
+        None,
     )?;
     let compile = invoke(&compile_argv, &workdir, timeout);
     let compile_status = compile.status.clone();
@@ -720,11 +751,31 @@ fn evaluate_case(
             "compile_failure".into()
         };
     } else {
+        let run_template = run_template.as_ref().expect("checked above");
+        let digest = match artifact_digest_if_requested(run_template, &artifact) {
+            Ok(value) => value,
+            Err(error) => {
+                // A successful compiler exit without an attributable, pinned
+                // artifact is an infrastructure failure, NEVER parity.
+                record.run = Some(Invocation {
+                    status: "infrastructure_error".into(),
+                    exit_code: None,
+                    stdout_hex: String::new(),
+                    stderr_hex: String::new(),
+                    duration_ms: 0,
+                    error: Some(error),
+                });
+                record.status = "runtime_infrastructure_failure".into();
+                let _ = fs::remove_dir_all(workdir);
+                return Ok(record);
+            }
+        };
         let run_argv = expand(
-            run_template.as_ref().expect("checked above"),
+            run_template,
             &case.source,
             &artifact,
             &workdir,
+            digest.as_deref(),
         )?;
         let run = invoke(&run_argv, &workdir, timeout);
         let run_status = run.status.clone();
@@ -873,6 +924,7 @@ mod tests {
         ascii_lower_hex, classify_diagnostic, hex, import_target, lowercase_kebab, Invocation,
     };
     use std::collections::BTreeMap;
+    use sha2::Digest;
 
     #[test]
     fn diagnostic_classification_is_ascii_case_insensitive() {
@@ -921,6 +973,70 @@ mod tests {
         assert!(!lowercase_kebab("actor--system"));
     }
 
+
+    #[test]
+    fn artifact_digest_placeholder_requires_compile_before_expansion() {
+        let root = std::env::temp_dir();
+        let artifact = root.join("ores-artifact-not-present");
+        assert!(super::expand("run --sha={artifact_sha256}", &artifact, &artifact, &root, None)
+            .is_err());
+        let args = super::expand(
+            "run --sha={artifact_sha256} --wasm={artifact}",
+            &artifact, &artifact, &root,
+            Some("aabbccdd"),
+        ).unwrap();
+        assert_eq!(args[0], "run");
+        assert_eq!(args[1], "--sha=aabbccdd");
+        assert!(args[2].starts_with("--wasm="));
+    }
+
+    #[test]
+    fn missing_or_empty_pinned_artifact_fails_closed() {
+        let root = std::env::temp_dir().join(format!(
+            "ores-parity-artifact-{}", std::process::id()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let missing = root.join("missing.wasm");
+        assert!(super::artifact_digest_if_requested(
+            "--sha256={artifact_sha256}", &missing
+        ).is_err());
+        assert_eq!(
+            super::artifact_digest_if_requested("--wasm={artifact}", &missing).unwrap(),
+            None
+        );
+        let empty = root.join("empty.wasm");
+        std::fs::write(&empty, b"").unwrap();
+        assert!(super::artifact_digest_if_requested(
+            "--sha256={artifact_sha256}", &empty
+        ).is_err());
+        let artifact = root.join("positive.wasm");
+        std::fs::write(&artifact, b"known mock Wasm bytes, not compiled guest").unwrap();
+        let expected = format!("{:x}", sha2::Sha256::digest(
+            b"known mock Wasm bytes, not compiled guest"
+        ));
+        assert_eq!(
+            super::artifact_digest_if_requested("--sha256={artifact_sha256}", &artifact).unwrap(),
+            Some(expected)
+        );
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlink_artifact_never_supplies_digest() {
+        let root = std::env::temp_dir().join(format!(
+            "ores-parity-symlink-{}", std::process::id()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let target = root.join("payload");
+        std::fs::write(&target, b"guest-binary").unwrap();
+        let link = root.join("guest.wasm");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        assert!(super::artifact_digest_if_requested(
+            "--sha256={artifact_sha256}", &link
+        ).is_err());
+        std::fs::remove_dir_all(&root).unwrap();
+    }
     #[test]
     fn hex_encoding_is_stable() {
         assert_eq!(hex(b"PARITY_OK"), "5041524954595f4f4b");
