@@ -78,3 +78,20 @@ delegation does not constitute an independent compiler proof.
 Do not independently merge overlapping corpus additions in
 [parity #16](https://github.com/ores-truffle-oreslang/oreslang-compilers-parity-testing/pull/16)
 without reconciling the shared manifest, backend ordering and counts.
+
+## Shared checked-cast v2 source-identity receipt
+
+The following **authored**, complete Oreslang files are now present at exact
+matching Git blob IDs on the five candidate branch heads in Java #2405,
+LLVM #1256, Wasm #219, .NET #282 and Cranelift #22:
+
+| Case | Required Git blob SHA-1 | Oracle |
+| --- | --- | --- |
+| `contracts/v1/portable-checked-cast-positive-v2.ores` | `1a80e07da1289c87d04454866883f4e06cfc8d77` | Compiled native/managed/Wasm guest must return 42 |
+| `contracts/v1/portable-checked-cast-negative-v2.ores` | `ecc4ccea80f016243e38f351df60cfad9eb6e136` | Compiler must reject `int as bool` for its semantic reason and publish no executable artifact |
+
+Exact source bytes across five repositories are **input identity**, not five
+executed compiler proofs. The Cranelift CLI test now references the two copied
+files at compile time and invokes the actual native JIT when a runner executes
+the integration test. Require source/revision/toolchain SHA and diagnostics,
+plus independent exact-head guest receipts, before promotion.
