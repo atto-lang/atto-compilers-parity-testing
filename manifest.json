@@ -8,7 +8,8 @@
       "llvm",
       "wasm",
       "dotnet",
-      "js"
+      "js",
+      "cranelift"
     ],
     "required_parity": true,
     "unsupported_is_pass": false,
@@ -614,6 +615,135 @@
       "expected_diagnostic_category": null,
       "validation_status": "candidate",
       "source_basis": "2026-11-01 native guest regression wave; authored, unverified",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "34",
+      "name": "grouped-precedence-42",
+      "path": "programs/34-grouped-precedence-42.ores",
+      "group": "scalar",
+      "features": [
+        "grouping",
+        "checked-int"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 source-identical scalar candidate, compiler-backed evidence pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "35",
+      "name": "double-negation-42",
+      "path": "programs/35-double-negation-42.ores",
+      "group": "scalar",
+      "features": [
+        "unary-negation",
+        "checked-int"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 source-identical scalar candidate, compiler-backed evidence pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "36",
+      "name": "left-associative-subtraction-42",
+      "path": "programs/36-left-associative-subtraction-42.ores",
+      "group": "scalar",
+      "features": [
+        "subtraction",
+        "checked-int"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 source-identical scalar candidate, compiler-backed evidence pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "37",
+      "name": "signed-multiplication-42",
+      "path": "programs/37-signed-multiplication-42.ores",
+      "group": "scalar",
+      "features": [
+        "signed-int",
+        "checked-int"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 source-identical scalar candidate, compiler-backed evidence pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "38",
+      "name": "negative-multiplication-chain-42",
+      "path": "programs/38-negative-multiplication-chain-42.ores",
+      "group": "scalar",
+      "features": [
+        "signed-int",
+        "grouping"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 source-identical scalar candidate, compiler-backed evidence pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "39",
+      "name": "maximum-minus-large-42",
+      "path": "programs/39-maximum-minus-large-42.ores",
+      "group": "scalar",
+      "features": [
+        "i64-max",
+        "checked-int"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 source-identical scalar candidate, compiler-backed evidence pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "40",
+      "name": "min-plus-max-42",
+      "path": "programs/40-min-plus-max-42.ores",
+      "group": "scalar",
+      "features": [
+        "i64-min",
+        "i64-max",
+        "checked-int"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 source-identical scalar candidate, compiler-backed evidence pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "41",
+      "name": "nested-grouping-42",
+      "path": "programs/41-nested-grouping-42.ores",
+      "group": "scalar",
+      "features": [
+        "grouping",
+        "checked-int"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 source-identical scalar candidate, compiler-backed evidence pending",
       "required_on_all_backends": true
     }
   ]
