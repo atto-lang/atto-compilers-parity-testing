@@ -766,6 +766,15 @@ fn temp_dir(case_id: &str, backend: &str) -> Result<PathBuf, String> {
 }
 
 fn case_sources_match(case: &TestCase, root: &Path) -> Result<bool, String> {
+    // A successful preflight cannot authorize a later symlink swap.
+    // Recheck the physical entry before each compile/run evidence boundary.
+    let metadata = match fs::symlink_metadata(&case.source) {
+        Ok(value) => value,
+        Err(_) => return Ok(false),
+    };
+    if !metadata.file_type().is_file() {
+        return Ok(false);
+    }
     if sha256_file(&case.source)? != case.source_sha256 {
         return Ok(false);
     }
@@ -1287,6 +1296,32 @@ mod tests {
         assert!(super::safe_file(&root, "alias.ores").is_err());
         assert!(super::safe_file(&root, "../source.ores").is_err());
         assert!(super::safe_file(&root, "/tmp/source.ores").is_err());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn changed_regular_source_to_symlink_is_not_valid_evidence() {
+        use std::os::unix::fs::symlink;
+        let root = super::temp_dir("source-swap", "llvm").unwrap();
+        let source = root.join("guest.ores");
+        let alternate = root.join("same-bytes.ores");
+        std::fs::write(&source, "pub fnc main():int{return 42;}").unwrap();
+        std::fs::write(&alternate, "pub fnc main():int{return 42;}").unwrap();
+        let test_case = super::TestCase {
+            suite: "legacy".into(), case_id: "99".into(), name: "swap".into(),
+            source: source.clone(),
+            source_sha256: super::sha256_file(&source).unwrap(),
+            graph_sha256: None, graph_files: None, expected_kind: "exit".into(),
+            expected_value: Some(42), expected_diagnostic_category: None,
+            expected_stdout_prefix: None, validation_status: "candidate".into(),
+            features: vec!["int".into()],
+        };
+        assert!(super::case_sources_match(&test_case, &root).unwrap());
+        std::fs::remove_file(&source).unwrap();
+        symlink(&alternate, &source).unwrap();
+        assert!(!super::case_sources_match(&test_case, &root).unwrap(),
+            "same-byte symlink substitution must be rejected");
         std::fs::remove_dir_all(root).unwrap();
     }
 
