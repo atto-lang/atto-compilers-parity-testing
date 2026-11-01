@@ -60,15 +60,19 @@ fn cranelift_missing_adapter_fails_closed() {
 #[test]
 fn case_filter_runs_only_requested_scalar_inventory() {
     let output = std::env::temp_dir().join(format!(
-        "ores-cli-{}-cranelift-eight.json",
+        "ores-cli-{}-cranelift-eleven.json",
         std::process::id()
     ));
     let mut command = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"));
     command.args(["--backend", "cranelift", "--execute", "--allow-unvalidated"]);
-    for id in ["34", "35", "36", "37", "38", "39", "40", "41"] {
+    for id in [
+        "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44",
+    ] {
         command.args(["--case", id]);
     }
-    let status = command.args(["--output"]).arg(&output)
+    let status = command
+        .args(["--output"])
+        .arg(&output)
         .env_remove("ORES_PARITY_CRANELIFT_COMPILE")
         .env_remove("ORES_PARITY_CRANELIFT_RUN")
         .status()
@@ -78,12 +82,15 @@ fn case_filter_runs_only_requested_scalar_inventory() {
     std::fs::remove_file(output).unwrap();
     assert!(!status.success());
     assert_eq!(report["corpus"]["total_cases"], 62);
-    assert_eq!(report["cases"], 8);
-    assert_eq!(report["records"].as_array().unwrap().len(), 8);
-    assert_eq!(report["summary"]["backend_not_configured"], 8);
-    assert!(report["records"].as_array().unwrap().iter().all(|record|
-        record["backend"] == "cranelift" && record["status"] == "backend_not_configured"
-    ));
+    assert_eq!(report["cases"], 11);
+    assert_eq!(report["records"].as_array().unwrap().len(), 11);
+    assert_eq!(report["summary"]["backend_not_configured"], 11);
+    assert!(
+        report["records"].as_array().unwrap().iter().all(|record| {
+            record["backend"] == "cranelift"
+                && record["status"] == "backend_not_configured"
+        })
+    );
 }
 
 #[test]
