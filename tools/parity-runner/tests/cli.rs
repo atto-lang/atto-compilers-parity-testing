@@ -63,3 +63,36 @@ fn cranelift_is_explicit_and_unconfigured_is_a_failure() {
     assert_eq!(report["records"].as_array().unwrap().len(), 67);
     assert_eq!(report["summary"]["backend_not_configured"], 67);
 }
+
+#[test]
+fn selected_scalar_case_is_one_nonexecuted_record() {
+    let path = std::env::temp_dir().join(format!(
+        "ores-cli-{}-cranelift-scalar-selection.json",
+        std::process::id()
+    ));
+    let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .args(["--backend", "cranelift", "--case", "01", "--output"])
+        .arg(&path)
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    std::fs::remove_file(path).unwrap();
+    assert_eq!(report["cases"], 1);
+    assert_eq!(report["corpus"]["total_cases"], 67);
+    assert_eq!(report["records"].as_array().unwrap().len(), 1);
+    assert_eq!(report["records"][0]["case_id"], "01");
+    assert_eq!(report["records"][0]["backend"], "cranelift");
+    assert_eq!(report["summary"]["not_run"], 1);
+    assert_eq!(report["executed"], false);
+}
+
+#[test]
+fn unknown_scalar_case_fails_without_faking_success() {
+    let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .args(["--backend", "cranelift", "--case", "NOT-A-REAL-CASE"])
+        .status()
+        .unwrap();
+    assert!(!status.success());
+}
