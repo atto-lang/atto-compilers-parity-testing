@@ -889,6 +889,34 @@ mod tests {
     use std::collections::BTreeMap;
 
     #[test]
+    fn cranelift_i64_guest_stdout_requires_exact_one_value() {
+        let case = super::TestCase {
+            suite: "legacy".into(),
+            case_id: "32".into(),
+            name: "grouping-multiplication".into(),
+            source: std::path::PathBuf::new(),
+            source_sha256: String::new(),
+            graph_sha256: None,
+            graph_files: None,
+            expected_kind: "exit".into(),
+            expected_value: Some(42),
+            expected_diagnostic_category: None,
+            expected_stdout_prefix: None,
+            validation_status: "candidate".into(),
+            features: vec!["int".into()],
+        };
+        let ok = hex(b"42\n");
+        assert!(super::matches_expected_result(&case, "cranelift", Some(0), &ok));
+        assert!(!super::matches_expected_result(&case, "cranelift", Some(42), &ok));
+        assert!(!super::matches_expected_result(&case, "cranelift", Some(0), &hex(b"42")));
+        assert!(!super::matches_expected_result(&case, "cranelift", Some(0), &hex(b"42\n43\n")));
+        assert!(!super::matches_expected_result(&case, "cranelift", Some(0), &hex(b"ORES_TEST|PASS\n")));
+        assert!(!super::matches_expected_result(&case, "cranelift", Some(1), &ok));
+        assert!(super::matches_expected_result(&case, "java", Some(42), ""));
+        assert!(!super::matches_expected_result(&case, "java", Some(0), &ok));
+    }
+
+    #[test]
     fn diagnostic_classification_is_ascii_case_insensitive() {
         let mut backend = BTreeMap::new();
         backend.insert(
