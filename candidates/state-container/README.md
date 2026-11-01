@@ -40,6 +40,7 @@ controls are paired to prevent unconditional rejection from looking safe.
 | .NET NativeAOT | identical parser/ownership and AOT guest stdout | not_run |
 | Wasm | identical parser/ownership and executed guest stdout | not_run |
 | Forge | identical parser/ownership and executed guest stdout | not_run |
+| Cranelift | same source bytes in native Rust JIT, real guest stdout and specific unsupported-feature diagnosis | not_run; currently scalar subset with actor/ownership features fail-closed |
 | JS optional | same bytes and semantics; explicit unsupported otherwise | not_run |
 
 A backend may report `unsupported` with a feature-specific diagnostic; it
@@ -113,3 +114,15 @@ WASM #187, Forge #148 and .NET #261 share the byte-identical
 None proves this actor-shared lifecycle or guest execution across all five
 backends yet. Do not update the required `manifest.json` or promote a
 candidate without independently executed semantic and security gates.
+
+**Backend distinction:** `oreslang-source.cranelift` is a separate Rust/JIT
+backend from `oreslang-source.forge`. Current shared `manifest.json` targets
+Java, LLVM, WASM, .NET and JS; it does **not** require Cranelift or Forge.
+The extra candidate rows above add neither backend to the required count.
+Cranelift currently has fail-closed actor admission in drafts such as
+[Cranelift #25](https://github.com/ores-truffle-oreslang/oreslang-source.cranelift/pull/25)
+and native scalar coverage in [#22](https://github.com/ores-truffle-oreslang/oreslang-source.cranelift/pull/22).
+To count five requested toolchains (Java, LLVM, WASM, Cranelift, .NET), the
+required manifest and Rust adapters must be explicitly updated and their real
+compiled guest runs validated. An unsupported Cranelift actor source may pass
+a *negative diagnostic test*, but must never count as executable actor parity.
