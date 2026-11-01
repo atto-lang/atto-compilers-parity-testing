@@ -35,3 +35,25 @@ fn adapter_error_is_infrastructure_failure_even_for_negative_probes() {
     assert!(!status.success());
     assert_eq!(report["summary"]["compile_infrastructure_failure"], 49);
 }
+
+#[test]
+fn cranelift_is_explicit_and_unconfigured_is_a_failure() {
+    let path = std::env::temp_dir().join(format!(
+        "ores-cli-{}-cranelift-unconfigured.json",
+        std::process::id()
+    ));
+    let result = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .args(["--backend", "cranelift", "--execute", "--allow-unvalidated", "--output"])
+        .arg(&path)
+        .env_remove("ORES_PARITY_CRANELIFT_COMPILE")
+        .env_remove("ORES_PARITY_CRANELIFT_RUN")
+        .status()
+        .unwrap();
+    assert!(!result.success());
+    let report: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    std::fs::remove_file(path).unwrap();
+    assert_eq!(report["backends"], serde_json::json!(["cranelift"]));
+    assert_eq!(report["records"].as_array().unwrap().len(), 49);
+    assert_eq!(report["summary"]["backend_not_configured"], 49);
+}

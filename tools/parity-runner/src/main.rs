@@ -8,11 +8,12 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-const BACKENDS: [(&str, &str); 5] = [
+const BACKENDS: [(&str, &str); 6] = [
     ("llvm", "LLVM"),
     ("java", "JAVA"),
     ("wasm", "WASM"),
     ("dotnet", "DOTNET"),
+    ("cranelift", "CRANELIFT"),
     ("js", "JS"),
 ];
 
@@ -754,6 +755,10 @@ fn evaluate_case(
     Ok(record)
 }
 
+fn promotable_status(status: &str) -> bool {
+    matches!(status, "pass" | "expected_reject")
+}
+
 fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     let execute = args.iter().any(|arg| arg == "--execute");
@@ -765,7 +770,7 @@ fn main() -> Result<(), String> {
             args.get(index + 1)
                 .filter(|name| BACKENDS.iter().any(|(backend, _)| backend == name))
                 .cloned()
-                .ok_or_else(|| "--backend requires llvm, java, wasm, dotnet, or js".to_string())
+                .ok_or_else(|| "--backend requires llvm, java, wasm, dotnet, cranelift, or js".to_string())
         })
         .transpose()?;
     let output = args
@@ -845,22 +850,15 @@ fn main() -> Result<(), String> {
         serde_json::to_string(&report.summary).map_err(|e| e.to_string())?
     );
 
-    let hard_fail = report.records.iter().any(|record| {
-        matches!(
-            record.status.as_str(),
-            "compile_failure"
-                | "intentional_capability_reject"
-                | "wrong_diagnostic"
-                | "rejection_unclassified"
-                | "wrong_result"
-                | "wrong_stdout"
-                | "unexpected_compile_success"
-                | "compile_infrastructure_failure"
-                | "runtime_infrastructure_failure"
-                | "backend_not_configured"
-                | "unvalidated"
-        )
-    });
+    // A release gate has just TWO acceptable result classes, and both
+    // require independently validated oracles. Exploratory matches, unknown
+    // future status strings, missing steps, and unsupported backends fail.
+    // A no-execute inventory audit is not a promotion attempt.
+    let hard_fail = execute
+        && report
+            .records
+            .iter()
+            .any(|record| !promotable_status(&record.status));
     if hard_fail {
         std::process::exit(1);
     }
@@ -870,9 +868,33 @@ fn main() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        ascii_lower_hex, classify_diagnostic, hex, import_target, lowercase_kebab, Invocation,
+        ascii_lower_hex, classify_diagnostic, hex, import_target, lowercase_kebab, promotable_status, Invocation,
     };
     use std::collections::BTreeMap;
+
+    #[test]
+    fn exploratory_and_unknown_statuses_never_promote() {
+        assert!(promotable_status("pass"));
+        assert!(promotable_status("expected_reject"));
+        for status in [
+            "exploratory_match_not_parity_pass",
+            "exploratory_expected_reject_not_parity_pass",
+            "not_run", "unvalidated", "backend_not_configured",
+            "intentional_capability_reject", "compile_failure",
+            "compile_infrastructure_failure", "runtime_infrastructure_failure",
+            "wrong_diagnostic", "wrong_result", "rejection_unclassified",
+            "unexpected_compile_success", "unknown_future_status", "",
+        ] {
+            assert!(!promotable_status(status), "{status} must fail closed");
+        }
+    }
+
+    #[test]
+    fn six_backends_include_separate_cranelift() {
+        let backends = super::BACKENDS;
+        assert_eq!(backends.len(), 6);
+        assert!(backends.iter().any(|(name, env)| *name == "cranelift" && *env == "CRANELIFT"));
+    }
 
     #[test]
     fn diagnostic_classification_is_ascii_case_insensitive() {

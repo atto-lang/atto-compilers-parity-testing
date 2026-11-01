@@ -43,5 +43,6 @@
     "unsupported_select": [
       "static select requires checked channel/future arbitration"
     ]
-  }
+  },
+  "cranelift": {}
 }

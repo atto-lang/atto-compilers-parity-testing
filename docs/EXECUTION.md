@@ -1,6 +1,6 @@
 # Execution and parity gate
 
-The checked-in corpus is fail-closed. The default CI audits 31 legacy programs, 16 positive multi-file checks and 2 negative probes, yielding 49 logical cases and 245 backend/case pairs. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
+The checked-in corpus is fail-closed. The default CI audits 31 legacy programs, 16 positive multi-file checks and 2 negative probes, yielding 49 logical cases and 294 backend/case pairs. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
 
 ## Rust-only tooling
 
@@ -13,7 +13,7 @@ Each backend uses two command templates:
 - `ORES_PARITY_<BACKEND>_COMPILE`
 - `ORES_PARITY_<BACKEND>_RUN`
 
-Tokens: `{source}`, `{artifact}`, `{workdir}`. Templates are split into argv without a shell. Supported backend names are LLVM, JAVA, WASM, DOTNET and JS.
+Tokens: `{source}`, `{artifact}`, `{workdir}`. Templates are split into argv without a shell. Supported backend names are LLVM, JAVA, WASM, CRANELIFT, DOTNET and JS.
 
 Example:
 
@@ -23,7 +23,7 @@ export ORES_PARITY_JS_RUN='node /absolute/run-esm-main.mjs {artifact}.mjs'
 cargo run --manifest-path tools/parity-runner/Cargo.toml -- --execute --allow-unvalidated --output js-exploratory.json
 ```
 
-Exploratory matching is **not** a parity pass.
+Exploratory matching is **not** a parity pass. In `--execute` mode, **only** independently `validated` `pass` or `expected_reject` statuses produce exit code 0. Unvalidated exact matches, unrecognized future result states and unconfigured toolchains fail closed.
 
 ## Promotion gate
 
@@ -82,5 +82,5 @@ currently remain `unvalidated`. A compiler returning a generic
 nonzero exit does not constitute parity.
 
 Case 31 (static select delimiter equivalence) remains a Java-reference target,
-not five-backend execution proof. The `intentional_capability_reject` status
+not six-backend execution proof. The `intentional_capability_reject` status
 is a fail-closed gap, never a passing record.

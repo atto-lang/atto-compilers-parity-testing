@@ -7,12 +7,13 @@ The parity runner deliberately separates the corpus from backend-specific launch
 | Java / GraalVM | `OresMain --check source.ores` via Maven or a built Oreslang CLI | `OresMain source.ores`; Native Image CLI can use the same source surface | Best current reference candidate; linker already has relative-file import support |
 | LLVM native | `scripts/compile-aot.sh source.ores output` using built `oreslang-llvmc` + Clang | Execute emitted native binary | Native scalar/module support is the strongest direct compile/run adapter; unsupported features must reject |
 | WASM | `scripts/compile-ores.mjs --compiler=... --source=... --output=...` using a pinned LLVM compiler | `scripts/run-guest.mjs --wasm=... --sha256=...` | Current bridge explicitly supports standalone scalar source and says relative module graphs need a future pinned module-graph gate |
+| Cranelift | No reviewed canonical Oreslang compiler adapter is pinned yet; the repository is an early prototype | Must execute the produced native guest, not merely print Cranelift IR | Unverified; fail closed until an exact compiler binary, runtime entry and module graph are tested |
 | .NET Native AOT | `oresnet check`; `oresnet compile source.ores --out .../OresGenerated.dll` | Generated CIL must be linked into `Ores.Net.NativeHost` with `dotnet publish`, then the native host executes | Requires an adapter wrapper for compile → host publish → run; current scalar compiler does not establish whole-program import parity |
 | JavaScript transpiler | `node bin/oreslang-jsc.mjs --check source.ores`; compile with `--out=/absolute/output.mjs` | Import generated ESM and call exported `main()` | Scalar programs are executable; actors/async/import-graph support must fail closed when unsupported |
 
 ## Runner templates
 
-The Rust runner accepts two argv templates per backend:
+The Rust runner accepts two argv templates per backend, including `ORES_PARITY_CRANELIFT_COMPILE` and `ORES_PARITY_CRANELIFT_RUN`. A missing Cranelift adapter is a failed executable parity cell, never silently omitted:
 
 - `ORES_PARITY_<BACKEND>_COMPILE`
 - `ORES_PARITY_<BACKEND>_RUN`
