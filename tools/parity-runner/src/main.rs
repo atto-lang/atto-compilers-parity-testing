@@ -203,8 +203,19 @@ fn sha256_bytes(bytes: &[u8]) -> Result<String, String> {
 }
 
 fn safe_file(root: &Path, path_text: &str) -> Result<PathBuf, String> {
-    let path = root
-        .join(path_text)
+    // Reject absolute/parent-traversing manifest paths and symlinked files
+    // before canonicalization erases the original source entry's provenance.
+    let relative = Path::new(path_text);
+    if !relative.components().all(|part| matches!(part, std::path::Component::Normal(_))) {
+        return Err(format!("invalid or traversing source path: {path_text}"));
+    }
+    let original = root.join(relative);
+    let metadata = fs::symlink_metadata(&original)
+        .map_err(|e| format!("{path_text}: {e}"))?;
+    if !metadata.file_type().is_file() {
+        return Err(format!("symlink or nonregular source path: {path_text}"));
+    }
+    let path = original
         .canonicalize()
         .map_err(|e| format!("{path_text}: {e}"))?;
     if !path.starts_with(root) || !path.is_file() {
@@ -238,6 +249,13 @@ fn local_imports(path: &Path, root: &Path) -> Result<Vec<PathBuf>, String> {
             .join(&target);
         if candidate.extension().is_none() {
             candidate.set_extension("ores");
+        }
+        // Do not resolve through a symlinked source leaf; otherwise a
+        // rewritten alias could evade the reviewed reachable-file inventory.
+        let metadata = fs::symlink_metadata(&candidate)
+            .map_err(|e| format!("{} imports {target}: {e}", path.display()))?;
+        if !metadata.file_type().is_file() {
+            return Err(format!("symlink or nonregular local import: {target}"));
         }
         let candidate = candidate
             .canonicalize()
@@ -1213,6 +1231,37 @@ mod tests {
         assert!(super::case_sources_match(&case, &root).unwrap());
         std::fs::write(&entry, b"pub fnc main(): int { return 42; }\n").unwrap();
         assert!(!super::case_sources_match(&case, &root).unwrap());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn manifest_source_symlink_and_parent_traversal_are_refused() {
+        use std::os::unix::fs::symlink;
+        let root = super::temp_dir("symlink-inputs", "cranelift").unwrap();
+        std::fs::write(root.join("source.ores"), "pub fnc main():int{return 42;}").unwrap();
+        symlink("source.ores", root.join("alias.ores")).unwrap();
+        assert!(super::safe_file(&root, "source.ores").is_ok());
+        assert!(super::safe_file(&root, "alias.ores").is_err());
+        assert!(super::safe_file(&root, "../source.ores").is_err());
+        assert!(super::safe_file(&root, "/tmp/source.ores").is_err());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn reachable_source_graph_refuses_symlinked_imports() {
+        use std::os::unix::fs::symlink;
+        let root = super::temp_dir("symlink-import", "java").unwrap();
+        std::fs::write(root.join("real.ores"), "fnc answer():int{return 42;}").unwrap();
+        std::fs::write(
+            root.join("main.ores"),
+            "import fnc answer from \"./alias.ores\";\npub fnc main():int{return answer();}",
+        )
+        .unwrap();
+        symlink("real.ores", root.join("alias.ores")).unwrap();
+        let entry = root.join("main.ores");
+        assert!(super::local_imports(&entry, &root).is_err());
         std::fs::remove_dir_all(root).unwrap();
     }
 
