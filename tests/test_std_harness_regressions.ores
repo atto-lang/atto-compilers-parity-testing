@@ -14,10 +14,24 @@ fnc option_fallback_is_explicit(): TestOutcome {
     Option.unwrap_or(missing, -1) == -1,
     "portable Option fallback must distinguish present and absent values");
 }
+fnc result_is_error_without_implicit_unwrap(): TestOutcome {
+  val Result<int, String> rejected = Err("denied");
+  return expect_true(rejected.is_err(),
+    "error Result retains explicit error state");
+}
+
+fnc some_zero_is_not_none(): TestOutcome {
+  val Option<int> zero = Some(0);
+  return expect_true(zero.is_some() && Option.unwrap_or(zero, 7) == 0,
+    "present zero value must not be treated as None");
+}
+
 pub routine main(): void {
   val TestSuite suite = new TestSuite("cross-compiler-parity", arr[
     new TestCase("checked_result_fallback_is_explicit", checked_result_fallback_is_explicit, false, ""),
-    new TestCase("option_fallback_is_explicit", option_fallback_is_explicit, false, "")
+    new TestCase("option_fallback_is_explicit", option_fallback_is_explicit, false, ""),
+    new TestCase("result_is_error_without_implicit_unwrap", result_is_error_without_implicit_unwrap, false, ""),
+    new TestCase("some_zero_is_not_none", some_zero_is_not_none, false, "")
   ]);
   val TestOptions options = new TestOptions("", false, true);
   val RunSummary summary = run_suite(rt borrow suite, rt borrow options);
