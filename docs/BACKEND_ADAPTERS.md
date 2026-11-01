@@ -76,3 +76,44 @@ That needs a dedicated adapter wrapper or a richer parity-runner pipeline. Do no
 ## Promotion rules
 
 An adapter is executable evidence only when it records the exact compiler/runtime SHA, compiles the unchanged source graph, classifies negative diagnostics, and runs the produced program where the backend claims execution support. Compile-only support, an unsupported feature, a skipped test, or a missing runner is a parity gap rather than a pass.
+
+## Running unchanged real ORM source across all six backends
+
+The opt-in `--orm-root` and `--orm-head` pair uses a separately authorized local
+checkout of `postgres-orm.ores`. No private source is fetched, mirrored, exported
+or rewritten in the parity repository. The exact 40-hex HEAD, Git object IDs,
+staged/unstaged status and bounded source file identities are checked.
+
+Four native Oreslang guest cases compile the *actual* original modules:
+`tests/schema-plans.ores`, `tests/schema-adversarial.ores`,
+`tests/schema-invariants.ores` (all import `src/schema.ores`), and
+`tests/plans.ores` (imports `src/pg.ores`). The runner fingerprints each
+entire admitted two-file graph and demands exact guest stdout, including LF.
+
+Example on an approved machine with a pinned ORM checkout:
+
+```sh
+cargo run --locked --manifest-path tools/parity-runner/Cargo.toml -- \
+  --orm-root /abs/approved/postgres-orm.ores \
+  --orm-head FULL_40_HEX_CHECKED_OUT_COMMIT \
+  --backend llvm --case-id orm-sql-plans \
+  --output orm-llvm-inventory.json
+```
+
+Only after real compiler adapters are configured add `--execute
+--allow-unvalidated`. Source-only inventory reports `not_run`, never parity.
+A successful unvalidated run reports an exploratory match until an independent
+semantic oracle review. The default remains 55 cases × 6 backends = 330
+cells; an opt-in ORM root adds four cases for 59 × 6 = 354 cells, 24 extra
+backend/guest candidates. Real Java, LLVM, Cranelift, WASM and .NET compilers
+must all receive the unchanged original Oreslang bytes.
+
+Known blockers: Cranelift currently implements a narrow scalar JIT, not the
+full ORM nominal/Array/Result/import and actor runtime. Wasm needs complete
+module import support, an admitted guest stdout ABI and pinned Wasm artifact.
+.NET needs whole-program class/constructor lowering plus NativeAOT execution.
+Java and LLVM also need exact-head compiled/running guest receipts.
+All unsupported capabilities are gaps. Full database parity further requires
+portable async database capabilities, parameter/OID codecs, actor-owned
+connections, tenant RLS, cancellation and transactions, TypeSpec/JSON parity,
+and DPM SQL catalog replay. No ORM migration apply authority is granted.
