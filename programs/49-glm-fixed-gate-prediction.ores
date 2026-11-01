@@ -1,0 +1,4 @@
+// 49: GLM/MoE shared-source numeric frontier: floating-point backend parity pending.
+// Source stays identical across Java, LLVM, WASM and .NET; unsupported float lowering is a GAP.
+fnc predict(float x, float w0, float b0, float w1, float b1, float gate): float { return gate * (x * w0 + b0) + (1.0 - gate) * (x * w1 + b1); }
+pub fnc main(): int { if (predict(2.0, 1.0, 0.0, 3.0, 0.0, 0.25) == 5.0) { return 42; } fi return 1; }
