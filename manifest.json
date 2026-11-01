@@ -754,7 +754,7 @@
       "features": [
         "immutable-default",
         "typed-local",
-        "inferred-const"
+        "local-reference"
       ],
       "expected_kind": "exit",
       "expected_value": 42,

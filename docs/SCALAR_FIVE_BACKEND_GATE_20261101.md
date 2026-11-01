@@ -26,15 +26,15 @@ nonzero-step runner receipts prove compiler and guest execution.
 
 ## Additional shared guest candidates (manifest IDs 42–44)
 
-- **42**: `int x = 7; const y = x * 6; return y;`
+- **42**: `int x = 7; int y = x * 6; return y;`
 - **43**: `const int x = 14; const y = x * 3; return y;`
 - **44**: `const x: int = -(-42); return x;`
 
 Each is a standalone native `.ores` program returning **42**, with no
 backend-specific rewrite. All are marked `candidate` until each compiler
 processes identical bytes and produces a verified guest value, or a distinct
-failure is logged as a gap. Each tests a separate immutable-by-default
-declaration spelling. They are not yet Java/LLVM/Wasm/.NET executable parity
+failure is logged as a gap. These tests separate readonly runtime local references from compile-time-only
+`const` initialization, while preserving the immutable-by-default policy. They are not yet Java/LLVM/Wasm/.NET executable parity
 proof just because Cranelift accepts the spelling.
 
 ## Evidence separation and actionable gates
