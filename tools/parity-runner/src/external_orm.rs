@@ -49,6 +49,15 @@ pub(super) fn load(source_root: &Path, head: &str) -> Result<Vec<TestCase>, Stri
         if !tracked.status.success() {
             return Err(format!("ORM fixture not committed at selected HEAD: {rel}"));
         }
+        // Git status can be bypassed by assume-unchanged or skip-worktree.
+        // Bind the actual bytes to the pinned HEAD's blob identity instead.
+        let expected_blob = git(&root, &["rev-parse", &format!("HEAD:{rel}")])?;
+        let observed_blob = git(&root, &["hash-object", "--", rel])?;
+        if !expected_blob.status.success() || !observed_blob.status.success()
+            || expected_blob.stdout != observed_blob.stdout
+        {
+            return Err(format!("ORM on-disk bytes differ from pinned Git blob: {rel}"));
+        }
         let status = git(&root, &["status", "--porcelain=v1", "--untracked-files=all", "--", rel])?;
         if !status.status.success() || !status.stdout.is_empty() {
             return Err(format!("ORM fixture has staged, unstaged or untracked changes: {rel}"));

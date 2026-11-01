@@ -69,3 +69,35 @@ fn unknown_and_duplicate_case_filters_fail_closed() {
         assert!(!cmd.status().unwrap().success());
     }
 }
+
+#[test]
+fn external_orm_mode_rejects_unpaired_or_malformed_pins() {
+    for bad in [
+        vec!["--orm-root", "/tmp/orm"],
+        vec!["--orm-head", "0123456789012345678901234567890123456789"],
+        vec!["--orm-root"],
+        vec!["--orm-head"],
+        vec!["--orm-root", "/tmp/orm", "--orm-head", "bad-head"],
+        vec!["--orm-root", "/tmp/orm", "--orm-head"],
+        vec!["--orm-root", "/tmp/orm", "--orm-root", "/tmp/orm", "--orm-head",
+             "0123456789012345678901234567890123456789"],
+    ] {
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"));
+        cmd.args(bad);
+        assert!(!cmd.status().unwrap().success(), "invalid ORM source admission accepted");
+    }
+}
+
+#[test]
+fn external_orm_checkouts_are_never_substituted_by_inventory_fixtures() {
+    let missing = std::env::temp_dir().join(format!(
+        "ores-external-orm-missing-{}", std::process::id()
+    ));
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"));
+    let output = cmd.arg("--orm-root").arg(missing)
+        .args(["--orm-head", "0123456789012345678901234567890123456789"])
+        .output().unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("ORM checkout not accessible"));
+}

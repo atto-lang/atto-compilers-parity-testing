@@ -837,8 +837,12 @@ fn main() -> Result<(), String> {
         .map(|args| args[1].clone()).collect();
     let orm_heads: Vec<_> = args.windows(2).filter(|args| args[0] == "--orm-head")
         .map(|args| args[1].clone()).collect();
-    if orm_roots.len() > 1 || orm_heads.len() > 1
+    let root_flags = args.iter().filter(|arg| arg.as_str() == "--orm-root").count();
+    let head_flags = args.iter().filter(|arg| arg.as_str() == "--orm-head").count();
+    if root_flags > 1 || head_flags > 1
+        || orm_roots.len() != root_flags || orm_heads.len() != head_flags
         || orm_roots.is_empty() != orm_heads.is_empty()
+        || orm_roots.iter().chain(orm_heads.iter()).any(|value| value.starts_with("--"))
     {
         return Err("--orm-root and --orm-head are a required unique pair".into());
     }
