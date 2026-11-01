@@ -64,8 +64,9 @@ fn four_real_orm_source_candidates_are_not_compiler_evidence() {
         assert_eq!(case["backend"], "cranelift");
         assert_eq!(case["suite"], "external-orm-exact-head");
         assert_eq!(case["graph_sha256"].as_str().unwrap().len(), 64);
+        let needle = format!("source-commit:{head}");
         assert!(case["features"].as_array().unwrap().iter()
-            .any(|feature| feature == &format!("source-commit:{head}")));
+            .any(|feature| feature.as_str() == Some(needle.as_str())));
     }
     fs::remove_dir_all(root).unwrap();
 }
