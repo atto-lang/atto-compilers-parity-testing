@@ -24,8 +24,8 @@ fn selected_missing_backend_fails_instead_of_claiming_success() {
     let (status, report) = execute("missing", false);
     assert!(!status.success());
     assert_eq!(report["backends"], serde_json::json!(["java"]));
-    assert_eq!(report["records"].as_array().unwrap().len(), 67);
-    assert_eq!(report["summary"]["backend_not_configured"], 67);
+    assert_eq!(report["records"].as_array().unwrap().len(), 75);
+    assert_eq!(report["summary"]["backend_not_configured"], 75);
 }
 
 #[cfg(unix)]
@@ -33,7 +33,7 @@ fn selected_missing_backend_fails_instead_of_claiming_success() {
 fn adapter_error_is_infrastructure_failure_even_for_negative_probes() {
     let (status, report) = execute("adapter-error", true);
     assert!(!status.success());
-    assert_eq!(report["summary"]["compile_infrastructure_failure"], 67);
+    assert_eq!(report["summary"]["compile_infrastructure_failure"], 75);
 }
 
 #[test]
@@ -53,8 +53,8 @@ fn cranelift_missing_adapter_fails_closed() {
     std::fs::remove_file(output).unwrap();
     assert!(!status.success());
     assert_eq!(report["backends"], serde_json::json!(["cranelift"]));
-    assert_eq!(report["records"].as_array().unwrap().len(), 67);
-    assert_eq!(report["summary"]["backend_not_configured"], 67);
+    assert_eq!(report["records"].as_array().unwrap().len(), 75);
+    assert_eq!(report["summary"]["backend_not_configured"], 75);
 }
 
 #[test]
@@ -82,7 +82,7 @@ fn case_filter_runs_only_requested_scalar_inventory() {
         serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
     std::fs::remove_file(output).unwrap();
     assert!(!status.success());
-    assert_eq!(report["corpus"]["total_cases"], 67);
+    assert_eq!(report["corpus"]["total_cases"], 75);
     assert_eq!(report["cases"], 16);
     assert_eq!(report["records"].as_array().unwrap().len(), 16);
     assert_eq!(report["summary"]["backend_not_configured"], 16);
