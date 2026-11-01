@@ -29,6 +29,27 @@ These are six independent **`.ores` programs**, not host-language assertions. Al
 
 A backend with a deliberate unsupported-feature diagnostic is *safer* than silently running a host oracle, but it remains a parity gap. Do **not** substitute Rust/C#, Java, Node, Python, mocked receipts, a stub compiler, or a zero-step GitHub Actions job for executing Oreslang guest bodies.
 
+## Implemented source-local draft gates (2026-11-01)
+
+All five targets contain the **same six Git blobs** and the same three-column `oracles.tsv` manifest (manifest Git blob `6b9d346af9b5495f1bfd1ed93b92db2b77526af5`). These are source identities only.
+
+| Target | Draft PR | Source-local compiler-backed requirement | Current observed guest pass |
+|---|---|---|---|
+| Java/GraalVM | [source.java #2437](https://github.com/ores-truffle-oreslang/oreslang-source.java/pull/2437) | Actual Maven Java compiler/runtime JAR + native carrier, `OresMain --mode=aot --check` then guest exit 42 | Not verified |
+| LLVM | [source.llvm #1288](https://github.com/ores-truffle-oreslang/oreslang-source.llvm/pull/1288) | Exact-head LLVMc -> LLVM IR -> Clang native executable, guest exit 42 | Not verified |
+| Cranelift | [source.cranelift #28](https://github.com/ores-truffle-oreslang/oreslang-source.cranelift/pull/28) | Actual Cranelift IR and native JIT, exact `42\n` stdout, compiler SHA-256 | Not verified |
+| WebAssembly | [source.wasm #257](https://github.com/ores-truffle-oreslang/oreslang-source.wasm/pull/257) | Manually authorized pinned real LLVM -> core Wasm, Wasm artifact SHA-256, zero-import i64 guest result 42 | Not verified |
+| .NET Native AOT | [source.net #321](https://github.com/ores-truffle-oreslang/oreslang-source.net/pull/321) | Manual six-case Native AOT compiler + CIL -> native host, executed `42\n` stdout, release-native admission | Not verified |
+
+The central six-source matrix and result-oracle adapter are in [parity #20](https://github.com/ores-truffle-oreslang/oreslang-compilers-parity-testing/pull/20). No private trees were mirrored outside their source organization. Different backends have **different process oracles**: Java/LLVM return 42 as process exit status, while Cranelift/.NET print 42 with exit 0; Wasm returns a typed i64 directly. Comparing these without respecting their ABI would produce false failures or false parity.
+
+### Current CI admission evidence
+
+- Central parity run `41333862139` and Cranelift run `41333866546`: rerun attempts 2 completed as failures with **zero recorded job steps**.
+- Inspected exact-head representative jobs on Java `41356577760`, LLVM `41355944629`, Cranelift `41355663325`, Wasm `41356211238`, and .NET `41356405723` also have **zero executed steps**.
+- Therefore **0 of 30 backend/case cells** have verified guest-execution evidence in this round. This does *not* imply a semantic compiler fail. All source-local PRs remain drafts; do not merge based on source-inventory tests.
+- The .NET six-case full Native AOT lane and the Wasm real-LLVM lane are deliberately manual/pinned to avoid spending unapproved minutes or exposing cross-private-source credentials to PR workflows. They require a trusted explicitly dispatched run once runner admission is repaired.
+
 ## Portable execution plan
 
 1. **Exact source bytes:** derive the case SHA-256 from the repository Git tree, capture the compiler executable SHA-256 and verified backend source tree before execution. No private cross-organization mirroring without authorization.
