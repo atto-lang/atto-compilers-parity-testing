@@ -1,0 +1,4 @@
+// 39: GLM/MoE shared-source parity candidate. No backend-specific rewriting.
+// Return 42 on correct semantic behavior, 1 on mismatch. Compiler-backed evidence pending.
+fnc balanced(int a, int b, int tokens, int k, int cap): bool { if (a < 0 || b < 0) { return false; } fi if (a > cap || b > cap) { return false; } fi return a + b == tokens * k; }
+pub fnc main(): int { if (balanced(4, 0, 4, 1, 2)) { return 1; } fi return 42; }
