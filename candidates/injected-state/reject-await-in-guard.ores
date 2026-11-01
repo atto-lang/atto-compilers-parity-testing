@@ -1,0 +1,18 @@
+// Must reject suspension while an injected state write guard is live.
+@Inject(MutableStateContainer())
+define class Counter as
+  state { count: int = 0; }
+  pub async invalid(): void {
+    self.handle_state(critical[write] |s| -> {
+      await self.get_done();
+      s.count = 3;
+    });
+    return;
+  }
+end
+
+pub async routine main(): void {
+  let mut Counter counter = new Counter();
+  await counter.invalid();
+  return;
+}
