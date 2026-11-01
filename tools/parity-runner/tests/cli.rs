@@ -24,7 +24,7 @@ fn selected_missing_backend_fails_instead_of_claiming_success() {
     let (status, report) = execute("missing", false);
     assert!(!status.success());
     assert_eq!(report["backends"], serde_json::json!(["java"]));
-    assert_eq!(report["records"].as_array().unwrap().len(), 49);
+    assert_eq!(report["records"].as_array().unwrap().len(), 51);
     assert_eq!(report["summary"]["backend_not_configured"], 49);
 }
 
