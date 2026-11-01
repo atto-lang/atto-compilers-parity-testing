@@ -447,6 +447,8 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
     Ok((cases, corpus))
 }
 
+mod external_orm;
+
 fn expand(
     template: &str,
     source: &Path,
@@ -758,7 +760,15 @@ fn evaluate_case(
         } else if !matches_expected_result(case, backend, run_exit, &stdout_hex) {
             "wrong_result".into()
         } else if let Some(prefix) = &case.expected_stdout_prefix {
-            if !stdout_hex.starts_with(&hex(prefix.as_bytes())) {
+            // External ORM uses an EXACT stdout oracle. A prefix plus fake
+            // success, truncated guest output or extra diagnostics is not a pass.
+            let expected_hex = hex(prefix.as_bytes());
+            let correct = if case.suite == "external-orm-exact-head" {
+                stdout_hex == expected_hex
+            } else {
+                stdout_hex.starts_with(&expected_hex)
+            };
+            if !correct {
                 "wrong_stdout".into()
             } else if case.validation_status == "validated" {
                 "pass".into()
@@ -822,7 +832,22 @@ fn main() -> Result<(), String> {
         .join("../..")
         .canonicalize()
         .map_err(|e| e.to_string())?;
-    let (cases, corpus) = load_cases(&root)?;
+
+    let orm_roots: Vec<_> = args.windows(2).filter(|args| args[0] == "--orm-root")
+        .map(|args| args[1].clone()).collect();
+    let orm_heads: Vec<_> = args.windows(2).filter(|args| args[0] == "--orm-head")
+        .map(|args| args[1].clone()).collect();
+    if orm_roots.len() > 1 || orm_heads.len() > 1
+        || orm_roots.is_empty() != orm_heads.is_empty()
+    {
+        return Err("--orm-root and --orm-head are a required unique pair".into());
+    }
+    let (mut cases, mut corpus) = load_cases(&root)?;
+    if let (Some(path), Some(head)) = (orm_roots.first(), orm_heads.first()) {
+        let extra = external_orm::load(Path::new(path), head)?;
+        corpus.total_cases += extra.len();
+        cases.extend(extra);
+    }
     let known_ids: BTreeSet<&str> = cases.iter().map(|case| case.case_id.as_str()).collect();
     for id in &case_ids {
         if !known_ids.contains(id.as_str()) {
