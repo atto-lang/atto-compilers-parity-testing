@@ -1,0 +1,39 @@
+import class OrmColumn from "./column.ores";
+import fnc orm_risk from "./risk.ores";
+import fnc orm_review_gate from "./review.ores";
+
+fnc assert_eq_int(String label, int actual, int expected): void {
+  if actual != expected then
+    stdio.stdout.write("PARITY_FAIL|orm-schema-backend-parity|");
+    stdio.stdout.write(label);
+    stdio.stdout.write("|actual=");
+    stdio.stdout.write(actual);
+    stdio.stdout.write("|expected=");
+    stdio.stdout.println(expected);
+    val Result<bool, String> failure = Err(label);
+    failure.expect("cross-compiler ORM parity failed");
+  fi
+  return;
+}
+pub fnc main(): void {
+  val OrmColumn initial = new OrmColumn("field_id","old_name","string",false);
+  val OrmColumn renamed = new OrmColumn("field_id","new_name","string",false);
+  val OrmColumn alien = new OrmColumn("other_id","old_name","string",false);
+  if initial.stable_id != renamed.stable_id then
+    val Result<bool, String> failure = Err("stable identity drift");
+    failure.expect("renaming a column must not change its identity");
+  fi
+  assert_eq_int("rename", orm_risk(true,false,false,false,false),3);
+  assert_eq_int("identity-conflict", orm_risk(initial.stable_id == alien.stable_id,true,false,false,false),3);
+  assert_eq_int("type-change", orm_risk(true,true,true,false,false),3);
+  assert_eq_int("required-backfill", orm_risk(true,true,false,true,false),2);
+  assert_eq_int("drop", orm_risk(true,true,false,false,true),4);
+  assert_eq_int("unchanged", orm_risk(true,true,false,false,false),0);
+  assert_eq_int("missing-parity", orm_review_gate(1,false,true,true),0);
+  assert_eq_int("missing-catalog", orm_review_gate(1,true,false,true),0);
+  assert_eq_int("missing-review", orm_review_gate(1,true,true,false),0);
+  assert_eq_int("never-apply", orm_review_gate(1,true,true,true),0);
+  assert_eq_int("unknown-risk", orm_review_gate(9,true,true,true),0);
+  stdio.stdout.println("PARITY_OK|orm-schema-backend-parity|42");
+  return;
+}

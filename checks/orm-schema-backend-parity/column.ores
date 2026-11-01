@@ -1,0 +1,12 @@
+pub define class OrmColumn as
+  pub val string stable_id;
+  pub val string physical_name;
+  pub val string kind;
+  pub val bool nullable;
+  pub constructor(string stable_id, string physical_name, string kind, bool nullable) {
+    self.stable_id = stable_id;
+    self.physical_name = physical_name;
+    self.kind = kind;
+    self.nullable = nullable;
+  }
+end

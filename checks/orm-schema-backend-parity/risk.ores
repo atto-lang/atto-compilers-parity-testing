@@ -1,0 +1,7 @@
+// Pure schema risk: equal=0, requires backfill=2, manual=3, destructive=4.
+pub fnc orm_risk(bool same_id, bool same_name, bool type_changed, bool required_add, bool removed): int {
+  if removed then return 4; fi
+  if !same_id || !same_name || type_changed then return 3; fi
+  if required_add then return 2; fi
+  return 0;
+}

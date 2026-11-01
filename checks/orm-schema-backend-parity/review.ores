@@ -1,0 +1,6 @@
+// ORM is never an authorized schema migrator.
+pub fnc orm_review_gate(int risk, bool parity_receipt, bool full_catalog, bool operator_approved): int {
+  if risk < 0 || risk > 4 then return 0; fi
+  if !parity_receipt || !full_catalog || !operator_approved then return 0; fi
+  return 0;
+}

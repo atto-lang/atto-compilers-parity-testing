@@ -1,0 +1,20 @@
+{
+  "name": "orm-schema-backend-parity",
+  "entry": "checks/orm-schema-backend-parity/main.ores",
+  "expected": "run-pass",
+  "stable_stdout_prefix": "PARITY_OK|orm-schema-backend-parity|",
+  "imported_files": 3,
+  "maturity": "runtime-neutral",
+  "features": [
+    "orm",
+    "nominal-class",
+    "immutable-fields",
+    "constructor",
+    "multi-file-imports",
+    "stable-id",
+    "schema-risk",
+    "migration-denial"
+  ],
+  "verified": false,
+  "notes": "Four identical guest source files on Java, LLVM, WASM, .NET and JS. Compiler and runtime evidence is missing; unsupported multi-file/nominal APIs cannot count as passes."
+}
