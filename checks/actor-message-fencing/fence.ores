@@ -1,0 +1,19 @@
+// Application-level message fencing, not physical tenant heap isolation.
+define pub actor MessageFence as
+  state { admitted: int = 0; }
+  receive(ActorMail<int> mail): void {
+    const result = self.handle_state(critical |s| -> {
+      if mail.value == 7004; do
+        s.admitted = s.admitted + 1;
+        return 1;
+      fi
+      if mail.value == 0; do
+        return s.admitted;
+      fi
+      return -1;
+    });
+    self.send(result);
+    if mail.value == 0; do self.end(); fi
+    return;
+  }
+end
