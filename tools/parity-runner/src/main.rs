@@ -171,8 +171,12 @@ fn classify_diagnostic(
     invocation: &Invocation,
 ) -> Option<String> {
     let backend_rules = rules.get(backend)?;
-    let raw = format!("{}{}", invocation.stdout_hex, invocation.stderr_hex);
-    let haystack = ascii_lower_hex(&raw)?;
+    // A compiler's stdout is an artifact channel on some backends. Never
+    // accept a diagnostic echoed into stdout, or a wholly silent rejection.
+    if !invocation.stdout_hex.is_empty() || invocation.stderr_hex.is_empty() {
+        return None;
+    }
+    let haystack = ascii_lower_hex(&invocation.stderr_hex)?;
     for (category, needles) in backend_rules {
         for needle in needles {
             let encoded = hex(needle.to_ascii_lowercase().as_bytes());
@@ -238,6 +242,13 @@ fn local_imports(path: &Path, root: &Path) -> Result<Vec<PathBuf>, String> {
             .join(&target);
         if candidate.extension().is_none() {
             candidate.set_extension("ores");
+        }
+        // A symlink in the imported leaf can redirect the source graph after
+        // its fingerprint has been computed. Reject before canonicalization.
+        let meta = fs::symlink_metadata(&candidate)
+            .map_err(|e| format!("{} imports {target}: {e}", path.display()))?;
+        if !meta.file_type().is_file() {
+            return Err(format!("local import is not a regular file: {target}"));
         }
         let candidate = candidate
             .canonicalize()
@@ -729,11 +740,18 @@ fn evaluate_case(
         if compile_exit == Some(0) {
             record.status = "unexpected_compile_success".into();
         } else {
+            let invalid_stdout = record
+                .compile
+                .as_ref()
+                .is_some_and(|c| !c.stdout_hex.is_empty());
             record.actual_diagnostic_category = record
                 .compile
                 .as_ref()
                 .and_then(|c| classify_diagnostic(diagnostic_rules, backend, c));
-            record.status = match (
+            record.status = if invalid_stdout {
+                "rejection_output_violation"
+            } else {
+                match (
                 case.expected_diagnostic_category.as_deref(),
                 record.actual_diagnostic_category.as_deref(),
             ) {
@@ -746,6 +764,7 @@ fn evaluate_case(
                 }
                 (_, Some(_)) => "wrong_diagnostic".into(),
                 _ => "rejection_unclassified".into(),
+                }
             };
         }
     } else if compile_exit != Some(0) {
@@ -781,6 +800,9 @@ fn evaluate_case(
         record.run = Some(run);
         let value_matches = case.expected_value.is_some_and(|expected| {
             matches_scalar_result(backend, run_exit, &stdout_hex, &stderr_hex, expected)
+                && (backend == "cranelift"
+                    || (stderr_hex.is_empty()
+                        && (case.expected_stdout_prefix.is_some() || stdout_hex.is_empty())))
         });
         record.status = if run_status != "completed" || run_exit.is_none() || run_exit == Some(125)
         {
@@ -922,6 +944,7 @@ fn main() -> Result<(), String> {
                 | "intentional_capability_reject"
                 | "wrong_diagnostic"
                 | "rejection_unclassified"
+                | "rejection_output_violation"
                 | "wrong_result"
                 | "wrong_stdout"
                 | "unexpected_compile_success"
@@ -1090,6 +1113,37 @@ mod tests {
             "java", Some(0), &hex(b"42\n"), "", 42
         ));
         assert!(super::matches_scalar_result("llvm", Some(42), "", "", 42));
+    }
+
+    #[test]
+    fn fake_diagnostic_on_stdout_does_not_classify_as_expected_reject() {
+        let mut backend = BTreeMap::new();
+        backend.insert("integer_range".to_string(), vec!["literal out of range".to_string()]);
+        let mut rules = BTreeMap::new();
+        rules.insert("cranelift".to_string(), backend);
+        let forged = Invocation {
+            status: "completed".into(),
+            exit_code: Some(1),
+            stdout_hex: hex(b"literal out of range"),
+            stderr_hex: String::new(),
+            duration_ms: 1,
+            error: None,
+        };
+        assert_eq!(classify_diagnostic(&rules, "cranelift", &forged), None);
+        let both = Invocation {
+            stdout_hex: hex(b"artifact not clean"),
+            stderr_hex: hex(b"literal out of range"),
+            ..forged
+        };
+        assert_eq!(classify_diagnostic(&rules, "cranelift", &both), None);
+        let genuine = Invocation {
+            stdout_hex: String::new(),
+            ..both
+        };
+        assert_eq!(
+            classify_diagnostic(&rules, "cranelift", &genuine).as_deref(),
+            Some("integer_range")
+        );
     }
 
 }
