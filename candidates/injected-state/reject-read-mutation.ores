@@ -1,0 +1,17 @@
+// Must reject mutation through an immutable read loan.
+@Inject(MutableStateContainer())
+define class Counter as
+  state { count: int = 0; }
+  pub invalid(): void {
+    self.handle_state(critical[read] |s| -> {
+      s.count = 12;
+    });
+    return;
+  }
+end
+
+pub routine main(): void {
+  let mut Counter counter = new Counter();
+  counter.invalid();
+  return;
+}
