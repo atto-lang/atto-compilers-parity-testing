@@ -1,0 +1,4 @@
+// 43: GLM/MoE shared-source parity candidate. No backend-specific rewriting.
+// Return 42 on correct semantic behavior, 1 on mismatch. Compiler-backed evidence pending.
+fnc admitted(int experts, int active): bool { if (experts < 2 || active <= 0) { return false; } fi return active <= experts; }
+pub fnc main(): int { if (admitted(2, 3)) { return 1; } fi return 42; }
