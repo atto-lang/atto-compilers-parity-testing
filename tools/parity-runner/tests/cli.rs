@@ -120,3 +120,42 @@ fn unknown_case_filter_is_error_without_a_report() {
     assert!(!status.success());
     assert!(!output.exists());
 }
+
+#[test]
+fn five_required_toolchains_missing_adapters_never_forge_guest_receipts() {
+    // Evidence-boundary only: NOT execution of five compilers.
+    for (backend, env_name) in [
+        ("java", "JAVA"),
+        ("llvm", "LLVM"),
+        ("wasm", "WASM"),
+        ("dotnet", "DOTNET"),
+        ("cranelift", "CRANELIFT"),
+    ] {
+        let output = std::env::temp_dir().join(format!(
+            "ores-cli-{}-missing-{backend}.json",
+            std::process::id()
+        ));
+        let compile = format!("ORES_PARITY_{env_name}_COMPILE");
+        let run = format!("ORES_PARITY_{env_name}_RUN");
+        let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+            .args(["--backend", backend, "--case", "34", "--execute", "--allow-unvalidated", "--output"])
+            .arg(&output)
+            .env_remove(&compile)
+            .env_remove(&run)
+            .status()
+            .unwrap();
+        assert!(!status.success(), "{backend} must not succeed without adapters");
+        let report: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+        std::fs::remove_file(&output).unwrap();
+        assert_eq!(report["backends"], serde_json::json!([backend]));
+        assert_eq!(report["cases"], 1, "{backend}");
+        assert_eq!(report["records"].as_array().unwrap().len(), 1, "{backend}");
+        assert_eq!(report["summary"]["backend_not_configured"], 1, "{backend}");
+        let record = &report["records"][0];
+        assert_eq!(record["backend"], backend);
+        assert_eq!(record["status"], "backend_not_configured", "{backend}");
+        assert!(record["compile"].is_null(), "{backend} forged compile receipt");
+        assert!(record["run"].is_null(), "{backend} forged guest receipt");
+    }
+}
