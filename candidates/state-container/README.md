@@ -126,3 +126,20 @@ To count five requested toolchains (Java, LLVM, WASM, Cranelift, .NET), the
 required manifest and Rust adapters must be explicitly updated and their real
 compiled guest runs validated. An unsupported Cranelift actor source may pass
 a *negative diagnostic test*, but must never count as executable actor parity.
+
+## Incremental ownership and private-state candidate corpus (2026-11-01)
+
+The four additional source fixtures in `ownership-and-private-methods-v1.json`
+cover two mutable aliases, use-after-take, read-borrow to mutable receiver,
+and a paired positive public-method-only source returning 7.
+The positive case intentionally **does not** use `define state container`,
+which is not yet an executable nominal kind. It isolates existing class/borrow
+rules before staged compiler lowering.
+
+**Evidence: not_run on every backend.** These are candidate sources, not
+accepted compiler fixtures. Semantic rejection must happen at the intended
+checker stage; an unrelated parser failure is not a passing rejection oracle.
+The 53-case required parity manifest remains unchanged, and no source bytes
+have been transferred to another organization. Cross-backend promotion
+requires identical source SHA, real guest compilation and executable output
+and nonzero executed CI steps, including Cranelift as a separate toolchain.
