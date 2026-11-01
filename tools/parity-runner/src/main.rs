@@ -8,9 +8,10 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-const BACKENDS: [(&str, &str); 5] = [
+const BACKENDS: [(&str, &str); 6] = [
     ("llvm", "LLVM"),
     ("java", "JAVA"),
+    ("cranelift", "CRANELIFT"),
     ("wasm", "WASM"),
     ("dotnet", "DOTNET"),
     ("js", "JS"),
@@ -622,6 +623,19 @@ fn temp_dir(case_id: &str, backend: &str) -> Result<PathBuf, String> {
     Ok(path)
 }
 
+// Cranelift's experimental scalar CLI writes signed i64 to stdout and exits 0.
+// Other adapters retain the legacy process-exit oracle. Exact stdout bytes
+// are required: "42\nX" or fake receipt text can never pass.
+fn matches_expected_result(case: &TestCase, backend: &str, exit: Option<i32>, stdout_hex: &str) -> bool {
+    if backend == "cranelift" && case.suite == "legacy" && case.expected_kind == "exit" {
+        return exit == Some(0)
+            && case.expected_value.is_some_and(|value| {
+                stdout_hex == hex(format!("{value}\\n").as_bytes())
+            });
+    }
+    exit == case.expected_value
+}
+
 fn evaluate_case(
     case: &TestCase,
     diagnostic_rules: &DiagnosticRules,
@@ -734,7 +748,7 @@ fn evaluate_case(
         record.status = if run_status != "completed" || run_exit.is_none() || run_exit == Some(125)
         {
             "runtime_infrastructure_failure".into()
-        } else if run_exit != case.expected_value {
+        } else if !matches_expected_result(case, backend, run_exit, &stdout_hex) {
             "wrong_result".into()
         } else if let Some(prefix) = &case.expected_stdout_prefix {
             if !stdout_hex.starts_with(&hex(prefix.as_bytes())) {
@@ -765,7 +779,7 @@ fn main() -> Result<(), String> {
             args.get(index + 1)
                 .filter(|name| BACKENDS.iter().any(|(backend, _)| backend == name))
                 .cloned()
-                .ok_or_else(|| "--backend requires llvm, java, wasm, dotnet, or js".to_string())
+                .ok_or_else(|| "--backend requires llvm, java, cranelift, wasm, dotnet, or js".to_string())
         })
         .transpose()?;
     let output = args
