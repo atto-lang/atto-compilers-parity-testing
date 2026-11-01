@@ -203,8 +203,7 @@ fn safe_file(root: &Path, path_text: &str) -> Result<PathBuf, String> {
     // Never follow a file symlink, even if its target stays in this repository.
     // Exact source identities must refer to regular repository files.
     let raw = root.join(path_text);
-    let metadata = fs::symlink_metadata(&raw)
-        .map_err(|e| format!("{path_text}: {e}"))?;
+    let metadata = fs::symlink_metadata(&raw).map_err(|e| format!("{path_text}: {e}"))?;
     if !metadata.file_type().is_file() {
         return Err(format!("source is not a regular file: {path_text}"));
     }
@@ -700,10 +699,8 @@ fn case_source_unchanged(case: &TestCase, root: &Path) -> bool {
             Ok(graph) => graph,
             Err(_) => return false,
         };
-        let paths: Result<Vec<String>, _> = graph
-            .iter()
-            .map(|path| relative_path(path, root))
-            .collect();
+        let paths: Result<Vec<String>, _> =
+            graph.iter().map(|path| relative_path(path, root)).collect();
         if paths.ok().as_ref() != case.graph_files.as_ref() {
             return false;
         }
@@ -777,9 +774,11 @@ fn evaluate_case(
     } else if case.expected_kind == "compile_reject" {
         if compile_exit == Some(0) {
             record.status = "unexpected_compile_success".into();
-        } else if record.compile.as_ref().is_some_and(|c| {
-            !c.stdout_hex.is_empty() || c.stderr_hex.is_empty()
-        }) {
+        } else if record
+            .compile
+            .as_ref()
+            .is_some_and(|c| !c.stdout_hex.is_empty() || c.stderr_hex.is_empty())
+        {
             // Rejected sources must not publish partial IR or a silent failure.
             record.status = "rejection_output_violation".into();
         } else if fs::read_dir(&workdir)
@@ -918,7 +917,9 @@ fn main() -> Result<(), String> {
             args.get(index + 1)
                 .filter(|name| BACKENDS.iter().any(|(backend, _)| backend == name))
                 .cloned()
-                .ok_or_else(|| "--backend requires llvm, java, wasm, dotnet, js, or cranelift".to_string())
+                .ok_or_else(|| {
+                    "--backend requires llvm, java, wasm, dotnet, js, or cranelift".to_string()
+                })
         })
         .transpose()?;
     let selected_cases: BTreeSet<String> = args
@@ -1078,7 +1079,12 @@ mod tests {
 
     #[test]
     fn strict_cli_option_admission_prevents_silent_inventory_fallback() {
-        let values = |words: &[&str]| words.iter().map(|value| (*value).to_string()).collect::<Vec<_>>();
+        let values = |words: &[&str]| {
+            words
+                .iter()
+                .map(|value| (*value).to_string())
+                .collect::<Vec<_>>()
+        };
         for flags in [
             vec!["runner", "--excute"],
             vec!["runner", "--execute", "--execute"],
@@ -1087,12 +1093,24 @@ mod tests {
             vec!["runner", "--backend", "llvm", "--backend", "cranelift"],
             vec!["runner", "--timeout", "20", "--timeout", "1"],
         ] {
-            assert!(super::validate_cli_args(&values(&flags)).is_err(), "{flags:?}");
+            assert!(
+                super::validate_cli_args(&values(&flags)).is_err(),
+                "{flags:?}"
+            );
         }
         assert!(super::validate_cli_args(&values(&[
-            "runner", "--execute", "--backend", "cranelift",
-            "--case", "34", "--case", "35", "--output", "results.json",
-        ])).is_ok());
+            "runner",
+            "--execute",
+            "--backend",
+            "cranelift",
+            "--case",
+            "34",
+            "--case",
+            "35",
+            "--output",
+            "results.json",
+        ]))
+        .is_ok());
     }
 
     #[test]
@@ -1168,10 +1186,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn oversized_compiler_stdout_and_stderr_never_certify_parity() {
-        for command in [
-            "head -c 1048577 /dev/zero",
-            "head -c 1048577 /dev/zero >&2",
-        ] {
+        for command in ["head -c 1048577 /dev/zero", "head -c 1048577 /dev/zero >&2"] {
             let result = super::invoke(
                 &["sh".into(), "-c".into(), command.into()],
                 &std::env::temp_dir(),
@@ -1209,22 +1224,46 @@ mod tests {
     #[test]
     fn native_cranelift_stdout_result_requires_exact_integer_and_newline() {
         assert!(super::matches_scalar_result(
-            "cranelift", Some(0), &hex(b"42\n"), "", 42
+            "cranelift",
+            Some(0),
+            &hex(b"42\n"),
+            "",
+            42
         ));
         assert!(!super::matches_scalar_result(
-            "cranelift", Some(0), &hex(b"42"), "", 42
+            "cranelift",
+            Some(0),
+            &hex(b"42"),
+            "",
+            42
         ));
         assert!(!super::matches_scalar_result(
-            "cranelift", Some(0), &hex(b"42\nFAKE"), "", 42
+            "cranelift",
+            Some(0),
+            &hex(b"42\nFAKE"),
+            "",
+            42
         ));
         assert!(!super::matches_scalar_result(
-            "cranelift", Some(1), &hex(b"42\n"), "", 42
+            "cranelift",
+            Some(1),
+            &hex(b"42\n"),
+            "",
+            42
         ));
         assert!(!super::matches_scalar_result(
-            "cranelift", Some(0), &hex(b"42\n"), &hex(b"warning"), 42
+            "cranelift",
+            Some(0),
+            &hex(b"42\n"),
+            &hex(b"warning"),
+            42
         ));
         assert!(!super::matches_scalar_result(
-            "java", Some(0), &hex(b"42\n"), "", 42
+            "java",
+            Some(0),
+            &hex(b"42\n"),
+            "",
+            42
         ));
         assert!(super::matches_scalar_result("llvm", Some(42), "", "", 42));
     }
@@ -1232,7 +1271,10 @@ mod tests {
     #[test]
     fn fake_diagnostic_on_stdout_does_not_classify_as_expected_reject() {
         let mut backend = BTreeMap::new();
-        backend.insert("integer_range".to_string(), vec!["literal out of range".to_string()]);
+        backend.insert(
+            "integer_range".to_string(),
+            vec!["literal out of range".to_string()],
+        );
         let mut rules = BTreeMap::new();
         rules.insert("cranelift".to_string(), backend);
         let forged = Invocation {
@@ -1295,5 +1337,4 @@ mod tests {
         assert!(!super::case_source_unchanged(&case, &dir));
         std::fs::remove_dir(&dir).unwrap();
     }
-
 }
