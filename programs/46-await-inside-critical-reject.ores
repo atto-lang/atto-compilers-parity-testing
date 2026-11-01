@@ -1,0 +1,3 @@
+// 46: await-inside-critical-reject; proposed language-policy conformance, not yet compiler verified
+suspends fnc answer(): int { return 42; }
+pub suspends fnc main(): int { critical { return await answer(); } }

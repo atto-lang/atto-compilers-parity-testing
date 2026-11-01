@@ -1,4 +1,4 @@
 // 25: async-await
 // Java AsyncAwaitLanguageTest with integer main oracle
-async fnc answer(): int { return 42; }
-pub async fnc main(): int { return await answer(); }
+suspends fnc answer(): int { return 42; }
+pub suspends fnc main(): int { return await answer(); }

@@ -1,0 +1,2 @@
+// 49: removed-double-caret-reject; proposed language-policy conformance, not yet compiler verified
+pub fnc main(): int { return 40 ^^ 2; }

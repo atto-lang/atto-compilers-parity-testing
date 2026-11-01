@@ -24,8 +24,8 @@ fn selected_missing_backend_fails_instead_of_claiming_success() {
     let (status, report) = execute("missing", false);
     assert!(!status.success());
     assert_eq!(report["backends"], serde_json::json!(["java"]));
-    assert_eq!(report["records"].as_array().unwrap().len(), 49);
-    assert_eq!(report["summary"]["backend_not_configured"], 49);
+    assert_eq!(report["records"].as_array().unwrap().len(), 67);
+    assert_eq!(report["summary"]["backend_not_configured"], 67);
 }
 
 #[cfg(unix)]
@@ -33,7 +33,7 @@ fn selected_missing_backend_fails_instead_of_claiming_success() {
 fn adapter_error_is_infrastructure_failure_even_for_negative_probes() {
     let (status, report) = execute("adapter-error", true);
     assert!(!status.success());
-    assert_eq!(report["summary"]["compile_infrastructure_failure"], 49);
+    assert_eq!(report["summary"]["compile_infrastructure_failure"], 67);
 }
 
 #[test]
@@ -54,6 +54,6 @@ fn cranelift_is_explicit_and_unconfigured_is_a_failure() {
         serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
     std::fs::remove_file(path).unwrap();
     assert_eq!(report["backends"], serde_json::json!(["cranelift"]));
-    assert_eq!(report["records"].as_array().unwrap().len(), 49);
-    assert_eq!(report["summary"]["backend_not_configured"], 49);
+    assert_eq!(report["records"].as_array().unwrap().len(), 67);
+    assert_eq!(report["summary"]["backend_not_configured"], 67);
 }

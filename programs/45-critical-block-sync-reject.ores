@@ -1,0 +1,2 @@
+// 45: critical-block-sync-reject; proposed language-policy conformance, not yet compiler verified
+pub fnc main(): int { critical { return 42; } }

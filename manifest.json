@@ -463,15 +463,15 @@
       "path": "programs/25-async-await.ores",
       "group": "effects-async",
       "features": [
-        "async",
+        "suspends",
         "await",
         "future"
       ],
       "expected_kind": "exit",
       "expected_value": 42,
       "expected_diagnostic_category": null,
-      "validation_status": "reference_derived",
-      "source_basis": "Java AsyncAwaitLanguageTest with integer main oracle",
+      "validation_status": "candidate",
+      "source_basis": "Java AsyncAwaitLanguageTest with integer main oracle; migration to suspends modifier remains unverified",
       "required_on_all_backends": true
     },
     {
@@ -500,14 +500,14 @@
       "features": [
         "channel",
         "bounded-capacity",
-        "async",
+        "suspends",
         "backpressure"
       ],
       "expected_kind": "exit",
       "expected_value": 42,
       "expected_diagnostic_category": null,
       "validation_status": "candidate",
-      "source_basis": "Derived stress case; requires reference parser/runtime validation",
+      "source_basis": "Derived stress case; requires reference parser/runtime validation; migration to suspends modifier remains unverified",
       "required_on_all_backends": true
     },
     {
@@ -526,8 +526,8 @@
       "expected_kind": "exit",
       "expected_value": 42,
       "expected_diagnostic_category": null,
-      "validation_status": "reference_derived",
-      "source_basis": "Java SourceActorSpawnExecutionTest, adapted to integer oracle",
+      "validation_status": "candidate",
+      "source_basis": "Java SourceActorSpawnExecutionTest, adapted to integer oracle; migration to suspends modifier remains unverified",
       "required_on_all_backends": true
     },
     {
@@ -565,7 +565,7 @@
       "expected_value": 42,
       "expected_diagnostic_category": null,
       "validation_status": "candidate",
-      "source_basis": "LLVM critical-state-counter-runtime fixture updated to canonical lifecycle spelling and integer oracle",
+      "source_basis": "LLVM critical-state-counter-runtime fixture updated to canonical lifecycle spelling and integer oracle; migration to suspends modifier remains unverified",
       "required_on_all_backends": true
     },
     {
@@ -585,6 +585,305 @@
       "expected_diagnostic_category": null,
       "validation_status": "reference_test",
       "source_basis": "Java PR #2079 SelectOverEndSyntaxTest and delimiter-equivalence contract",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "32",
+      "name": "immutable-default-int",
+      "path": "programs/32-immutable-default-int.ores",
+      "group": "binding",
+      "features": [
+        "immutable-default",
+        "typed-binding"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 language policy candidate; not compiler verified",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "33",
+      "name": "explicit-const-type",
+      "path": "programs/33-explicit-const-type.ores",
+      "group": "binding",
+      "features": [
+        "const",
+        "typed-binding"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 language policy candidate; not compiler verified",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "34",
+      "name": "mutable-reassignment",
+      "path": "programs/34-mutable-reassignment.ores",
+      "group": "binding",
+      "features": [
+        "explicit-mut",
+        "rebinding"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 language policy candidate; not compiler verified",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "35",
+      "name": "explicit-as-int",
+      "path": "programs/35-explicit-as-int.ores",
+      "group": "binding",
+      "features": [
+        "as-cast",
+        "explicit-type"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 language policy candidate; not compiler verified",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "36",
+      "name": "immutable-default-rebind-reject",
+      "path": "programs/36-immutable-default-rebind-reject.ores",
+      "group": "diagnostics",
+      "features": [
+        "immutable-default",
+        "rebinding",
+        "diagnostic"
+      ],
+      "expected_kind": "compile_reject",
+      "expected_value": null,
+      "expected_diagnostic_category": "immutable_binding",
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 language policy candidate; not compiler verified",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "37",
+      "name": "immutable-inferred-rebind-reject",
+      "path": "programs/37-immutable-inferred-rebind-reject.ores",
+      "group": "diagnostics",
+      "features": [
+        "const",
+        "rebinding",
+        "diagnostic"
+      ],
+      "expected_kind": "compile_reject",
+      "expected_value": null,
+      "expected_diagnostic_category": "immutable_binding",
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 language policy candidate; not compiler verified",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "38",
+      "name": "immutable-explicit-const-reject",
+      "path": "programs/38-immutable-explicit-const-reject.ores",
+      "group": "diagnostics",
+      "features": [
+        "typed-const",
+        "rebinding",
+        "diagnostic"
+      ],
+      "expected_kind": "compile_reject",
+      "expected_value": null,
+      "expected_diagnostic_category": "immutable_binding",
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 language policy candidate; not compiler verified",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "39",
+      "name": "implicit-numeric-conversion-reject",
+      "path": "programs/39-implicit-numeric-conversion-reject.ores",
+      "group": "diagnostics",
+      "features": [
+        "no-implicit-cast",
+        "numeric-types",
+        "diagnostic"
+      ],
+      "expected_kind": "compile_reject",
+      "expected_value": null,
+      "expected_diagnostic_category": "implicit_conversion",
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 language policy candidate; not compiler verified",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "40",
+      "name": "suspends-modifier",
+      "path": "programs/40-suspends-modifier.ores",
+      "group": "suspension",
+      "features": [
+        "suspends",
+        "function-effects"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 language policy candidate; not compiler verified",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "41",
+      "name": "critical-block-in-suspends",
+      "path": "programs/41-critical-block-in-suspends.ores",
+      "group": "suspension",
+      "features": [
+        "suspends",
+        "critical-block",
+        "no-body-suspension"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 language policy candidate; not compiler verified",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "42",
+      "name": "legacy-async-modifier-reject",
+      "path": "programs/42-legacy-async-modifier-reject.ores",
+      "group": "diagnostics",
+      "features": [
+        "no-async-modifier",
+        "suspends",
+        "diagnostic"
+      ],
+      "expected_kind": "compile_reject",
+      "expected_value": null,
+      "expected_diagnostic_category": "unsupported_async_modifier",
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 language policy candidate; not compiler verified",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "43",
+      "name": "critical-suspends-reject",
+      "path": "programs/43-critical-suspends-reject.ores",
+      "group": "diagnostics",
+      "features": [
+        "critical",
+        "suspends",
+        "diagnostic"
+      ],
+      "expected_kind": "compile_reject",
+      "expected_value": null,
+      "expected_diagnostic_category": "invalid_effect_modifiers",
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 language policy candidate; not compiler verified",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "44",
+      "name": "suspends-critical-reject",
+      "path": "programs/44-suspends-critical-reject.ores",
+      "group": "diagnostics",
+      "features": [
+        "critical",
+        "suspends",
+        "modifier-order",
+        "diagnostic"
+      ],
+      "expected_kind": "compile_reject",
+      "expected_value": null,
+      "expected_diagnostic_category": "invalid_effect_modifiers",
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 language policy candidate; not compiler verified",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "45",
+      "name": "critical-block-sync-reject",
+      "path": "programs/45-critical-block-sync-reject.ores",
+      "group": "diagnostics",
+      "features": [
+        "critical-block",
+        "synchronous-fnc",
+        "diagnostic"
+      ],
+      "expected_kind": "compile_reject",
+      "expected_value": null,
+      "expected_diagnostic_category": "suspension_context",
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 language policy candidate; not compiler verified",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "46",
+      "name": "await-inside-critical-reject",
+      "path": "programs/46-await-inside-critical-reject.ores",
+      "group": "diagnostics",
+      "features": [
+        "await",
+        "critical-block",
+        "diagnostic"
+      ],
+      "expected_kind": "compile_reject",
+      "expected_value": null,
+      "expected_diagnostic_category": "suspension_in_critical",
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 language policy candidate; not compiler verified",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "47",
+      "name": "removed-modulo-reject",
+      "path": "programs/47-removed-modulo-reject.ores",
+      "group": "diagnostics",
+      "features": [
+        "no-modulo-operator",
+        "diagnostic"
+      ],
+      "expected_kind": "compile_reject",
+      "expected_value": null,
+      "expected_diagnostic_category": "removed_operator",
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 language policy candidate; not compiler verified",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "48",
+      "name": "removed-caret-reject",
+      "path": "programs/48-removed-caret-reject.ores",
+      "group": "diagnostics",
+      "features": [
+        "no-caret-operator",
+        "diagnostic"
+      ],
+      "expected_kind": "compile_reject",
+      "expected_value": null,
+      "expected_diagnostic_category": "removed_operator",
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 language policy candidate; not compiler verified",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "49",
+      "name": "removed-double-caret-reject",
+      "path": "programs/49-removed-double-caret-reject.ores",
+      "group": "diagnostics",
+      "features": [
+        "no-double-caret-operator",
+        "diagnostic"
+      ],
+      "expected_kind": "compile_reject",
+      "expected_value": null,
+      "expected_diagnostic_category": "removed_operator",
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 language policy candidate; not compiler verified",
       "required_on_all_backends": true
     }
   ]

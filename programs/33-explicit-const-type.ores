@@ -1,0 +1,2 @@
+// 33: explicit-const-type; proposed language-policy conformance, not yet compiler verified
+pub fnc main(): int { const int first = 40; const int second = 2; return first + second; }

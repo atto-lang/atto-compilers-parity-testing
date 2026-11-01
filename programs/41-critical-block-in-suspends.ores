@@ -1,0 +1,2 @@
+// 41: critical-block-in-suspends; proposed language-policy conformance, not yet compiler verified
+pub suspends fnc main(): int { let mut int value = 40; critical { value = value + 2; } return value; }

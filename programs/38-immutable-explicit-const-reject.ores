@@ -1,0 +1,2 @@
+// 38: immutable-explicit-const-reject; proposed language-policy conformance, not yet compiler verified
+pub fnc main(): int { const int value = 41; value = 42; return value; }

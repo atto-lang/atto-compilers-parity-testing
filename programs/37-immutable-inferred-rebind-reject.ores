@@ -1,0 +1,2 @@
+// 37: immutable-inferred-rebind-reject; proposed language-policy conformance, not yet compiler verified
+pub fnc main(): int { const value = 41; value = 42; return value; }

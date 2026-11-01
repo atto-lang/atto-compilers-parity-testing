@@ -1,0 +1,2 @@
+// 47: removed-modulo-reject; proposed language-policy conformance, not yet compiler verified
+pub fnc main(): int { return 42 % 7; }

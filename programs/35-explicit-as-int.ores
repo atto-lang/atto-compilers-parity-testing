@@ -1,0 +1,2 @@
+// 35: explicit-as-int; proposed language-policy conformance, not yet compiler verified
+pub fnc main(): int { const value = 42 as int; return value; }

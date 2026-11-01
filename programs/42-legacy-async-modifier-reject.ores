@@ -1,0 +1,2 @@
+// 42: legacy-async-modifier-reject; proposed language-policy conformance, not yet compiler verified
+pub async fnc main(): int { return 42; }

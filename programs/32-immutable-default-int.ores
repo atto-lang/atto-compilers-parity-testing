@@ -1,0 +1,2 @@
+// 32: immutable-default-int; proposed language-policy conformance, not yet compiler verified
+pub fnc main(): int { int value = 40; const extra = 2; return value + extra; }

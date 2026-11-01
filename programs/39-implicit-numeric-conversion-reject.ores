@@ -1,0 +1,2 @@
+// 39: implicit-numeric-conversion-reject; proposed language-policy conformance, not yet compiler verified
+pub fnc main(): int { const float value = 42; return 42; }

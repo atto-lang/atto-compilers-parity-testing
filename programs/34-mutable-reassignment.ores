@@ -1,0 +1,2 @@
+// 34: mutable-reassignment; proposed language-policy conformance, not yet compiler verified
+pub fnc main(): int { let mut int value = 39; value = value + 3; return value; }

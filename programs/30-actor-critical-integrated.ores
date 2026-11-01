@@ -18,7 +18,7 @@ define pub actor Counter as
   }
 end
 
-pub async fnc main(): int {
+pub suspends fnc main(): int {
   const worker = spawn Counter();
   await worker.get_ready();
   worker.send("first");

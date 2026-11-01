@@ -1,0 +1,2 @@
+// 44: suspends-critical-reject; proposed language-policy conformance, not yet compiler verified
+pub suspends critical fnc main(): int { return 42; }

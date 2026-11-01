@@ -1,6 +1,6 @@
 # Execution and parity gate
 
-The checked-in corpus is fail-closed. The default CI audits 31 legacy programs, 16 positive multi-file checks and 2 negative probes, yielding 49 logical cases and 294 backend/case pairs. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
+The checked-in corpus is fail-closed. The default CI audits 49 legacy programs, 16 positive multi-file checks and 2 negative probes, yielding 67 logical cases and 402 backend/case pairs. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
 
 ## Rust-only tooling
 
@@ -84,3 +84,7 @@ nonzero exit does not constitute parity.
 Case 31 (static select delimiter equivalence) remains a Java-reference target,
 not six-backend execution proof. The `intentional_capability_reject` status
 is a fail-closed gap, never a passing record.
+
+## November effect/binding policy candidates
+
+Eighteen new pure Oreslang fixtures, cases 32–49, cover immutable-by-default declarations, explicit `let mut` reassignment and `as` casts, no implicit numeric conversions, `suspends`, non-suspending critical bodies and removal of `%`, `^`, `^^`. These are unvalidated policy targets, not claimed backend passes. Legacy fixtures 25/27/28/30 use `suspends` but remain unvalidated. Genuine compile/check and guest exit evidence is required per toolchain.
