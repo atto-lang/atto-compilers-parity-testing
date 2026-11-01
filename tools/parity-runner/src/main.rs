@@ -852,8 +852,38 @@ fn evaluate_case(
     Ok(record)
 }
 
+fn validate_cli_args(args: &[String]) -> Result<(), String> {
+    let mut seen = BTreeSet::new();
+    let mut index = 1usize;
+    while index < args.len() {
+        let option = args[index].as_str();
+        if !matches!(
+            option,
+            "--execute" | "--allow-unvalidated" | "--backend" | "--output" | "--timeout"
+        ) {
+            return Err(format!("unknown CLI option: {option}"));
+        }
+        if !seen.insert(option) {
+            return Err(format!("duplicate CLI option: {option}"));
+        }
+        if matches!(option, "--backend" | "--output" | "--timeout") {
+            if args.get(index + 1).is_none_or(|value| value.starts_with("--")) {
+                return Err(format!("{option} requires a value"));
+            }
+            index += 2;
+        } else {
+            index += 1;
+        }
+    }
+    if seen.contains("--allow-unvalidated") && !seen.contains("--execute") {
+        return Err("--allow-unvalidated requires --execute".into());
+    }
+    Ok(())
+}
+
 fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
+    validate_cli_args(&args)?;
     let execute = args.iter().any(|arg| arg == "--execute");
     let allow_unvalidated = args.iter().any(|arg| arg == "--allow-unvalidated");
     let selected_backend = args
@@ -961,7 +991,7 @@ fn main() -> Result<(), String> {
 mod tests {
     use super::{
         ascii_lower_hex, classify_diagnostic, hex, import_target, lowercase_kebab,
-        validate_backend_policy, Invocation, LegacyPolicy,
+        validate_backend_policy, validate_cli_args, Invocation, LegacyPolicy,
     };
     use std::collections::BTreeMap;
 
@@ -1022,6 +1052,22 @@ mod tests {
         assert!(validate_backend_policy(&roster).is_err());
         roster.target_backends.push("cranelift".into());
         assert!(validate_backend_policy(&roster).is_err());
+    }
+
+    #[test]
+    fn cli_rejects_unknown_duplicate_or_missing_options() {
+        let argv = |options: &[&str]| {
+            std::iter::once("runner".to_string())
+                .chain(options.iter().map(|arg| arg.to_string()))
+                .collect::<Vec<_>>()
+        };
+        assert!(validate_cli_args(&argv(&["--backend", "cranelift", "--execute"])).is_ok());
+        assert!(validate_cli_args(&argv(&["--backend", "java", "--backend", "cranelift"])).is_err());
+        assert!(validate_cli_args(&argv(&["--execute", "--execute"])).is_err());
+        assert!(validate_cli_args(&argv(&["--backend"])).is_err());
+        assert!(validate_cli_args(&argv(&["--backend", "--execute"])).is_err());
+        assert!(validate_cli_args(&argv(&["--not-a-real-mode"])).is_err());
+        assert!(validate_cli_args(&argv(&["--allow-unvalidated"])).is_err());
     }
 
     #[test]
