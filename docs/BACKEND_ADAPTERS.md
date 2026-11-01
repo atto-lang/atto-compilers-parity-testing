@@ -194,3 +194,22 @@ Cranelift JIT use their source-driven interfaces and are not credited for AOT
 artifacts. A positive source check, empty output, symlink, directory or
 missing binary remains an infrastructure failure. These are authored guards;
 not evidence that the compilers implement nominal ORM lowering.
+
+## Revised canonical ORM guest pin — 2026-11-01
+
+Canonical ORM PR #13 now references commit `dfafa6ac9be5c711d5e9b6f7964cff61f0a6a29d` with Git tree
+`afabec14235676d6fb3cbf434a243cc447f24a59`.
+The source remains **exactly the same** `src/schema.ores` and `src/pg.ores`
+for every backend; `tests/schema-invariants.ores` now includes **21 extra
+pure-Oreslang risk/ordering/forged-downgrade assertions**. Its blob is
+`b523d60f0433f3089f4770a90bd3998c97b8d4a5`. Older pins below are
+historical (not an approved current parity receipt). The parity runner
+requires `--orm-head` to equal the checked-out revision, and records the
+actual `source-commit`, `source-tree` and source graph SHA-256.
+
+LLVM/Wasm/.NET native targets also require a post-compile nonempty, bounded,
+regular output artifact, its SHA-256 and stable digest after the guest. Wasm
+must pass `{artifact_sha256}` to the runtime; LLVM/.NET invoke `{artifact}`
+directly. No produced artifact, a symlink, an empty file or a manufactured
+stdout wrapper can substitute for compiler-backed execution. Java and
+Cranelift are source-driven and have separate interpreter/JIT evidence gates.
