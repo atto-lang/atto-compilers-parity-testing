@@ -1,6 +1,6 @@
 # Execution and parity gate
 
-The checked-in corpus is fail-closed. The default CI audits 31 legacy programs, 16 positive multi-file checks and 2 negative probes, yielding 49 logical cases and 245 backend/case pairs. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
+The checked-in corpus is fail-closed. The default CI audits 31 legacy programs, 16 positive multi-file checks and 2 negative probes, yielding 49 logical cases and 294 backend/case pairs (six backends including Cranelift). It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
 
 ## Rust-only tooling
 
@@ -13,7 +13,7 @@ Each backend uses two command templates:
 - `ORES_PARITY_<BACKEND>_COMPILE`
 - `ORES_PARITY_<BACKEND>_RUN`
 
-Tokens: `{source}`, `{artifact}`, `{workdir}`. Templates are split into argv without a shell. Supported backend names are LLVM, JAVA, WASM, DOTNET and JS.
+Tokens: `{source}`, `{artifact}`, `{workdir}`. Templates are split into argv without a shell. Supported backend names are LLVM, JAVA, WASM, DOTNET, CRANELIFT and JS.
 
 Example:
 
@@ -55,7 +55,7 @@ The Java reference adapter can now execute the full corpus exploratorily; see
 pinned reference run exposed corpus/compiler syntax and type-checking gaps;
 these must be resolved against canonical contracts without backend-specific rewrites.
 
-Case 31 is the Java-reference `do select ... over ... end` target. Explicit fail-closed rejection on LLVM/Wasm/.NET/JS is useful capability evidence, but remains a parity gap rather than a pass until those backends execute the same source semantics.
+Case 31 is the Java-reference `do select ... over ... end` target. Explicit fail-closed rejection on LLVM/Wasm/Cranelift/.NET/JS is useful capability evidence, but remains a parity gap rather than a pass until those backends execute the same source semantics.
 
 ## Intentional capability rejects
 
@@ -82,5 +82,5 @@ currently remain `unvalidated`. A compiler returning a generic
 nonzero exit does not constitute parity.
 
 Case 31 (static select delimiter equivalence) remains a Java-reference target,
-not five-backend execution proof. The `intentional_capability_reject` status
+not six-backend execution proof. The `intentional_capability_reject` status
 is a fail-closed gap, never a passing record.

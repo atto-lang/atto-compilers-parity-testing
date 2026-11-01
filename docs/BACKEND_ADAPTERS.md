@@ -8,6 +8,7 @@ The parity runner deliberately separates the corpus from backend-specific launch
 | LLVM native | `scripts/compile-aot.sh source.ores output` using built `oreslang-llvmc` + Clang | Execute emitted native binary | Native scalar/module support is the strongest direct compile/run adapter; unsupported features must reject |
 | WASM | `scripts/compile-ores.mjs --compiler=... --source=... --output=...` using a pinned LLVM compiler | `scripts/run-guest.mjs --wasm=... --sha256=...` | Current bridge explicitly supports standalone scalar source and says relative module graphs need a future pinned module-graph gate |
 | .NET Native AOT | `oresnet check`; `oresnet compile source.ores --out .../OresGenerated.dll` | Generated CIL must be linked into `Ores.Net.NativeHost` with `dotnet publish`, then the native host executes | Requires an adapter wrapper for compile → host publish → run; current scalar compiler does not establish whole-program import parity |
+| Cranelift experimental JIT | `cargo run --locked -- ir source.ores` verifies only the scalar grammar | `cargo run --locked -- run source.ores [args]` compiles and executes an in-process scalar native JIT | No reviewed separate compile/run artifact adapter yet; modules, classes, arrays, `Result`, and full proxy runtime are unsupported |
 | JavaScript transpiler | `node bin/oreslang-jsc.mjs --check source.ores`; compile with `--out=/absolute/output.mjs` | Import generated ESM and call exported `main()` | Scalar programs are executable; actors/async/import-graph support must fail closed when unsupported |
 
 ## Runner templates
@@ -33,7 +34,7 @@ tools/parity-runner/target/release/java-reference execute /abs/java-bundle.json 
 ```
 
 This runs the JVM reference with `--mode=aot` (guest JIT disabled), not a Native Image executable.
-Its results are exploratory, never five-backend parity proof.
+Its results are exploratory, never six-backend parity proof.
 
 ### LLVM native
 
@@ -45,6 +46,10 @@ export ORES_PARITY_LLVM_RUN='{artifact}'
 ```
 
 The compile script fails closed if the source subset is unsupported and never falls back to an interpreter.
+
+### Cranelift native JIT gap
+
+Cranelift is a **sixth** explicit parity target, not a stand-in for LLVM. Its current scalar-only frontend cannot compile the unchanged proxy `src/load_balancer.ores` and `tests/load_balancer_contract.ores`. `ir` is not an independently published executable-artifact step; `run` combines compilation and native execution. A trusted adapter must preserve separate compile/result evidence, pin the exact compiler binary, reject unsupported features, and never interpret a scalar JIT smoke as complete proxy parity. Track the shared language and native execution gap at https://github.com/ores-truffle-oreslang/oreslang-compilers-parity-testing/issues/26.
 
 ### JavaScript
 
