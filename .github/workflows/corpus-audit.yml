@@ -38,7 +38,23 @@ jobs:
           if (!positives.every(r => Array.isArray(r.graph_files) && r.graph_files.length >= 4)) process.exit(1);
           if (!checks.every(r => Array.isArray(r.features) && r.features.length > 0)) process.exit(1);
           NODE
+      - name: Audit 7 x 5 candidate without feature-pass claims
+        run: |
+          cargo run --quiet --locked --manifest-path tools/parity-runner/Cargo.toml \
+            --bin injected-state-candidate > injected-state-candidate.json
+          node - <<'NODE'
+          const f = require("./injected-state-candidate.json");
+          if (f.required_parity !== false || f.parity_pass !== false ||
+              f.suite_status !== "candidate_unverified" ||
+              f.records.length !== 35 || f.observed_candidates !== 0 ||
+              f.records.some(r => r.state !== "not_run" ||
+                !/^[a-f0-9]{64}$/.test(r.source_sha256))) {
+            process.exit(1);
+          }
+          NODE
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: parity-corpus-audit
-          path: parity-results.json
+          path: |
+            parity-results.json
+            injected-state-candidate.json
