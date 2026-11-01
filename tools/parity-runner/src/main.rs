@@ -38,6 +38,7 @@ struct LegacyCase {
     expected_diagnostic_category: Option<String>,
     validation_status: String,
     features: Vec<String>,
+    required_on_all_backends: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -320,12 +321,53 @@ fn validate_backend_policy(policy: &LegacyPolicy) -> Result<(), String> {
     Ok(())
 }
 
+fn validate_legacy_cases(cases: &[LegacyCase]) -> Result<(), String> {
+    let mut ids = BTreeSet::new();
+    let mut names = BTreeSet::new();
+    let mut paths = BTreeSet::new();
+    for case in cases {
+        if !ids.insert(case.id.as_str()) || !names.insert(case.name.as_str())
+            || !paths.insert(case.path.as_str())
+        {
+            return Err(format!("duplicate parity case identity: {}", case.id));
+        }
+        if case.id.is_empty() || !case.id.bytes().all(|b| b.is_ascii_digit())
+            || !lowercase_kebab(&case.name)
+            || case.path != format!("programs/{}-{}.ores", case.id, case.name)
+        {
+            return Err(format!("invalid parity case identifier/path: {}", case.id));
+        }
+        if !case.required_on_all_backends || case.features.is_empty()
+            || case.features.iter().any(|f| f.trim().is_empty())
+        {
+            return Err(format!("incomplete mandatory parity contract: {}", case.id));
+        }
+        if !matches!(
+            case.validation_status.as_str(),
+            "candidate" | "reference_fixture" | "reference_derived"
+                | "reference_contract" | "reference_test" | "parser_grounded"
+                | "validated" | "unvalidated"
+        ) {
+            return Err(format!("invalid parity maturity: {}", case.id));
+        }
+        match case.expected_kind.as_str() {
+            "exit" if case.expected_value.is_some()
+                && case.expected_diagnostic_category.is_none() => {}
+            "compile_reject" if case.expected_value.is_none()
+                && case.expected_diagnostic_category.as_ref().is_some_and(|v| !v.is_empty()) => {}
+            _ => return Err(format!("invalid expected outcome/diagnostic: {}", case.id)),
+        }
+    }
+    Ok(())
+}
+
 fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
     let legacy: LegacyManifest = serde_json::from_str(
         &fs::read_to_string(root.join("manifest.json")).map_err(|e| e.to_string())?,
     )
     .map_err(|e| e.to_string())?;
     validate_backend_policy(&legacy.policy)?;
+    validate_legacy_cases(&legacy.cases)?;
 
     let mut cases = Vec::new();
     for case in &legacy.cases {
@@ -1263,6 +1305,51 @@ mod tests {
         let entry = root.join("main.ores");
         assert!(super::local_imports(&entry, &root).is_err());
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn manifest_cases_reject_duplicates_and_wrong_expected_result_classes() {
+        let make_case = |id: &str, name: &str, kind: &str| super::LegacyCase {
+            id: id.into(),
+            name: name.into(),
+            path: format!("programs/{id}-{name}.ores"),
+            expected_kind: kind.into(),
+            expected_value: Some(42),
+            expected_diagnostic_category: None,
+            validation_status: "candidate".into(),
+            features: vec!["int".into()],
+            required_on_all_backends: true,
+        };
+        let valid = make_case("90", "test-one", "exit");
+        let duplicate = make_case("90", "test-two", "exit");
+        assert!(super::validate_legacy_cases(&[valid, duplicate]).is_err());
+
+        let mut invalid = make_case("91", "test-three", "compile_reject");
+        assert!(super::validate_legacy_cases(&[invalid]).is_err());
+        invalid.expected_value = None;
+        invalid.expected_diagnostic_category = Some("type_mismatch".into());
+        assert!(super::validate_legacy_cases(&[invalid]).is_ok());
+    }
+
+    #[test]
+    fn manifest_cases_require_exact_path_and_all_backend_admission() {
+        let mut row = super::LegacyCase {
+            id: "92".into(),
+            name: "test-four".into(),
+            path: "programs/92-test-four.ores".into(),
+            expected_kind: "exit".into(),
+            expected_value: Some(42),
+            expected_diagnostic_category: None,
+            validation_status: "candidate".into(),
+            features: vec!["int".into()],
+            required_on_all_backends: true,
+        };
+        assert!(super::validate_legacy_cases(&[row]).is_ok());
+        row.path = "../unreviewed.ores".into();
+        assert!(super::validate_legacy_cases(&[row]).is_err());
+        row.path = "programs/92-test-four.ores".into();
+        row.required_on_all_backends = false;
+        assert!(super::validate_legacy_cases(&[row]).is_err());
     }
 
     #[test]
