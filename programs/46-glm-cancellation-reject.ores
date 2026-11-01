@@ -1,0 +1,4 @@
+// 46: GLM/MoE shared-source parity candidate. No backend-specific rewriting.
+// Return 42 on correct semantic behavior, 1 on mismatch. Compiler-backed evidence pending.
+fnc authorized(bool cancelled, bool exclusive, bool ready): bool { return !cancelled && exclusive && ready; }
+pub fnc main(): int { if (authorized(true, true, true)) { return 1; } fi return 42; }
