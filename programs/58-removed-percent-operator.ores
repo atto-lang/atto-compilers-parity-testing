@@ -1,0 +1,2 @@
+// 58: fail-closed candidate compile-reject; no guest artifact allowed.
+pub fnc main(): int { return 7 % 3; }
