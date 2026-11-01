@@ -580,6 +580,41 @@
       "validation_status": "reference_test",
       "source_basis": "Java PR #2079 SelectOverEndSyntaxTest and delimiter-equivalence contract",
       "required_on_all_backends": true
+    },
+    {
+      "id": "32",
+      "name": "negative-branch-boundary",
+      "path": "programs/32-negative-branch-boundary.ores",
+      "group": "scalar",
+      "features": [
+        "signed-int",
+        "comparison",
+        "if-negative"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 native guest regression wave; authored, unverified",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "33",
+      "name": "inequality-fallthrough",
+      "path": "programs/33-inequality-fallthrough.ores",
+      "group": "scalar",
+      "features": [
+        "int",
+        "equality",
+        "inequality",
+        "if-fallthrough"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 native guest regression wave; authored, unverified",
+      "required_on_all_backends": true
     }
   ]
 }
