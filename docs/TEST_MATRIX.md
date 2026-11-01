@@ -14,7 +14,7 @@ This corpus is a feature ladder, not 30 variations of arithmetic.
 | 32–48 | fixed-size GLM/MoE integer control, routing, capacity and training-step fencing |
 | 49–51 | fixed-gate GLM/MoE floating-point prediction, analytic derivative and SGD loss |
 
-All five backends are targets for every case. A backend that does not implement a case is a **parity gap**, not a skip/pass. The validation_status field records how strongly the source is grounded today; only independently executed and oracle-checked cases should later be promoted to validated.
+All six backends are targets for every case. A backend that does not implement a case is a **parity gap**, not a skip/pass. The validation_status field records how strongly the source is grounded today; only independently executed and oracle-checked cases should later be promoted to validated.
 
 Cases 27 and 30 intentionally remain candidates because their exact source/runtime contracts still require executable reference validation. They are real stress programs, not placeholders.
 
@@ -27,7 +27,7 @@ Positive `main.ores` files each import three unique local files and assert
 their semantic expectations. The Rust runner fingerprints the recursively
 reachable graph and records those files for each backend result.
 
-The 69-case, five-backend audit matrix contains 345 records. A not-run record
+The 69-case, six-backend audit matrix contains 414 records. A not-run record
 is corpus inventory, not compiler/runtime conformance. Ordinary match/switch
 suspension remains distinct from the rejected `nb match` / `nb switch`
 spellings. The modern actor counter uses `handle_state` for mutation.
