@@ -668,18 +668,39 @@ fn safe_temp_component(value: &str) -> String {
         .collect()
 }
 
+// Never delete or reuse a predictable directory in a shared temp root:
+// an unrelated process could have created the existing path. mkdir is atomic,
+// and the directory is owner-private even if the host umask is permissive.
+static WORKDIR_SEQUENCE: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(0);
+
 fn temp_dir(case_id: &str, backend: &str) -> Result<PathBuf, String> {
-    let path = env::temp_dir().join(format!(
-        "ores-parity-{}-{}-{}",
-        std::process::id(),
-        safe_temp_component(case_id),
-        safe_temp_component(backend)
-    ));
-    if path.exists() {
-        fs::remove_dir_all(&path).map_err(|e| e.to_string())?;
+    let root = env::temp_dir();
+    for _ in 0..8 {
+        let sequence = WORKDIR_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|e| e.to_string())?
+            .as_nanos();
+        let path = root.join(format!(
+            "ores-parity-{}-{nonce}-{sequence}-{}-{}",
+            std::process::id(),
+            safe_temp_component(case_id),
+            safe_temp_component(backend)
+        ));
+        let mut builder = fs::DirBuilder::new();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::DirBuilderExt;
+            builder.mode(0o700);
+        }
+        match builder.create(&path) {
+            Ok(()) => return Ok(path),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e.to_string()),
+        }
     }
-    fs::create_dir_all(&path).map_err(|e| e.to_string())?;
-    Ok(path)
+    Err("unable to create a fresh private parity workspace".into())
 }
 
 // This adapter is deliberately limited to the actual Cranelift stage-0 CLI.
@@ -1144,6 +1165,26 @@ mod tests {
             .iter()
             .any(|(name, env)| *name == "cranelift" && *env == "CRANELIFT");
         assert!(found);
+    }
+
+    #[test]
+    fn private_workspaces_are_unique_and_never_reused() {
+        let first = super::temp_dir("same-case", "cranelift").unwrap();
+        let marker = first.join("owner-data");
+        std::fs::write(&marker, "must not be deleted").unwrap();
+        let second = super::temp_dir("same-case", "cranelift").unwrap();
+        assert_ne!(first, second);
+        assert_eq!(std::fs::read_to_string(marker).unwrap(), "must not be deleted");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            for path in [&first, &second] {
+                let mode = std::fs::metadata(path).unwrap().permissions().mode();
+                assert_eq!(mode & 0o077, 0, "workspace must not expose files to others");
+            }
+        }
+        std::fs::remove_dir_all(first).unwrap();
+        std::fs::remove_dir_all(second).unwrap();
     }
 
     #[test]
