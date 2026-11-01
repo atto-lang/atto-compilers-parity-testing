@@ -1,0 +1,72 @@
+{
+  "contract": "managed-state-singleton-source-admission-v1",
+  "status": "CANDIDATE_NOT_EXECUTED",
+  "required_backends": [
+    "java",
+    "llvm",
+    "wasm",
+    "cranelift",
+    "net"
+  ],
+  "optional_backends": [
+    "forge"
+  ],
+  "reference_contract": "oreslang-platform-conformance#297",
+  "cases": [
+    {
+      "id": "trait_injected_singleton_reject",
+      "path": "trait-injected-singleton-unsupported.ores",
+      "git_blob_sha": "9f0f0a35db63264e7fd57ffe0a9986333e21f2a6",
+      "expected": "UNSUPPORTED_AT_FRONTEND",
+      "diagnostics": {
+        "java": "ORES-SINGLETON-UNSUPPORTED",
+        "llvm": "ORES-SINGLETON-UNSUPPORTED",
+        "wasm": "ORES-SINGLETON-UNSUPPORTED",
+        "cranelift": "DECL_KIND_UNSUPPORTED",
+        "net": "ORES-SINGLETON-UNSUPPORTED"
+      }
+    },
+    {
+      "id": "inline_state_singleton_reject",
+      "path": "inline-state-singleton-unsupported.ores",
+      "git_blob_sha": "2f9b1c149c051eff1fb96dba795a914a37ed28b8",
+      "expected": "UNSUPPORTED_AT_FRONTEND",
+      "diagnostics": {
+        "java": "ORES-SINGLETON-UNSUPPORTED",
+        "llvm": "ORES-SINGLETON-UNSUPPORTED",
+        "wasm": "ORES-SINGLETON-UNSUPPORTED",
+        "cranelift": "DECL_KIND_UNSUPPORTED",
+        "net": "ORES-SINGLETON-UNSUPPORTED"
+      }
+    },
+    {
+      "id": "scalar_main_positive_control",
+      "path": "scalar-main-positive-control.ores",
+      "git_blob_sha": "4694ea3e708ddae2b190bb91d5aa3adc8b2549cb",
+      "expected": "COMPILE_EXECUTE_EXIT_42",
+      "stdout": "",
+      "exit_code": 42
+    }
+  ],
+  "required_source_byte_identity": true,
+  "diagnostic_rejection_is_not_feature_parity": true,
+  "unsupported_is_not_executed": true,
+  "zero_step_actions_is_not_test_result": true,
+  "executed_backends": {
+    "java": "NOT_EXECUTED",
+    "llvm": "NOT_EXECUTED",
+    "wasm": "NOT_EXECUTED",
+    "cranelift": "NOT_EXECUTED",
+    "net": "NOT_EXECUTED"
+  },
+  "promotion_requirements": [
+    "exact_source_blob_per_case",
+    "nonzero_step_ci_per_backend",
+    "positive_actual_compiler_and_executable_guest",
+    "negative_compiler_owned_diagnostic",
+    "no_output_artifact_for_negatives",
+    "compiler_sha256",
+    "source_commit_sha",
+    "runtime_lifecycle_tests"
+  ]
+}
