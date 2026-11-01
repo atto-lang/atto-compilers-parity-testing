@@ -76,7 +76,7 @@ pub(super) fn load(source_root: &Path, head: &str) -> Result<Vec<TestCase>, Stri
     // actual Git worktree root and must not be resolved by search paths.
     let git_top = git(&root, &["rev-parse", "--show-toplevel"])?;
     if !git_top.status.success()
-        || Path::new(String::from_utf8_lossy(&git_top.stdout).trim()) != root
+        || Path::new(String::from_utf8_lossy(&git_top.stdout).trim()) != root.as_path()
     {
         return Err("ORM root must be the Git worktree top-level".into());
     }
