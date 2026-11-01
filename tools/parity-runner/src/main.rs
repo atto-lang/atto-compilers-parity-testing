@@ -662,7 +662,7 @@ fn matches_scalar_result(
 ) -> bool {
     if backend == "cranelift" {
         exit == Some(0)
-            && stdout_hex == hex(format!("{expected}\\n").as_bytes())
+            && stdout_hex == hex(format!("{expected}\n").as_bytes())
             && stderr_hex.is_empty()
     } else {
         exit == Some(expected)
@@ -1072,22 +1072,22 @@ mod tests {
     #[test]
     fn native_cranelift_stdout_result_requires_exact_integer_and_newline() {
         assert!(super::matches_scalar_result(
-            "cranelift", Some(0), &hex(b"42\\n"), "", 42
+            "cranelift", Some(0), &hex(b"42\n"), "", 42
         ));
         assert!(!super::matches_scalar_result(
             "cranelift", Some(0), &hex(b"42"), "", 42
         ));
         assert!(!super::matches_scalar_result(
-            "cranelift", Some(0), &hex(b"42\\nFAKE"), "", 42
+            "cranelift", Some(0), &hex(b"42\nFAKE"), "", 42
         ));
         assert!(!super::matches_scalar_result(
-            "cranelift", Some(1), &hex(b"42\\n"), "", 42
+            "cranelift", Some(1), &hex(b"42\n"), "", 42
         ));
         assert!(!super::matches_scalar_result(
-            "cranelift", Some(0), &hex(b"42\\n"), &hex(b"warning"), 42
+            "cranelift", Some(0), &hex(b"42\n"), &hex(b"warning"), 42
         ));
         assert!(!super::matches_scalar_result(
-            "java", Some(0), &hex(b"42\\n"), "", 42
+            "java", Some(0), &hex(b"42\n"), "", 42
         ));
         assert!(super::matches_scalar_result("llvm", Some(42), "", "", 42));
     }
