@@ -48,7 +48,8 @@ fn exactly_twenty_glm_programs_are_required_on_all_backends() {
     let rows = manifest["cases"].as_array().unwrap();
     assert_eq!(rows.len(), 51);
     let backends = manifest["policy"]["target_backends"].as_array().unwrap();
-    for backend in ["java", "llvm", "wasm", "dotnet"] {
+    assert_eq!(backends.len(), 6, "exactly six distinct backends are required");
+    for backend in ["java", "llvm", "wasm", "dotnet", "cranelift", "js"] {
         assert!(backends.iter().any(|item| item.as_str() == Some(backend)));
     }
 
@@ -178,4 +179,60 @@ fn stale_and_skipped_step_controls_are_not_validated_as_progress() {
         assert_ne!(proposed, prior + 1);
     }
     assert_eq!(prior + 1, 4);
+}
+
+#[test]
+fn cranelift_is_required_and_cannot_be_silent_optional_fallback() {
+    let manifest = manifest();
+    let backends = manifest["policy"]["target_backends"].as_array().unwrap();
+    let mut unique = BTreeSet::new();
+    for backend in backends {
+        assert!(unique.insert(backend.as_str().unwrap()), "duplicate backend");
+    }
+    assert_eq!(unique.len(), 6);
+    assert!(unique.contains("cranelift"));
+    for case in manifest["cases"].as_array().unwrap().iter().filter(|c| c["group"] == "glm-moe") {
+        assert_eq!(case["required_on_all_backends"], true);
+        assert_eq!(case["validation_status"], "candidate");
+    }
+}
+
+#[test]
+fn admitted_input_sgd_does_not_certify_bounded_post_state() {
+    let weight = 1_000_000_000.0_f64;
+    let gradient = -1_000_000_000.0_f64;
+    let rate = 1.0_f64;
+    assert!(weight.abs() <= 1e9 && gradient.abs() <= 1e9);
+    let updated = weight - rate * gradient;
+    assert_eq!(updated, 2_000_000_000.0);
+    assert!(updated.abs() > 1e9, "unsafe post-state must not be approved");
+}
+
+#[test]
+fn top_two_assignment_counts_cannot_substitute_for_unique_expert_ids() {
+    let counted_load0 = 2;
+    let counted_load1 = 0;
+    let token_count = 1;
+    let active_experts = 2;
+    assert_eq!(counted_load0 + counted_load1, token_count * active_experts);
+    let actual_distinct_experts = [0, 0].into_iter().collect::<BTreeSet<_>>();
+    assert_eq!(actual_distinct_experts.len(), 1);
+    assert_ne!(actual_distinct_experts.len(), active_experts as usize);
+}
+
+#[test]
+fn each_glm_source_blob_is_distinct_and_has_one_portable_guest_entry() {
+    use sha2::{Digest, Sha256};
+    let manifest = manifest();
+    let mut hashes = BTreeSet::new();
+    for row in manifest["cases"].as_array().unwrap().iter().filter(|c| c["group"] == "glm-moe") {
+        let source = fs::read(root().join(row["path"].as_str().unwrap())).unwrap();
+        assert!(hashes.insert(format!("{:x}", Sha256::digest(&source))),
+            "two logical cases share identical source bytes");
+        let text = std::str::from_utf8(&source).unwrap();
+        assert_eq!(text.matches("pub fnc main(): int").count(), 1);
+        assert_eq!(text.matches("return 42;").count(), 1);
+        assert!(!text.contains("skip") && !text.contains("backend == "));
+    }
+    assert_eq!(hashes.len(), 20);
 }
