@@ -1,0 +1,1 @@
+pub fnc is_fenced(int response): bool { return response == -1; }
