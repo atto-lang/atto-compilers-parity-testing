@@ -83,6 +83,14 @@ This does not fix the separate multi-file source graph omission in the Wasm
 bridge. Until unchanged four-file Oreslang imports compile and run, the
 new ORM case remains a failing parity gate.
 
+**Important: hash pinning alone is not execution parity.** The current
+`run-guest.mjs` requires a single core-Wasm `main() -> i64` and emits a
+JSON value/attestation envelope, not the `PARITY_OK|...|` stdout from a
+void-main, multi-module Oreslang guest. A future verified adapter must
+capture real guest stdout or use a separately reviewed equivalent execution
+oracle. Do not translate the existing four-source ORM graph into a single
+fake scalar fixture or count JSON host emission as executed ORM assertions.
+
 ### .NET Native AOT gap
 
 `oresnet compile` emits `OresGenerated.dll`, not the final executable. The repository's verified path is:

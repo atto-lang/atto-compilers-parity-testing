@@ -32,3 +32,11 @@ Source-of-truth PR: `ores-truffle-oreslang/postgres-orm.ores` PR #13;
 source must be compared at a pinned reviewed SHA before using it as
 compiler correctness evidence. In particular the portable feature probe
 does not certify the entire ORM implementation or production readiness.
+
+Observed adapter detail (2026-11-01): the WASM native bridge accepts only
+core i64 entrypoints and prints a JSON result; the ORM check is a four-file
+void-entry guest that prints a PARITY_OK line. Artifact digest pinning now
+exists in the Rust adapter but does NOT provide an equivalent stdout/guest
+ABI. .NET has a `compile-modules` command limited to verified int/bool
+module graphs; it does NOT prove nominal class/constructor lowering, nor
+NativeAOT execution for the ORM fixture. Preserve both as open failures.
