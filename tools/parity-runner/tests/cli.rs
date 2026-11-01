@@ -69,3 +69,61 @@ fn cranelift_compile_exit_125_never_masquerades_as_parity() {
     assert_eq!(report["summary"]["compile_infrastructure_failure"], 49);
     assert!(report["summary"].get("pass").is_none());
 }
+
+#[cfg(unix)]
+#[test]
+fn rejected_source_must_leave_no_compiler_artifacts() {
+    let output = std::env::temp_dir().join(format!("ores-cranelift-negative-artifact-{}.json", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .args(["--backend", "cranelift", "--execute", "--allow-unvalidated", "--output"])
+        .arg(&output)
+        .env("ORES_PARITY_CRANELIFT_COMPILE", "sh -c 'touch {artifact}; exit 1'")
+        .env("ORES_PARITY_CRANELIFT_RUN", "sh -c 'exit 0'")
+        .status().unwrap();
+    let report: serde_json::Value = serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+    std::fs::remove_file(output).unwrap();
+    assert!(!status.success());
+    assert_eq!(report["records"].as_array().unwrap().len(), 49);
+    // All negative compiler cases must be rejected independently of any
+    // diagnostic that a malicious adapter might print.
+    assert_eq!(report["summary"]["rejected_with_artifacts"], 8);
+    assert!(report["summary"].get("pass").is_none());
+}
+
+#[cfg(unix)]
+#[test]
+fn compiler_diagnostic_cannot_be_spoofed_on_stdout() {
+    let output = std::env::temp_dir().join(format!("ores-java-stdout-spoof-{}.json", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .args(["--backend", "java", "--execute", "--allow-unvalidated", "--output"])
+        .arg(&output)
+        .env("ORES_PARITY_JAVA_COMPILE", "sh -c 'echo integer literal overflows signed 64-bit:; exit 1'")
+        .env("ORES_PARITY_JAVA_RUN", "sh -c 'exit 42'")
+        .status().unwrap();
+    let report: serde_json::Value = serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+    std::fs::remove_file(output).unwrap();
+    assert!(!status.success());
+    let range = report["records"].as_array().unwrap().iter()
+        .find(|record| record["case_id"] == "13").unwrap();
+    assert_eq!(range["status"], "rejection_unclassified");
+    assert_eq!(range["actual_diagnostic_category"], serde_json::Value::Null);
+}
+
+#[cfg(unix)]
+#[test]
+fn matching_exploratory_output_never_returns_success() {
+    let output = std::env::temp_dir().join(format!("ores-java-exploratory-{}.json", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .args(["--backend", "java", "--execute", "--allow-unvalidated", "--output"])
+        .arg(&output)
+        .env("ORES_PARITY_JAVA_COMPILE", "sh -c 'exit 0'")
+        .env("ORES_PARITY_JAVA_RUN", "sh -c 'exit 42'")
+        .status().unwrap();
+    let report: serde_json::Value = serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+    std::fs::remove_file(output).unwrap();
+    assert!(!status.success());
+    let positive = report["records"].as_array().unwrap().iter()
+        .find(|record| record["case_id"] == "01").unwrap();
+    assert_eq!(positive["status"], "exploratory_match_not_parity_pass");
+    assert!(report["summary"].get("pass").is_none());
+}
