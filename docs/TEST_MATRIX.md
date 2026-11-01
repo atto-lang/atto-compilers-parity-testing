@@ -1,4 +1,4 @@
-# 31-program design
+# 51-program design
 
 This corpus is a feature ladder, not 30 variations of arithmetic.
 
@@ -11,6 +11,8 @@ This corpus is a feature ladder, not 30 variations of arithmetic.
 | 23-27 | cleanup, exceptions, async and channels |
 | 28-30 | actor lifecycle, lexical isolation and critical state |
 | 31 | static select outer-delimiter parity (`{ ... }` vs `over ... end`) |
+| 32–48 | fixed-size GLM/MoE integer control, routing, capacity and training-step fencing |
+| 49–51 | fixed-gate GLM/MoE floating-point prediction, analytic derivative and SGD loss |
 
 All five backends are targets for every case. A backend that does not implement a case is a **parity gap**, not a skip/pass. The validation_status field records how strongly the source is grounded today; only independently executed and oracle-checked cases should later be promoted to validated.
 
@@ -25,7 +27,21 @@ Positive `main.ores` files each import three unique local files and assert
 their semantic expectations. The Rust runner fingerprints the recursively
 reachable graph and records those files for each backend result.
 
-The 49-case, five-backend audit matrix contains 245 records. A not-run record
+The 69-case, five-backend audit matrix contains 345 records. A not-run record
 is corpus inventory, not compiler/runtime conformance. Ordinary match/switch
 suspension remains distinct from the rejected `nb match` / `nb switch`
 spellings. The modern actor counter uses `handle_state` for mutation.
+
+## GLM numerical and generation boundary
+
+The 17 integer control cases and three float cases are all **candidate**
+status until compiled by the Java/Graal reference and independently by the
+LLVM, Wasm and .NET backends. The 20 new source files are identical for
+every backend; no fallback to integer-surrogate floating behavior is valid.
+
+The top-two counted-load case intentionally proves only aggregate
+arithmetic; it does **not** validate distinct per-token expert IDs, atomic
+reservations, or concurrent tenant isolation. The three floating-point
+cases use exactly representable binary fractions to avoid unnecessary
+rounding disputes, but this is not an excuse to report unsupported float
+lowering as a pass. A real compiler and guest receipt remains mandatory.
