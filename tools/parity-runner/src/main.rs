@@ -903,10 +903,10 @@ fn evaluate_case(
         } else {
             "exploratory_match_not_parity_pass".into()
         };
-    }
-    if let Some(expected_digest) = digest.as_deref() {
-        if artifact_sha256(&artifact).ok().as_deref() != Some(expected_digest) {
-            record.status = "artifact_integrity_failure".into();
+        if let Some(expected_digest) = digest.as_deref() {
+            if artifact_sha256(&artifact).ok().as_deref() != Some(expected_digest) {
+                record.status = "artifact_integrity_failure".into();
+            }
         }
     }
     if !case_sources_match(case, root)? {
