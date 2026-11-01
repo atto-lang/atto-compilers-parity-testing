@@ -1103,6 +1103,58 @@ mod tests {
     }
 
     #[test]
+    fn sha256_expansion_requires_real_compiled_artifact_digest() {
+        let root = std::env::temp_dir();
+        let artifact = root.join("ores-orm-imaginary.wasm");
+        assert!(super::expand(
+            "run --sha256={artifact_sha256}", &artifact, &artifact, &root, None
+        ).is_err());
+        let command = super::expand(
+            "run --sha256={artifact_sha256} --path={artifact}",
+            &artifact, &artifact, &root, Some("012345abcdef")
+        ).unwrap();
+        assert_eq!(command[1], "--sha256=012345abcdef");
+        assert!(command[2].starts_with("--path="));
+    }
+
+    #[test]
+    fn aot_guest_adapter_requires_actual_artifact_but_jit_uses_source() {
+        let case = super::TestCase {
+            suite: "external-orm-exact-head".into(),
+            case_id: "orm-sql-plans".into(),
+            name: "orm-sql-plans".into(),
+            source: std::path::PathBuf::new(),
+            source_sha256: String::new(),
+            graph_sha256: None,
+            graph_files: None,
+            expected_kind: "exit".into(),
+            expected_value: Some(0),
+            expected_diagnostic_category: None,
+            expected_stdout_prefix: None,
+            validation_status: "unvalidated".into(),
+            features: vec!["orm".into()],
+        };
+        for backend in ["llvm", "wasm", "dotnet"] {
+            assert!(super::external_orm::needs_artifact(&case, backend));
+            assert!(super::external_orm::compiled_artifact_digest(
+                &case, backend, &std::env::temp_dir().join("no-real-orm-artifact-1324")
+            ).is_err());
+        }
+        assert!(!super::external_orm::needs_artifact(&case, "java"));
+        assert!(!super::external_orm::needs_artifact(&case, "cranelift"));
+        assert!(!super::external_orm::adapter_admitted(
+            &case, "wasm", "compile {source} {artifact}", "run {artifact}"
+        ));
+        assert!(super::external_orm::adapter_admitted(
+            &case, "wasm", "compile {source} {artifact}",
+            "run {artifact} --sha256={artifact_sha256}"
+        ));
+        assert!(!super::external_orm::adapter_admitted(
+            &case, "llvm", "compile {source}", "run {artifact}"
+        ));
+    }
+
+    #[test]
     fn hex_encoding_is_stable() {
         assert_eq!(hex(b"PARITY_OK"), "5041524954595f4f4b");
     }

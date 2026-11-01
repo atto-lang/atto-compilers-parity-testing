@@ -207,3 +207,61 @@ fn real_java_llvm_lane_has_valid_shell_and_rejects_missing_pins() {
     assert!(String::from_utf8_lossy(&missing_args.stderr)
         .contains("PRECHECK_FAILED"));
 }
+
+
+#[cfg(unix)]
+#[test]
+fn fake_compiler_success_without_native_artifact_cannot_certify_any_aot_orm() {
+    // Compile phase exits zero but produces NO executable. Source/test code
+    // stays unchanged, and even matching fake stdout must never be a pass.
+    for backend in ["llvm", "wasm", "dotnet"] {
+        let (root, head) = fake_checkout();
+        let report_path = root.join(format!("no-artifact-{backend}.json"));
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"));
+        cmd.arg("--orm-root").arg(&root).arg("--orm-head").arg(&head)
+            .args(["--backend", backend, "--case-id", "orm-sql-plans",
+                   "--execute", "--allow-unvalidated", "--output"])
+            .arg(&report_path);
+        for key in ["LLVM","WASM","DOTNET"] {
+            cmd.env_remove(format!("ORES_PARITY_{key}_COMPILE"));
+            cmd.env_remove(format!("ORES_PARITY_{key}_RUN"));
+        }
+        let compile = "sh -c 'exit 0' -- {source} {artifact}";
+        let run = if backend == "wasm" {
+            "sh -c 'echo Postgres SQL planning contracts passed' -- {artifact} {artifact_sha256}"
+        } else {
+            "sh -c 'echo Postgres SQL planning contracts passed' -- {artifact}"
+        };
+        let env = backend.to_ascii_uppercase();
+        let output = cmd.env(format!("ORES_PARITY_{env}_COMPILE"), compile)
+            .env(format!("ORES_PARITY_{env}_RUN"), run)
+            .output().unwrap();
+        assert!(!output.status.success(), "{backend}: fake AOT compiler admitted");
+        let report: serde_json::Value =
+            serde_json::from_slice(&fs::read(&report_path).unwrap()).unwrap();
+        assert_eq!(report["summary"]["runtime_infrastructure_failure"], 1,
+            "{backend} did not reject absent artifact");
+        assert!(report["records"][0]["artifact_sha256"].is_null());
+        fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn missing_wasm_digest_placeholder_is_a_hard_adapter_failure() {
+    let (root, head) = fake_checkout();
+    let out = root.join("unbound-wasm.json");
+    let output = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .arg("--orm-root").arg(&root).arg("--orm-head").arg(&head)
+        .args(["--backend", "wasm", "--case-id", "orm-schema-plans",
+               "--execute", "--allow-unvalidated", "--output"])
+        .arg(&out)
+        .env("ORES_PARITY_WASM_COMPILE", "sh -c 'exit 0' -- {source} {artifact}")
+        .env("ORES_PARITY_WASM_RUN", "sh -c 'exit 0' -- {artifact}")
+        .output().unwrap();
+    assert!(!output.status.success());
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(out).unwrap()).unwrap();
+    assert_eq!(report["summary"]["runtime_infrastructure_failure"], 1);
+    fs::remove_dir_all(root).unwrap();
+}
