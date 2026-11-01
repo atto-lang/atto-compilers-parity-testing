@@ -19,6 +19,14 @@ or alter existing required backend/case counts.
   exposes a lawful public read method. Requires a type/visibility diagnostic,
   not parser failure, and no emitted executable/IR.
 
+- `private-field-write-reject.ores`: **compile-time private-field write violation**
+  even when the caller holds a valid mutable borrow of the instance.
+  This is a privacy/access-control denial, not an immutable-borrow denial.
+  Any backend that compiles the attempted external mutation fails this oracle.
+  The successful `available_count()` getter proves the instance exists and
+  the source is not an unconditional parser-rejection test. No executable/IR
+  must be emitted for this negative candidate.
+
 All backends must receive exactly these source bytes; no frontend-specific
 syntax rewrite or surrogate is a parity pass. Source-level positive/negative
 controls are paired to prevent unconditional rejection from looking safe.
@@ -64,3 +72,44 @@ and [LLVM task-bound region #1192](https://github.com/ores-truffle-oreslang/ores
 This is a same-organization, small source-level conformance candidate, **not**
 a private-source tree/branch mirror to a CI carrier. No alternate-organization
 private-source export is authorized by this artifact.
+
+## Mutable-state reader/writer lifecycle gate (proposal, not executed)
+
+The class-inventory fixtures above exercise **exclusive owner** mutation only.
+They do not prove actor-shared state, a two-phase scheduler-slot reservation,
+or safe reuse of execution authority after cancellation. To promote shared
+reader/writer mutable state beyond the current Java draft, every required
+backend must independently prove the same observable contract:
+
+1. Two readers coexist; a queued writer excludes subsequent readers until
+   existing readers retire; no writer/read overlap or writer starvation.
+2. A pending cancellation CAS may win before its revoker/hook obtains the
+   arbiter lock. Slot/execution authority remains fenced until the winning
+   Future's **terminal notification drain**, not merely queue removal.
+3. A granted loan may be released inside its first host completion observer;
+   no rematerialized logical execution, reused raw scheduler slot, or newer
+   generation can acquire until *all* terminal observers finish.
+4. For shutdown-failed queued Futures, failure callbacks must drain before
+   authority reuse or physical actor-arena retirement.
+5. A cancellation revoker failure poisons the actor state arbiter, denies new
+   read/write admissions and promotion of older queued requests, fails them
+   with the preserved cause, and prevents safe-reclamation wakeups.
+6. A released old loan cannot certify `readyToSuspend` while any newer loan
+   reserves its execution ID or scheduler slot. A foreign or stale generation
+   must never authorize suspension.
+7. Cancellation and close are idempotent, and physical retirement is notified
+   at most once after the final physical operation and notification drain.
+8. Neither a runnable code-path that always rejects nor a synthetic host-only
+   state machine counts as **guest parity**: run a positive and negative source
+   program using the actual compiler/runtime and record exact head, nonzero
+   steps, diagnostics, emitted code, output and toolchain identity.
+
+Grounded Java authored/unexecuted regression corpus: `ActorStateRwLoansTest`
+in [Java #2363](https://github.com/ores-truffle-oreslang/oreslang-source.java/pull/2363),
+stacked on Java #2296. LLVM's task-bound state-region groundwork is in
+[LLVM #1192](https://github.com/ores-truffle-oreslang/oreslang-source.llvm/pull/1192);
+WASM #187, Forge #148 and .NET #261 share the byte-identical
+`state-region-provenance-v1.json` nine-negative host receipt contract.
+None proves this actor-shared lifecycle or guest execution across all five
+backends yet. Do not update the required `manifest.json` or promote a
+candidate without independently executed semantic and security gates.
