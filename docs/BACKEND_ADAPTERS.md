@@ -156,3 +156,27 @@ Importantly, the check must exercise the *current* complete ORM module:
 Neither a source-identity receipt nor an inventory cell certifies an executed
 guest. Java/LLVM native execution and the unsupported Wasm/Cranelift/.NET
 frontends remain independent blocking gates.
+
+
+## Real pinned Java and LLVM compile+execute gate
+
+On a trusted machine holding three separately authorized private checkouts,
+with JDK 25 and the real LLVM compiler already built, use:
+
+```sh
+export ORES_JAVA=/abs/jdk25/bin/java
+bash scripts/run-orm-java-llvm.sh /abs/postgres-orm.ores FULL_40_HEX_ORM_HEAD \
+  /abs/oreslang-source.java /abs/oreslang-source.llvm FULL_40_HEX_LLVM_HEAD \
+  /new/private/orm-evidence
+```
+
+The runner checks Java's real `--check` CLI and then runs the exact guest,
+while LLVM's `compile-aot.sh` generates a native binary which is executed.
+No fake compiler, Java check-as-run shortcut, source rewrite, or cross-org
+source transfer is permitted. Provenance records the ORM tree, immutable
+Java/LLVM commits and compiler executable SHA-256. Missing tools or any
+guest failure abort the lane. Results remain exploratory until independently
+reviewed, stepful exact-head compiler-backed evidence is admitted.
+
+These are language-level ORM and SQL planning guests, not real PostgreSQL
+connections, migration execution, RLS or native Wasm/Cranelift/.NET proofs.
