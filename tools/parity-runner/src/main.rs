@@ -476,7 +476,8 @@ fn artifact_sha256(path: &Path) -> Result<String, String> {
         use std::os::unix::fs::OpenOptionsExt;
         options.custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK);
     }
-    let mut file = options.open(path)
+    let mut file = options
+        .open(path)
         .map_err(|e| format!("compiled artifact unavailable: {e}"))?;
     let metadata = file.metadata().map_err(|e| e.to_string())?;
     if !metadata.is_file() || metadata.len() == 0 || metadata.len() > MAX_ARTIFACT_BYTES {
@@ -487,7 +488,9 @@ fn artifact_sha256(path: &Path) -> Result<String, String> {
     let mut count = 0u64;
     loop {
         let n = file.read(&mut buffer).map_err(|e| e.to_string())?;
-        if n == 0 { break; }
+        if n == 0 {
+            break;
+        }
         count += n as u64;
         if count > MAX_ARTIFACT_BYTES {
             return Err("compiled artifact exceeded bounded read limit".into());
@@ -1131,7 +1134,10 @@ mod tests {
         assert_eq!(a.len(), 64);
         let argv = super::expand(
             "runner --sha256={artifact_sha256} --file={artifact}",
-            &artifact, &artifact, &root, Some(&a)
+            &artifact,
+            &artifact,
+            &root,
+            Some(&a),
         ).unwrap();
         assert_eq!(argv[1], format!("--sha256={a}"));
         assert_eq!(argv[2], format!("--file={}", artifact.display()));
@@ -1145,7 +1151,11 @@ mod tests {
         let root = artifact_test_dir();
         let artifact = root.join("program");
         let result = super::expand(
-            "compile {artifact_sha256}", &artifact, &artifact, &root, None
+            "compile {artifact_sha256}",
+            &artifact,
+            &artifact,
+            &root,
+            None,
         );
         assert!(result.unwrap_err().contains("before a verified compile"));
         assert!(super::artifact_sha256(&artifact).is_err());
