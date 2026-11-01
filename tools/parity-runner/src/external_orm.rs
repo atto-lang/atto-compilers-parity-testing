@@ -39,19 +39,27 @@ pub(super) fn still_bound(case: &TestCase) -> bool {
     };
     let mut files = Vec::new();
     for path in paths {
+        let original = root.join(path);
+        let Ok(meta) = fs::symlink_metadata(&original) else {
+            return false;
+        };
+        if !meta.file_type().is_file() || meta.file_type().is_symlink()
+            || meta.len() == 0 || meta.len() > 1024 * 1024
+        {
+            return false;
+        }
         let Ok(file) = safe_file(root, path) else {
             return false;
         };
-        let Ok(meta) = fs::symlink_metadata(&file) else {
-            return false;
-        };
-        if !meta.is_file() || meta.file_type().is_symlink() {
+        if file != original {
             return false;
         }
         files.push(file);
     }
-    fingerprint_graph(&files, root).is_ok_and(|actual| actual == *expected)
-        && sha256_file(&case.source).is_ok_and(|actual| actual == case.source_sha256)
+    fingerprint_graph(&files, root)
+        .is_ok_and(|actual| actual.as_str() == expected.as_str())
+        && sha256_file(&case.source)
+            .is_ok_and(|actual| actual.as_str() == case.source_sha256.as_str())
 }
 
 pub(super) fn load(source_root: &Path, head: &str) -> Result<Vec<TestCase>, String> {
