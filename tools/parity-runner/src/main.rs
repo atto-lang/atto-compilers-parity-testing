@@ -650,6 +650,25 @@ fn temp_dir(case_id: &str, backend: &str) -> Result<PathBuf, String> {
     Ok(path)
 }
 
+// Cranelift's native JIT CLI returns process status zero and prints the
+// signed-i64 result. Other backends use the guest process exit code. Keep
+// these observation channels disjoint so fake stdout never certifies Java/LLVM.
+fn matches_scalar_result(
+    backend: &str,
+    exit: Option<i32>,
+    stdout_hex: &str,
+    stderr_hex: &str,
+    expected: i32,
+) -> bool {
+    if backend == "cranelift" {
+        exit == Some(0)
+            && stdout_hex == hex(format!("{expected}\\n").as_bytes())
+            && stderr_hex.is_empty()
+    } else {
+        exit == Some(expected)
+    }
+}
+
 fn evaluate_case(
     case: &TestCase,
     diagnostic_rules: &DiagnosticRules,
@@ -758,11 +777,15 @@ fn evaluate_case(
         let run_status = run.status.clone();
         let run_exit = run.exit_code;
         let stdout_hex = run.stdout_hex.clone();
+        let stderr_hex = run.stderr_hex.clone();
         record.run = Some(run);
+        let value_matches = case.expected_value.is_some_and(|expected| {
+            matches_scalar_result(backend, run_exit, &stdout_hex, &stderr_hex, expected)
+        });
         record.status = if run_status != "completed" || run_exit.is_none() || run_exit == Some(125)
         {
             "runtime_infrastructure_failure".into()
-        } else if run_exit != case.expected_value {
+        } else if !value_matches {
             "wrong_result".into()
         } else if let Some(prefix) = &case.expected_stdout_prefix {
             if !stdout_hex.starts_with(&hex(prefix.as_bytes())) {
@@ -796,6 +819,14 @@ fn main() -> Result<(), String> {
                 .ok_or_else(|| "--backend requires llvm, java, wasm, dotnet, js, or cranelift".to_string())
         })
         .transpose()?;
+    let selected_cases: BTreeSet<String> = args
+        .windows(2)
+        .filter(|window| window[0] == "--case")
+        .map(|window| window[1].clone())
+        .collect();
+    if args.iter().any(|arg| arg == "--case") && selected_cases.is_empty() {
+        return Err("--case requires an exact case ID".into());
+    }
     let output = args
         .windows(2)
         .find(|window| window[0] == "--output")
@@ -816,6 +847,10 @@ fn main() -> Result<(), String> {
         .canonicalize()
         .map_err(|e| e.to_string())?;
     let (cases, corpus) = load_cases(&root)?;
+    let known_cases: BTreeSet<String> = cases.iter().map(|case| case.case_id.clone()).collect();
+    if !selected_cases.is_subset(&known_cases) {
+        return Err("--case specified an unknown case ID".into());
+    }
     let diagnostic_rules: DiagnosticRules = serde_json::from_str(
         &fs::read_to_string(root.join("diagnostics.json")).map_err(|e| e.to_string())?,
     )
@@ -823,6 +858,9 @@ fn main() -> Result<(), String> {
     let timeout = Duration::from_secs(timeout_seconds);
     let mut records = Vec::new();
     for case in &cases {
+        if !selected_cases.is_empty() && !selected_cases.contains(&case.case_id) {
+            continue;
+        }
         for &(backend, env_name) in &BACKENDS {
             if selected_backend
                 .as_deref()
@@ -849,7 +887,11 @@ fn main() -> Result<(), String> {
     let report = Report {
         schema_version: 2,
         executed: execute,
-        cases: cases.len(),
+        cases: if selected_cases.is_empty() {
+            cases.len()
+        } else {
+            selected_cases.len()
+        },
         corpus,
         backends: BACKENDS
             .iter()
@@ -1027,4 +1069,27 @@ mod tests {
         assert!(result.stderr_hex.contains(&hex(b"before-timeout")));
         assert!(start.elapsed() < std::time::Duration::from_secs(3));
     }
+    #[test]
+    fn native_cranelift_stdout_result_requires_exact_integer_and_newline() {
+        assert!(super::matches_scalar_result(
+            "cranelift", Some(0), &hex(b"42\\n"), "", 42
+        ));
+        assert!(!super::matches_scalar_result(
+            "cranelift", Some(0), &hex(b"42"), "", 42
+        ));
+        assert!(!super::matches_scalar_result(
+            "cranelift", Some(0), &hex(b"42\\nFAKE"), "", 42
+        ));
+        assert!(!super::matches_scalar_result(
+            "cranelift", Some(1), &hex(b"42\\n"), "", 42
+        ));
+        assert!(!super::matches_scalar_result(
+            "cranelift", Some(0), &hex(b"42\\n"), &hex(b"warning"), 42
+        ));
+        assert!(!super::matches_scalar_result(
+            "java", Some(0), &hex(b"42\\n"), "", 42
+        ));
+        assert!(super::matches_scalar_result("llvm", Some(42), "", "", 42));
+    }
+
 }
