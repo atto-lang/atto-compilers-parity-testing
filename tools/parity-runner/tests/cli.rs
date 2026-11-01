@@ -35,3 +35,37 @@ fn adapter_error_is_infrastructure_failure_even_for_negative_probes() {
     assert!(!status.success());
     assert_eq!(report["summary"]["compile_infrastructure_failure"], 49);
 }
+
+#[test]
+fn cranelift_is_not_configured_instead_of_skipped_or_passed() {
+    let output = std::env::temp_dir().join(format!("ores-cranelift-none-{}.json", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .args(["--backend", "cranelift", "--execute", "--allow-unvalidated", "--output"])
+        .arg(&output)
+        .env_remove("ORES_PARITY_CRANELIFT_COMPILE")
+        .env_remove("ORES_PARITY_CRANELIFT_RUN")
+        .status().unwrap();
+    let report: serde_json::Value = serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+    std::fs::remove_file(output).unwrap();
+    assert!(!status.success());
+    assert_eq!(report["backends"], serde_json::json!(["cranelift"]));
+    assert_eq!(report["records"].as_array().unwrap().len(), 49);
+    assert_eq!(report["summary"]["backend_not_configured"], 49);
+}
+
+#[test]
+fn cranelift_compile_exit_125_never_masquerades_as_parity() {
+    let output = std::env::temp_dir().join(format!("ores-cranelift-125-{}.json", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .args(["--backend", "cranelift", "--execute", "--allow-unvalidated", "--output"])
+        .arg(&output)
+        .env("ORES_PARITY_CRANELIFT_COMPILE", "sh -c 'exit 125'")
+        .env("ORES_PARITY_CRANELIFT_RUN", "sh -c 'exit 0'")
+        .status().unwrap();
+    let report: serde_json::Value = serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+    std::fs::remove_file(output).unwrap();
+    assert!(!status.success());
+    assert_eq!(report["backends"], serde_json::json!(["cranelift"]));
+    assert_eq!(report["summary"]["compile_infrastructure_failure"], 49);
+    assert!(report["summary"].get("pass").is_none());
+}

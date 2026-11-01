@@ -8,11 +8,12 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-const BACKENDS: [(&str, &str); 5] = [
+const BACKENDS: [(&str, &str); 6] = [
     ("llvm", "LLVM"),
     ("java", "JAVA"),
     ("wasm", "WASM"),
     ("dotnet", "DOTNET"),
+    ("cranelift", "CRANELIFT"),
     ("js", "JS"),
 ];
 
@@ -765,7 +766,7 @@ fn main() -> Result<(), String> {
             args.get(index + 1)
                 .filter(|name| BACKENDS.iter().any(|(backend, _)| backend == name))
                 .cloned()
-                .ok_or_else(|| "--backend requires llvm, java, wasm, dotnet, or js".to_string())
+                .ok_or_else(|| "--backend requires llvm, java, wasm, dotnet, cranelift, or js".to_string())
         })
         .transpose()?;
     let output = args
@@ -895,6 +896,19 @@ mod tests {
             classify_diagnostic(&rules, "dotnet", &invocation).as_deref(),
             Some("unsupported_select")
         );
+    }
+
+    #[test]
+    fn all_six_backends_unique_and_cranelift_is_first_class() {
+        let mut unique = std::collections::BTreeSet::new();
+        for &(backend, env_prefix) in &super::BACKENDS {
+            assert!(unique.insert(backend), "duplicate backend double-counts");
+            assert!(!env_prefix.is_empty());
+        }
+        assert_eq!(unique.len(), 6);
+        for required in ["java", "llvm", "wasm", "dotnet", "cranelift", "js"] {
+            assert!(unique.contains(required), "missing backend {required}");
+        }
     }
 
     #[test]

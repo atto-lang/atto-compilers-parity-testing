@@ -8,6 +8,7 @@ The parity runner deliberately separates the corpus from backend-specific launch
 | LLVM native | `scripts/compile-aot.sh source.ores output` using built `oreslang-llvmc` + Clang | Execute emitted native binary | Native scalar/module support is the strongest direct compile/run adapter; unsupported features must reject |
 | WASM | `scripts/compile-ores.mjs --compiler=... --source=... --output=...` using a pinned LLVM compiler | `scripts/run-guest.mjs --wasm=... --sha256=...` | Current bridge explicitly supports standalone scalar source and says relative module graphs need a future pinned module-graph gate |
 | .NET Native AOT | `oresnet check`; `oresnet compile source.ores --out .../OresGenerated.dll` | Generated CIL must be linked into `Ores.Net.NativeHost` with `dotnet publish`, then the native host executes | Requires an adapter wrapper for compile → host publish → run; current scalar compiler does not establish whole-program import parity |
+| Cranelift JIT | Limited source frontend to CLIF; source-only and scalar support | Reviewed native Cranelift JIT executable when available | OresDB async/actors/multi-file WAL remain unsupported; a missing adapter is a failure, never a pass |
 | JavaScript transpiler | `node bin/oreslang-jsc.mjs --check source.ores`; compile with `--out=/absolute/output.mjs` | Import generated ESM and call exported `main()` | Scalar programs are executable; actors/async/import-graph support must fail closed when unsupported |
 
 ## Runner templates
@@ -33,7 +34,7 @@ tools/parity-runner/target/release/java-reference execute /abs/java-bundle.json 
 ```
 
 This runs the JVM reference with `--mode=aot` (guest JIT disabled), not a Native Image executable.
-Its results are exploratory, never five-backend parity proof.
+Its results are exploratory, never six-backend parity proof.
 
 ### LLVM native
 
@@ -76,3 +77,7 @@ That needs a dedicated adapter wrapper or a richer parity-runner pipeline. Do no
 ## Promotion rules
 
 An adapter is executable evidence only when it records the exact compiler/runtime SHA, compiles the unchanged source graph, classifies negative diagnostics, and runs the produced program where the backend claims execution support. Compile-only support, an unsupported feature, a skipped test, or a missing runner is a parity gap rather than a pass.
+
+### Cranelift explicit fail-closed admission
+
+The runner now includes `cranelift` as a sixth independent backend with `ORES_PARITY_CRANELIFT_COMPILE` and `ORES_PARITY_CRANELIFT_RUN`. The user-facing five native/managed backends are Java, LLVM, WASM, Cranelift and .NET; existing JS coverage remains. An absent adapter is `backend_not_configured` in all 49 cases, and exit 125 is `compile_infrastructure_failure`; neither grants parity. The scalar-only Cranelift JIT currently cannot claim ODB1 WAL/actor integration.
