@@ -8,17 +8,24 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-const BACKENDS: [(&str, &str); 5] = [
+const BACKENDS: [(&str, &str); 6] = [
     ("llvm", "LLVM"),
     ("java", "JAVA"),
     ("wasm", "WASM"),
     ("dotnet", "DOTNET"),
+    ("cranelift", "CRANELIFT"),
     ("js", "JS"),
 ];
 
 #[derive(Debug, Deserialize)]
 struct LegacyManifest {
+    policy: LegacyPolicy,
     cases: Vec<LegacyCase>,
+}
+
+#[derive(Debug, Deserialize)]
+struct LegacyPolicy {
+    target_backends: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -170,8 +177,9 @@ fn classify_diagnostic(
     invocation: &Invocation,
 ) -> Option<String> {
     let backend_rules = rules.get(backend)?;
-    let raw = format!("{}{}", invocation.stdout_hex, invocation.stderr_hex);
-    let haystack = ascii_lower_hex(&raw)?;
+    // A guest/source can echo arbitrary text on stdout. A negative compile
+    // test is admissible only on the compiler's stderr diagnostic channel.
+    let haystack = ascii_lower_hex(&invocation.stderr_hex)?;
     for (category, needles) in backend_rules {
         for needle in needles {
             let encoded = hex(needle.to_ascii_lowercase().as_bytes());
@@ -285,11 +293,21 @@ fn lowercase_kebab(name: &str) -> bool {
         })
 }
 
+fn validate_backend_policy(policy: &LegacyPolicy) -> Result<(), String> {
+    let declared: BTreeSet<_> = policy.target_backends.iter().map(String::as_str).collect();
+    let supported: BTreeSet<_> = BACKENDS.iter().map(|(backend, _)| *backend).collect();
+    if declared.len() != policy.target_backends.len() || declared != supported {
+        return Err("manifest target_backends must enumerate each runner backend exactly once".into());
+    }
+    Ok(())
+}
+
 fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
     let legacy: LegacyManifest = serde_json::from_str(
         &fs::read_to_string(root.join("manifest.json")).map_err(|e| e.to_string())?,
     )
     .map_err(|e| e.to_string())?;
+    validate_backend_policy(&legacy.policy)?;
 
     let mut cases = Vec::new();
     for case in &legacy.cases {
@@ -446,17 +464,61 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
     Ok((cases, corpus))
 }
 
+// Hash the opened artifact rather than relying on its name or compiler stdout.
+// The consumer (e.g. Wasm host) must independently verify this exact digest.
+const MAX_ARTIFACT_BYTES: u64 = 128 * 1024 * 1024;
+
+fn artifact_sha256(path: &Path) -> Result<String, String> {
+    let mut options = fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK);
+    }
+    let mut file = options
+        .open(path)
+        .map_err(|e| format!("compiled artifact unavailable: {e}"))?;
+    let metadata = file.metadata().map_err(|e| e.to_string())?;
+    if !metadata.is_file() || metadata.len() == 0 || metadata.len() > MAX_ARTIFACT_BYTES {
+        return Err("compiled artifact must be a bounded nonempty regular file".into());
+    }
+    let mut hasher = Sha256::new();
+    let mut buffer = [0u8; 16 * 1024];
+    let mut count = 0u64;
+    loop {
+        let n = file.read(&mut buffer).map_err(|e| e.to_string())?;
+        if n == 0 {
+            break;
+        }
+        count += n as u64;
+        if count > MAX_ARTIFACT_BYTES {
+            return Err("compiled artifact exceeded bounded read limit".into());
+        }
+        hasher.update(&buffer[..n]);
+    }
+    if count != metadata.len() {
+        return Err("compiled artifact changed during hashing".into());
+    }
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
 fn expand(
     template: &str,
     source: &Path,
     artifact: &Path,
     workdir: &Path,
+    artifact_digest: Option<&str>,
 ) -> Result<Vec<String>, String> {
+    if template.contains("{artifact_sha256}") && artifact_digest.is_none() {
+        return Err("artifact SHA-256 requested before a verified compile".into());
+    }
     let parts = shell_words::split(template).map_err(|e| e.to_string())?;
     Ok(parts
         .into_iter()
         .map(|p| {
-            p.replace("{source}", &source.to_string_lossy())
+            p.replace("{artifact_sha256}", artifact_digest.unwrap_or(""))
+                .replace("{source}", &source.to_string_lossy())
                 .replace("{artifact}", &artifact.to_string_lossy())
                 .replace("{workdir}", &workdir.to_string_lossy())
         })
@@ -609,21 +671,63 @@ fn safe_temp_component(value: &str) -> String {
 }
 
 fn temp_dir(case_id: &str, backend: &str) -> Result<PathBuf, String> {
-    let path = env::temp_dir().join(format!(
-        "ores-parity-{}-{}-{}",
-        std::process::id(),
-        safe_temp_component(case_id),
-        safe_temp_component(backend)
-    ));
-    if path.exists() {
-        fs::remove_dir_all(&path).map_err(|e| e.to_string())?;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    static NEXT_WORKDIR: AtomicU64 = AtomicU64::new(0);
+    // Do not delete a predictable pre-existing /tmp path. A prior runner or
+    // unrelated user might own it; deleting it before creating a workspace
+    // could destroy files or follow malicious directory structures.
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .as_nanos();
+    for _ in 0..64 {
+        let sequence = NEXT_WORKDIR.fetch_add(1, Ordering::Relaxed);
+        let path = env::temp_dir().join(format!(
+            "ores-parity-{}-{nonce:x}-{sequence:x}-{}-{}",
+            std::process::id(),
+            safe_temp_component(case_id),
+            safe_temp_component(backend)
+        ));
+        let mut builder = fs::DirBuilder::new();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::DirBuilderExt;
+            builder.mode(0o700);
+        }
+        match builder.create(&path) {
+            Ok(()) => return Ok(path),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(format!("cannot create isolated parity workdir: {error}")),
+        }
     }
-    fs::create_dir_all(&path).map_err(|e| e.to_string())?;
-    Ok(path)
+    Err("cannot allocate a unique parity workdir after 64 attempts".into())
+}
+
+fn case_sources_match(case: &TestCase, root: &Path) -> Result<bool, String> {
+    if sha256_file(&case.source)? != case.source_sha256 {
+        return Ok(false);
+    }
+    if let Some(expected_graph_sha256) = case.graph_sha256.as_ref() {
+        let actual_graph = reachable_graph(&case.source, root)?;
+        let actual_files = actual_graph
+            .iter()
+            .map(|path| relative_path(path, root))
+            .collect::<Result<Vec<_>, _>>()?;
+        if case.graph_files.as_ref() != Some(&actual_files) {
+            return Ok(false);
+        }
+        if fingerprint_graph(&actual_graph, root)? != *expected_graph_sha256 {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 fn evaluate_case(
     case: &TestCase,
+    root: &Path,
     diagnostic_rules: &DiagnosticRules,
     backend: &str,
     env_name: &str,
@@ -663,6 +767,12 @@ fn evaluate_case(
         return Ok(record);
     }
 
+    // Detect corpus mutation or a changed recursive import graph after the
+    // inventory snapshot. Such a run has no trustworthy source identity.
+    if !case_sources_match(case, root)? {
+        record.status = "source_integrity_failure".into();
+        return Ok(record);
+    }
     let workdir = temp_dir(&case.case_id, backend)?;
     let artifact = workdir.join("program");
     let compile_argv = expand(
@@ -670,17 +780,33 @@ fn evaluate_case(
         &case.source,
         &artifact,
         &workdir,
+        None,
     )?;
     let compile = invoke(&compile_argv, &workdir, timeout);
     let compile_status = compile.status.clone();
     let compile_exit = compile.exit_code;
     record.compile = Some(compile);
+    if !case_sources_match(case, root)? {
+        record.status = "source_integrity_failure".into();
+        let _ = fs::remove_dir_all(&workdir);
+        return Ok(record);
+    }
 
     if compile_status != "completed" || compile_exit.is_none() || compile_exit == Some(125) {
         record.status = "compile_infrastructure_failure".into();
     } else if case.expected_kind == "compile_reject" {
         if compile_exit == Some(0) {
             record.status = "unexpected_compile_success".into();
+        } else if fs::read_dir(&workdir)
+            .map_err(|e| e.to_string())?
+            .next()
+            .transpose()
+            .map_err(|e| e.to_string())?
+            .is_some()
+        {
+            // No emitted guest binaries, partial modules, symlinks, or
+            // published release pointers may survive a rejected source.
+            record.status = "rejected_with_artifacts".into();
         } else {
             record.actual_diagnostic_category = record
                 .compile
@@ -720,11 +846,39 @@ fn evaluate_case(
             "compile_failure".into()
         };
     } else {
+        let template = run_template.as_ref().expect("checked above");
+        // The Wasm host requires an exact output digest. A run adapter that
+        // omits the digest is not a legitimate Wasm parity configuration.
+        let requires_digest = template.contains("{artifact_sha256}");
+        if backend == "wasm" && !requires_digest {
+            record.status = "runtime_infrastructure_failure".into();
+            let _ = fs::remove_dir_all(&workdir);
+            return Ok(record);
+        }
+        let digest = if requires_digest {
+            match artifact_sha256(&artifact) {
+                Ok(hash) => Some(hash),
+                Err(message) => {
+                    record.status = "runtime_infrastructure_failure".into();
+                    record.run = Some(Invocation {
+                        status: "infrastructure_error".into(),
+                        exit_code: None, stdout_hex: String::new(),
+                        stderr_hex: String::new(), duration_ms: 0,
+                        error: Some(message),
+                    });
+                    let _ = fs::remove_dir_all(&workdir);
+                    return Ok(record);
+                }
+            }
+        } else {
+            None
+        };
         let run_argv = expand(
-            run_template.as_ref().expect("checked above"),
+            template,
             &case.source,
             &artifact,
             &workdir,
+            digest.as_deref(),
         )?;
         let run = invoke(&run_argv, &workdir, timeout);
         let run_status = run.status.clone();
@@ -749,13 +903,54 @@ fn evaluate_case(
         } else {
             "exploratory_match_not_parity_pass".into()
         };
+        if let Some(expected_digest) = digest.as_deref() {
+            if artifact_sha256(&artifact).ok().as_deref() != Some(expected_digest) {
+                record.status = "artifact_integrity_failure".into();
+            }
+        }
     }
-    let _ = fs::remove_dir_all(workdir);
+    if !case_sources_match(case, root)? {
+        record.status = "source_integrity_failure".into();
+    }
+    if let Err(error) = fs::remove_dir_all(&workdir) {
+        eprintln!("parity workdir cleanup failed ({}): {error}", workdir.display());
+        record.status = "cleanup_infrastructure_failure".into();
+    }
     Ok(record)
+}
+
+fn validate_cli_args(args: &[String]) -> Result<(), String> {
+    let mut seen = BTreeSet::new();
+    let mut index = 1usize;
+    while index < args.len() {
+        let option = args[index].as_str();
+        if !matches!(
+            option,
+            "--execute" | "--allow-unvalidated" | "--backend" | "--output" | "--timeout"
+        ) {
+            return Err(format!("unknown CLI option: {option}"));
+        }
+        if !seen.insert(option) {
+            return Err(format!("duplicate CLI option: {option}"));
+        }
+        if matches!(option, "--backend" | "--output" | "--timeout") {
+            if args.get(index + 1).is_none_or(|value| value.starts_with("--")) {
+                return Err(format!("{option} requires a value"));
+            }
+            index += 2;
+        } else {
+            index += 1;
+        }
+    }
+    if seen.contains("--allow-unvalidated") && !seen.contains("--execute") {
+        return Err("--allow-unvalidated requires --execute".into());
+    }
+    Ok(())
 }
 
 fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
+    validate_cli_args(&args)?;
     let execute = args.iter().any(|arg| arg == "--execute");
     let allow_unvalidated = args.iter().any(|arg| arg == "--allow-unvalidated");
     let selected_backend = args
@@ -765,7 +960,7 @@ fn main() -> Result<(), String> {
             args.get(index + 1)
                 .filter(|name| BACKENDS.iter().any(|(backend, _)| backend == name))
                 .cloned()
-                .ok_or_else(|| "--backend requires llvm, java, wasm, dotnet, or js".to_string())
+                .ok_or_else(|| "--backend requires llvm, java, wasm, dotnet, cranelift, or js".to_string())
         })
         .transpose()?;
     let output = args
@@ -804,6 +999,7 @@ fn main() -> Result<(), String> {
             }
             records.push(evaluate_case(
                 case,
+                &root,
                 &diagnostic_rules,
                 backend,
                 env_name,
@@ -845,22 +1041,14 @@ fn main() -> Result<(), String> {
         serde_json::to_string(&report.summary).map_err(|e| e.to_string())?
     );
 
-    let hard_fail = report.records.iter().any(|record| {
-        matches!(
-            record.status.as_str(),
-            "compile_failure"
-                | "intentional_capability_reject"
-                | "wrong_diagnostic"
-                | "rejection_unclassified"
-                | "wrong_result"
-                | "wrong_stdout"
-                | "unexpected_compile_success"
-                | "compile_infrastructure_failure"
-                | "runtime_infrastructure_failure"
-                | "backend_not_configured"
-                | "unvalidated"
-        )
-    });
+    // --execute is a certification attempt, not an inventory command. Even
+    // exploratory matches, intentional unsupported cases and unknown future
+    // statuses must return a failing process code. Inventory mode remains
+    // explicitly non-executing and may exit zero.
+    let hard_fail = execute && (report.records.is_empty()
+        || report.records.iter().any(|record| {
+            !matches!(record.status.as_str(), "pass" | "expected_reject")
+        }));
     if hard_fail {
         std::process::exit(1);
     }
@@ -870,7 +1058,8 @@ fn main() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        ascii_lower_hex, classify_diagnostic, hex, import_target, lowercase_kebab, Invocation,
+        ascii_lower_hex, classify_diagnostic, hex, import_target, lowercase_kebab,
+        validate_backend_policy, validate_cli_args, Invocation, LegacyPolicy,
     };
     use std::collections::BTreeMap;
 
@@ -895,6 +1084,149 @@ mod tests {
             classify_diagnostic(&rules, "dotnet", &invocation).as_deref(),
             Some("unsupported_select")
         );
+    }
+
+    #[test]
+    fn stdout_spoofing_cannot_classify_compiler_diagnostics() {
+        let mut backend = BTreeMap::new();
+        backend.insert("integer_range".to_string(), vec!["signed 64-bit".to_string()]);
+        let mut rules = BTreeMap::new();
+        rules.insert("java".to_string(), backend);
+        let mut invocation = Invocation {
+            status: "completed".into(),
+            exit_code: Some(1),
+            stdout_hex: hex(b"integer literal overflows signed 64-bit"),
+            stderr_hex: hex(b"unrelated compiler failure"),
+            duration_ms: 0,
+            error: None,
+        };
+        assert_eq!(classify_diagnostic(&rules, "java", &invocation), None);
+        invocation.stderr_hex = hex(b"integer literal overflows signed 64-bit");
+        assert_eq!(
+            classify_diagnostic(&rules, "java", &invocation).as_deref(),
+            Some("integer_range")
+        );
+    }
+
+    #[test]
+    fn manifest_backend_roster_is_exact_and_unique() {
+        let mut roster = LegacyPolicy {
+            target_backends: super::BACKENDS.iter().map(|(name, _)| name.to_string()).collect(),
+        };
+        assert!(validate_backend_policy(&roster).is_ok());
+        roster.target_backends.pop();
+        assert!(validate_backend_policy(&roster).is_err());
+        roster.target_backends.push("java".into());
+        assert!(validate_backend_policy(&roster).is_err());
+        roster.target_backends.push("cranelift".into());
+        assert!(validate_backend_policy(&roster).is_err());
+    }
+
+    #[test]
+    fn cli_rejects_unknown_duplicate_or_missing_options() {
+        let argv = |options: &[&str]| {
+            std::iter::once("runner".to_string())
+                .chain(options.iter().map(|arg| arg.to_string()))
+                .collect::<Vec<_>>()
+        };
+        assert!(validate_cli_args(&argv(&["--backend", "cranelift", "--execute"])).is_ok());
+        assert!(validate_cli_args(&argv(&["--backend", "java", "--backend", "cranelift"])).is_err());
+        assert!(validate_cli_args(&argv(&["--execute", "--execute"])).is_err());
+        assert!(validate_cli_args(&argv(&["--backend"])).is_err());
+        assert!(validate_cli_args(&argv(&["--backend", "--execute"])).is_err());
+        assert!(validate_cli_args(&argv(&["--not-a-real-mode"])).is_err());
+        assert!(validate_cli_args(&argv(&["--allow-unvalidated"])).is_err());
+    }
+
+    #[test]
+    fn workdirs_are_distinct_and_never_delete_legacy_collisions() {
+        let case_id = format!(
+            "collision-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        let legacy = std::env::temp_dir().join(format!(
+            "ores-parity-{}-{}-{}",
+            std::process::id(), case_id, "cranelift"
+        ));
+        std::fs::create_dir(&legacy).unwrap();
+        let sentinel = legacy.join("must-survive.txt");
+        std::fs::write(&sentinel, b"untouched").unwrap();
+        let a = super::temp_dir(&case_id, "cranelift").unwrap();
+        let b = super::temp_dir(&case_id, "cranelift").unwrap();
+        assert_ne!(a, b);
+        assert_ne!(a, legacy);
+        assert_ne!(b, legacy);
+        assert_eq!(std::fs::read(&sentinel).unwrap(), b"untouched");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            for path in [&a, &b] {
+                assert_eq!(std::fs::metadata(path).unwrap().permissions().mode() & 0o777, 0o700);
+            }
+        }
+        std::fs::remove_dir_all(a).unwrap();
+        std::fs::remove_dir_all(b).unwrap();
+        std::fs::remove_file(sentinel).unwrap();
+        std::fs::remove_dir(legacy).unwrap();
+    }
+
+    #[test]
+    fn workdir_name_components_cannot_escape_temp_root() {
+        let path = super::temp_dir("../../outside", "..\\\\evil").unwrap();
+        assert_eq!(path.parent(), Some(std::env::temp_dir().as_path()));
+        assert!(path.is_dir());
+        std::fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn source_integrity_detects_changes_to_entry_and_import_graph() {
+        let root = super::temp_dir("graph-check", "java").unwrap();
+        std::fs::create_dir(root.join("case")).unwrap();
+        let entry = root.join("case/main.ores");
+        let dep = root.join("case/dependency.ores");
+        std::fs::write(&entry, b"import fnc x from \"./dependency.ores\";\n").unwrap();
+        std::fs::write(&dep, b"pub fnc x(): int { return 42; }\n").unwrap();
+        let graph = super::reachable_graph(&entry, &root).unwrap();
+        let case = super::TestCase {
+            suite: "test".into(),
+            case_id: "local-graph".into(),
+            name: "local-graph".into(),
+            source: entry.clone(),
+            source_sha256: super::sha256_file(&entry).unwrap(),
+            graph_sha256: Some(super::fingerprint_graph(&graph, &root).unwrap()),
+            graph_files: Some(graph.iter()
+                .map(|p| super::relative_path(p, &root).unwrap()).collect()),
+            expected_kind: "exit".into(),
+            expected_value: Some(42),
+            expected_diagnostic_category: None,
+            expected_stdout_prefix: None,
+            validation_status: "candidate".into(),
+            features: vec!["imports".into()],
+        };
+        assert!(super::case_sources_match(&case, &root).unwrap());
+        std::fs::write(&dep, b"pub fnc x(): int { return 43; }\n").unwrap();
+        assert!(!super::case_sources_match(&case, &root).unwrap());
+        std::fs::write(&dep, b"pub fnc x(): int { return 42; }\n").unwrap();
+        assert!(super::case_sources_match(&case, &root).unwrap());
+        std::fs::write(&entry, b"pub fnc main(): int { return 42; }\n").unwrap();
+        assert!(!super::case_sources_match(&case, &root).unwrap());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn all_six_backends_unique_and_cranelift_is_first_class() {
+        let mut unique = std::collections::BTreeSet::new();
+        for &(backend, env_prefix) in &super::BACKENDS {
+            assert!(unique.insert(backend), "duplicate backend double-counts");
+            assert!(!env_prefix.is_empty());
+        }
+        assert_eq!(unique.len(), 6);
+        for required in ["java", "llvm", "wasm", "dotnet", "cranelift", "js"] {
+            assert!(unique.contains(required), "missing backend {required}");
+        }
     }
 
     #[test]
@@ -924,6 +1256,67 @@ mod tests {
     #[test]
     fn hex_encoding_is_stable() {
         assert_eq!(hex(b"PARITY_OK"), "5041524954595f4f4b");
+    }
+
+    fn artifact_test_dir() -> std::path::PathBuf {
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let id = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let path = std::env::temp_dir().join(format!(
+            "ores-parity-artifact-{}-{id}", std::process::id()
+        ));
+        std::fs::create_dir(&path).unwrap();
+        path
+    }
+
+    #[test]
+    fn artifact_hash_is_bound_to_compiled_file_content() {
+        let root = artifact_test_dir();
+        let artifact = root.join("program");
+        std::fs::write(&artifact, b"wasm-build-a").unwrap();
+        let a = super::artifact_sha256(&artifact).unwrap();
+        assert_eq!(a.len(), 64);
+        let argv = super::expand(
+            "runner --sha256={artifact_sha256} --file={artifact}",
+            &artifact,
+            &artifact,
+            &root,
+            Some(&a),
+        ).unwrap();
+        assert_eq!(argv[1], format!("--sha256={a}"));
+        assert_eq!(argv[2], format!("--file={}", artifact.display()));
+        std::fs::write(&artifact, b"wasm-build-b").unwrap();
+        let b = super::artifact_sha256(&artifact).unwrap();
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn digest_cannot_be_available_before_compile() {
+        let root = artifact_test_dir();
+        let artifact = root.join("program");
+        let result = super::expand(
+            "compile {artifact_sha256}",
+            &artifact,
+            &artifact,
+            &root,
+            None,
+        );
+        assert!(result.unwrap_err().contains("before a verified compile"));
+        assert!(super::artifact_sha256(&artifact).is_err());
+        std::fs::write(&artifact, b"").unwrap();
+        assert!(super::artifact_sha256(&artifact).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn digest_admission_rejects_symlink_and_directory_artifacts() {
+        use std::os::unix::fs::symlink;
+        let root = artifact_test_dir();
+        let original = root.join("original");
+        std::fs::write(&original, b"verified").unwrap();
+        let symlink_path = root.join("program");
+        symlink(&original, &symlink_path).unwrap();
+        assert!(super::artifact_sha256(&symlink_path).is_err());
+        assert!(super::artifact_sha256(&root).is_err());
     }
 
     #[cfg(unix)]

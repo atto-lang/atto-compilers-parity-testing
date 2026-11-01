@@ -8,6 +8,7 @@ The parity runner deliberately separates the corpus from backend-specific launch
 | LLVM native | `scripts/compile-aot.sh source.ores output` using built `oreslang-llvmc` + Clang | Execute emitted native binary | Native scalar/module support is the strongest direct compile/run adapter; unsupported features must reject |
 | WASM | `scripts/compile-ores.mjs --compiler=... --source=... --output=...` using a pinned LLVM compiler | `scripts/run-guest.mjs --wasm=... --sha256=...` | Current bridge explicitly supports standalone scalar source and says relative module graphs need a future pinned module-graph gate |
 | .NET Native AOT | `oresnet check`; `oresnet compile source.ores --out .../OresGenerated.dll` | Generated CIL must be linked into `Ores.Net.NativeHost` with `dotnet publish`, then the native host executes | Requires an adapter wrapper for compile → host publish → run; current scalar compiler does not establish whole-program import parity |
+| Cranelift JIT | Limited source frontend to CLIF; source-only and scalar support | Reviewed native Cranelift JIT executable when available | OresDB async/actors/multi-file WAL remain unsupported; a missing adapter is a failure, never a pass |
 | JavaScript transpiler | `node bin/oreslang-jsc.mjs --check source.ores`; compile with `--out=/absolute/output.mjs` | Import generated ESM and call exported `main()` | Scalar programs are executable; actors/async/import-graph support must fail closed when unsupported |
 
 ## Runner templates
@@ -33,7 +34,7 @@ tools/parity-runner/target/release/java-reference execute /abs/java-bundle.json 
 ```
 
 This runs the JVM reference with `--mode=aot` (guest JIT disabled), not a Native Image executable.
-Its results are exploratory, never five-backend parity proof.
+Its results are exploratory, never six-backend parity proof.
 
 ### LLVM native
 
@@ -54,12 +55,26 @@ A scalar adapter can publish to `{artifact}.mjs` and use Node's module mode to i
 
 ### WASM gap
 
-The Wasm bridge is intentionally stronger than a plain "run this file" command: execution requires the SHA-256 of the exact emitted Wasm bytes. The current parity template vocabulary does not expose a post-compile artifact digest to the run command.
+The Wasm bridge is intentionally stronger than a plain "run this file" command: execution requires the SHA-256 of the exact emitted Wasm bytes. The parity runner now supports a post-compile `{artifact_sha256}` placeholder in
+the **run** argv template. It hashes the opened, non-symlink, nonempty bounded
+artifact bytes after the compile command exits successfully. On Unix it opens
+with `O_NOFOLLOW` and `O_NONBLOCK`; missing, directory, symlink, oversized, and
+changing artifacts fail closed. A Wasm run template **must** include the
+placeholder: omission is `runtime_infrastructure_failure`, not a parity
+result. This binding does not authenticate the compiler or prove a trusted
+release. The Wasm runtime must independently check its received digest.
 
-Do **not** weaken `run-guest.mjs` by omitting its SHA pin. Close this gap either by:
+Configure a reviewed adapter (with an exact binary/source SHA manifest), for
+example:
 
-1. extending the Rust runner with an explicitly selected artifact path and `{artifact_sha256}` placeholder, or
-2. using a reviewed backend wrapper that compiles, hashes, admits and executes the Wasm artifact as one fail-closed operation.
+~~~sh
+export ORES_PARITY_WASM_COMPILE='node /abs/wasm/scripts/compile-ores.mjs --compiler=/abs/oreslang-llvmc --source={source} --output={artifact}'
+export ORES_PARITY_WASM_RUN='node /abs/wasm/scripts/run-guest.mjs --wasm={artifact} --sha256={artifact_sha256}'
+~~~
+
+The compiled Wasm artifact remains a core `() -> i64`-only guest; it cannot
+implement Orestra actor/state/OCI behavior yet. A compiler failure or missing
+backend remains a parity gap, even with a valid digest.
 
 The current Wasm bridge also documents that relative source imports require a future pinned module-graph gate, so multi-file checks should presently report an unsupported parity gap rather than being flattened or rewritten.
 
@@ -76,3 +91,7 @@ That needs a dedicated adapter wrapper or a richer parity-runner pipeline. Do no
 ## Promotion rules
 
 An adapter is executable evidence only when it records the exact compiler/runtime SHA, compiles the unchanged source graph, classifies negative diagnostics, and runs the produced program where the backend claims execution support. Compile-only support, an unsupported feature, a skipped test, or a missing runner is a parity gap rather than a pass.
+
+### Cranelift explicit fail-closed admission
+
+The runner now includes `cranelift` as a sixth independent backend with `ORES_PARITY_CRANELIFT_COMPILE` and `ORES_PARITY_CRANELIFT_RUN`. The user-facing five native/managed backends are Java, LLVM, WASM, Cranelift and .NET; existing JS coverage remains. An absent adapter is `backend_not_configured` in all 49 cases, and exit 125 is `compile_infrastructure_failure`; neither grants parity. The scalar-only Cranelift JIT currently cannot claim ODB1 WAL/actor integration.
