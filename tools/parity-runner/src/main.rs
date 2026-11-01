@@ -49,6 +49,8 @@ struct Expectation {
     name: String,
     entry: String,
     stable_stdout_prefix: String,
+    #[serde(default)]
+    stable_stdout_exact: Option<String>,
     imported_files: usize,
     maturity: String,
     #[serde(default)]
@@ -79,6 +81,7 @@ struct TestCase {
     expected_value: Option<i32>,
     expected_diagnostic_category: Option<String>,
     expected_stdout_prefix: Option<String>,
+    expected_stdout_exact: Option<String>,
     validation_status: String,
     features: Vec<String>,
 }
@@ -306,6 +309,7 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
             expected_value: case.expected_value,
             expected_diagnostic_category: case.expected_diagnostic_category.clone(),
             expected_stdout_prefix: None,
+            expected_stdout_exact: None,
             validation_status: case.validation_status.clone(),
             features: case.features.clone(),
         });
@@ -383,6 +387,7 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
             expected_value: Some(0),
             expected_diagnostic_category: None,
             expected_stdout_prefix: Some(expectation.stable_stdout_prefix.clone()),
+            expected_stdout_exact: expectation.stable_stdout_exact.clone(),
             validation_status: if expectation.verified {
                 "validated".into()
             } else {
@@ -414,6 +419,7 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
                 expected_value: None,
                 expected_diagnostic_category: negative.expected_diagnostic_category.clone(),
                 expected_stdout_prefix: None,
+                expected_stdout_exact: None,
                 validation_status: "unvalidated".into(),
                 features: negative_features,
             });
@@ -787,6 +793,14 @@ fn evaluate_case(
             "runtime_infrastructure_failure".into()
         } else if run_exit != case.expected_value {
             "wrong_result".into()
+        } else if let Some(exact) = &case.expected_stdout_exact {
+            if stdout_hex != hex(exact.as_bytes()) {
+                "wrong_stdout".into()
+            } else if case.validation_status == "validated" {
+                "pass".into()
+            } else {
+                "exploratory_match_not_parity_pass".into()
+            }
         } else if let Some(prefix) = &case.expected_stdout_prefix {
             if !stdout_hex.starts_with(&hex(prefix.as_bytes())) {
                 "wrong_stdout".into()
