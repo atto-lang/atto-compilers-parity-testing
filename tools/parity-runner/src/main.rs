@@ -839,8 +839,42 @@ fn evaluate_case(
     Ok(record)
 }
 
+// Invalid or mistyped CLI flags must not silently turn an intended guest
+// execution into a successful, inventory-only run. Reject missing values and
+// duplicates, while allowing repeated --case filters.
+fn validate_cli_args(args: &[String]) -> Result<(), String> {
+    let mut seen = BTreeSet::new();
+    let mut index = 1;
+    while index < args.len() {
+        let flag = args[index].as_str();
+        match flag {
+            "--execute" | "--allow-unvalidated" => {
+                if !seen.insert(flag) {
+                    return Err(format!("duplicate CLI flag: {flag}"));
+                }
+                index += 1;
+            }
+            "--backend" | "--case" | "--output" | "--timeout" => {
+                if flag != "--case" && !seen.insert(flag) {
+                    return Err(format!("duplicate CLI flag: {flag}"));
+                }
+                if index + 1 >= args.len()
+                    || args[index + 1].is_empty()
+                    || args[index + 1].starts_with("--")
+                {
+                    return Err(format!("missing argument to {flag}"));
+                }
+                index += 2;
+            }
+            _ => return Err(format!("unknown CLI flag: {flag}")),
+        }
+    }
+    Ok(())
+}
+
 fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
+    validate_cli_args(&args)?;
     let execute = args.iter().any(|arg| arg == "--execute");
     let allow_unvalidated = args.iter().any(|arg| arg == "--allow-unvalidated");
     let selected_backend = args
@@ -1003,6 +1037,25 @@ mod tests {
             classify_diagnostic(&rules, "dotnet", &invocation).as_deref(),
             Some("unsupported_select")
         );
+    }
+
+    #[test]
+    fn strict_cli_option_admission_prevents_silent_inventory_fallback() {
+        let values = |words: &[&str]| words.iter().map(|value| (*value).to_string()).collect::<Vec<_>>();
+        for flags in [
+            vec!["runner", "--excute"],
+            vec!["runner", "--execute", "--execute"],
+            vec!["runner", "--output"],
+            vec!["runner", "--case", "--execute"],
+            vec!["runner", "--backend", "llvm", "--backend", "cranelift"],
+            vec!["runner", "--timeout", "20", "--timeout", "1"],
+        ] {
+            assert!(super::validate_cli_args(&values(&flags)).is_err(), "{flags:?}");
+        }
+        assert!(super::validate_cli_args(&values(&[
+            "runner", "--execute", "--backend", "cranelift",
+            "--case", "34", "--case", "35", "--output", "results.json",
+        ])).is_ok());
     }
 
     #[test]
