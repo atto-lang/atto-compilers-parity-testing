@@ -912,7 +912,10 @@ fn evaluate_case(
     if !case_sources_match(case, root)? {
         record.status = "source_integrity_failure".into();
     }
-    let _ = fs::remove_dir_all(workdir);
+    if let Err(error) = fs::remove_dir_all(&workdir) {
+        eprintln!("parity workdir cleanup failed ({}): {error}", workdir.display());
+        record.status = "cleanup_infrastructure_failure".into();
+    }
     Ok(record)
 }
 
