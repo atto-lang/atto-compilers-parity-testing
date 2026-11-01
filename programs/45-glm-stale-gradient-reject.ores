@@ -1,0 +1,4 @@
+// 45: GLM/MoE shared-source parity candidate. No backend-specific rewriting.
+// Return 42 on correct semantic behavior, 1 on mismatch. Compiler-backed evidence pending.
+fnc authorized(int model, int gradient, int active): bool { if (active <= 0) { return false; } fi return model == active && gradient == active; }
+pub fnc main(): int { if (authorized(7, 6, 7)) { return 1; } fi return 42; }
