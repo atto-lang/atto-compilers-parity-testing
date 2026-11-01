@@ -695,8 +695,8 @@ fn cranelift_cli_pinned(
         || run.len() != 3
         || compile[1] != "ir"
         || run[1] != "run"
-        || compile[2] != source.to_string_lossy()
-        || run[2] != source.to_string_lossy()
+        || compile[2].as_str() != source.to_string_lossy().as_ref()
+        || run[2].as_str() != source.to_string_lossy().as_ref()
         || compile[0] != run[0]
     {
         return false;
@@ -711,6 +711,13 @@ fn cranelift_cli_pinned(
     };
     if !metadata.is_file() || metadata.file_type().is_symlink() {
         return false;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if metadata.permissions().mode() & 0o111 == 0 {
+            return false;
+        }
     }
     sha256_file(binary).ok().as_deref() == Some(expected_sha)
 }
@@ -788,6 +795,17 @@ fn evaluate_case(
         }
     }
     let compile = invoke(&compile_argv, &workdir, timeout);
+    if backend == "cranelift" {
+        let pin = env::var("ORES_PARITY_CRANELIFT_COMPILER_SHA256").unwrap_or_default();
+        if !run_argv.as_deref().is_some_and(|run| {
+            cranelift_cli_pinned(&compile_argv, run, &case.source, &pin)
+        }) {
+            record.compile = Some(compile);
+            record.status = "compiler_identity_changed".into();
+            let _ = fs::remove_dir_all(&workdir);
+            return Ok(record);
+        }
+    }
     let compile_status = compile.status.clone();
     let compile_exit = compile.exit_code;
     record.compile = Some(compile);
@@ -846,6 +864,17 @@ fn evaluate_case(
             &workdir,
             timeout,
         );
+        if backend == "cranelift" {
+            let pin = env::var("ORES_PARITY_CRANELIFT_COMPILER_SHA256").unwrap_or_default();
+            if !run_argv.as_deref().is_some_and(|argv| {
+                cranelift_cli_pinned(&compile_argv, argv, &case.source, &pin)
+            }) {
+                record.run = Some(run);
+                record.status = "compiler_identity_changed".into();
+                let _ = fs::remove_dir_all(&workdir);
+                return Ok(record);
+            }
+        }
         let run_status = run.status.clone();
         let run_exit = run.exit_code;
         let stdout_hex = run.stdout_hex.clone();
@@ -1033,7 +1062,12 @@ mod tests {
             "ores-parity-cranelift-binary-{}-{id}",
             std::process::id()
         ));
-        std::fs::write(&bin, b"synthetic compiler identity; not executable").unwrap();
+        std::fs::write(&bin, b"synthetic compiler identity; not executed").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o700)).unwrap();
+        }
         let sha = super::sha256_file(&bin).unwrap();
         let source = std::path::Path::new("/synthetic/sample.ores");
         let path = bin.to_string_lossy().to_string();
