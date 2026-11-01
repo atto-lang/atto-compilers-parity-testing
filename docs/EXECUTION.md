@@ -88,3 +88,13 @@ is a fail-closed gap, never a passing record.
 ## November effect/binding policy candidates
 
 Eighteen new pure Oreslang fixtures, cases 32–49, cover immutable-by-default declarations, explicit `let mut` reassignment and `as` casts, no implicit numeric conversions, `suspends`, non-suspending critical bodies and removal of `%`, `^`, `^^`. These are unvalidated policy targets, not claimed backend passes. Legacy fixtures 25/27/28/30 use `suspends` but remain unvalidated. Genuine compile/check and guest exit evidence is required per toolchain.
+
+## Single-case compiler smoke
+
+Use `--backend cranelift --case 01 --execute --allow-unvalidated` to
+exercise the real Cranelift stage-0 CLI with an independently hashed
+compiler binary. An isolated case run is **not** full-backend parity. The
+report describes the selected case count separately from the complete
+67-case corpus. A failed, missing, unsupported or exploratory match still
+causes nonzero exit from executable mode. See
+[backend adapters](BACKEND_ADAPTERS.md) for the pinned native commands.
