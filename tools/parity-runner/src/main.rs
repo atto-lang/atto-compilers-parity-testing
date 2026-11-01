@@ -717,15 +717,22 @@ fn evaluate_case(
             .compile
             .as_ref()
             .and_then(|c| classify_diagnostic(diagnostic_rules, backend, c));
-        let select_case = case.features.iter().any(|feature| {
-            matches!(
-                feature.as_str(),
-                "select" | "do-select" | "nb-select" | "do-nb-select"
-            )
-        });
-        record.status = if select_case
-            && record.actual_diagnostic_category.as_deref() == Some("unsupported_select")
-        {
+        let supports_reject = match record.actual_diagnostic_category.as_deref() {
+            Some("unsupported_select") => case.features.iter().any(|feature| {
+                matches!(
+                    feature.as_str(),
+                    "select" | "do-select" | "nb-select" | "do-nb-select"
+                )
+            }),
+            Some("unsupported_actor") => case.features.iter().any(|f| f == "actor"),
+            Some("unsupported_async") => case.features.iter().any(|f| {
+                matches!(f.as_str(), "async" | "await" | "task" | "nb-task")
+            }),
+            Some("unsupported_critical") => case.features.iter().any(|f| f == "critical"),
+            _ => false,
+        };
+        record.status = if supports_reject {
+            // This is a truthful unsupported-feature classification, NOT a pass.
             "intentional_capability_reject".into()
         } else {
             "compile_failure".into()
