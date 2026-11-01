@@ -580,6 +580,346 @@
       "validation_status": "reference_test",
       "source_basis": "Java PR #2079 SelectOverEndSyntaxTest and delimiter-equivalence contract",
       "required_on_all_backends": true
+    },
+    {
+      "id": "32",
+      "name": "glm-top1-highest",
+      "path": "programs/32-glm-top1-highest.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "functions",
+        "stable-top1"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "33",
+      "name": "glm-top1-stable-tie",
+      "path": "programs/33-glm-top1-stable-tie.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "stable-tie",
+        "top1-routing"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "34",
+      "name": "glm-negative-score-ranking",
+      "path": "programs/34-glm-negative-score-ranking.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "signed-ranking",
+        "top1-routing"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "35",
+      "name": "glm-first-expert-capacity",
+      "path": "programs/35-glm-first-expert-capacity.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "capacity",
+        "admission"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "36",
+      "name": "glm-second-expert-capacity",
+      "path": "programs/36-glm-second-expert-capacity.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "capacity",
+        "exhaustion"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "37",
+      "name": "glm-preferred-full-no-fallback",
+      "path": "programs/37-glm-preferred-full-no-fallback.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "top1-routing",
+        "capacity-exhaustion"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "38",
+      "name": "glm-balanced-loads",
+      "path": "programs/38-glm-balanced-loads.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "per-expert-load",
+        "assignment-count"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "39",
+      "name": "glm-unbalanced-load-reject",
+      "path": "programs/39-glm-unbalanced-load-reject.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "per-expert-load",
+        "overcapacity"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "40",
+      "name": "glm-negative-load-reject",
+      "path": "programs/40-glm-negative-load-reject.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "per-expert-load",
+        "negative-admission"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "41",
+      "name": "glm-assignment-total",
+      "path": "programs/41-glm-assignment-total.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "assignment-count",
+        "topk"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "42",
+      "name": "glm-top-two-load-count",
+      "path": "programs/42-glm-top-two-load-count.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "assignment-count",
+        "topk"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "43",
+      "name": "glm-invalid-topk",
+      "path": "programs/43-glm-invalid-topk.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "topk",
+        "invalid-count"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "44",
+      "name": "glm-fresh-generation",
+      "path": "programs/44-glm-fresh-generation.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "model-generation",
+        "gradient-generation"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "45",
+      "name": "glm-stale-gradient-reject",
+      "path": "programs/45-glm-stale-gradient-reject.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "model-generation",
+        "stale-gradient"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "46",
+      "name": "glm-cancellation-reject",
+      "path": "programs/46-glm-cancellation-reject.ores",
+      "group": "glm-moe",
+      "features": [
+        "bool",
+        "cancellation",
+        "step-admission"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "47",
+      "name": "glm-duplicate-step-reject",
+      "path": "programs/47-glm-duplicate-step-reject.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "step-replay",
+        "step-admission"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "48",
+      "name": "glm-skipped-step-reject",
+      "path": "programs/48-glm-skipped-step-reject.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "step-order",
+        "step-admission"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "49",
+      "name": "glm-fixed-gate-prediction",
+      "path": "programs/49-glm-fixed-gate-prediction.ores",
+      "group": "glm-moe",
+      "features": [
+        "float",
+        "fixed-gate",
+        "weighted-expert-prediction"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 fixed-gate scalar mathematical oracle; float parser/type/lowering not yet cross-backend proven",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "50",
+      "name": "glm-fixed-gate-weight-gradient",
+      "path": "programs/50-glm-fixed-gate-weight-gradient.ores",
+      "group": "glm-moe",
+      "features": [
+        "float",
+        "fixed-gate",
+        "analytic-gradient"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 fixed-gate scalar mathematical oracle; float parser/type/lowering not yet cross-backend proven",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "51",
+      "name": "glm-fixed-gate-sgd-loss",
+      "path": "programs/51-glm-fixed-gate-sgd-loss.ores",
+      "group": "glm-moe",
+      "features": [
+        "float",
+        "fixed-gate",
+        "sgd-loss"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 fixed-gate scalar mathematical oracle; float parser/type/lowering not yet cross-backend proven",
+      "required_on_all_backends": true
     }
   ]
 }
