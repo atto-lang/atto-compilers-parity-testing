@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "id": "annotated-injected-mutable-state-v0",
+  "status": "draft_not_executed",
+  "required_parity": false,
+  "unsupported_is_pass": false,
+  "infrastructure_failure_is_pass": false,
+  "parser_only_reject_is_semantic_pass": false,
+  "canonical_source": "identical unmodified .ores bytes for every backend",
+  "target_backends": [
+    "java",
+    "llvm",
+    "wasm",
+    "cranelift",
+    "dotnet"
+  ],
+  "cases": [
+    {
+      "name": "positive-owned-counter",
+      "path": "candidates/injected-state/positive-owned-counter.ores",
+      "expected_kind": "run",
+      "expected_stdout": "2",
+      "expected_exit_code": 0,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate_unverified"
+    },
+    {
+      "name": "reject-direct-field",
+      "path": "candidates/injected-state/reject-direct-field.ores",
+      "expected_kind": "compile_reject",
+      "expected_diagnostic_category": "private_state_visibility",
+      "required_phase": "type_or_ownership",
+      "validation_status": "candidate_unverified"
+    },
+    {
+      "name": "reject-read-mutation",
+      "path": "candidates/injected-state/reject-read-mutation.ores",
+      "expected_kind": "compile_reject",
+      "expected_diagnostic_category": "immutable_state_loan",
+      "required_phase": "type_or_ownership",
+      "validation_status": "candidate_unverified"
+    },
+    {
+      "name": "reject-loan-escape",
+      "path": "candidates/injected-state/reject-loan-escape.ores",
+      "expected_kind": "compile_reject",
+      "expected_diagnostic_category": "state_loan_escape",
+      "required_phase": "ownership",
+      "validation_status": "candidate_unverified"
+    },
+    {
+      "name": "reject-await-in-guard",
+      "path": "candidates/injected-state/reject-await-in-guard.ores",
+      "expected_kind": "compile_reject",
+      "expected_diagnostic_category": "suspension_with_state_loan",
+      "required_phase": "ownership",
+      "validation_status": "candidate_unverified"
+    },
+    {
+      "name": "reject-after-take",
+      "path": "candidates/injected-state/reject-after-take.ores",
+      "expected_kind": "compile_reject",
+      "expected_diagnostic_category": "use_after_move",
+      "required_phase": "ownership",
+      "validation_status": "candidate_unverified"
+    },
+    {
+      "name": "reject-raw-mut-share",
+      "path": "candidates/injected-state/reject-raw-mut-share.ores",
+      "expected_kind": "compile_reject",
+      "expected_diagnostic_category": "unguarded_mutable_sharing",
+      "required_phase": "type_or_ownership",
+      "validation_status": "candidate_unverified"
+    }
+  ]
+}
