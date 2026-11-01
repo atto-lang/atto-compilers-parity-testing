@@ -87,14 +87,20 @@ the scalar i64 result as one decimal line and exits 0. Other backends use
 the guest process-exit oracle. The runner treats those two conventions
 differently and strictly, without accepting extra stdout.
 
-Build the real Cranelift backend at an independently pinned source commit,
-then review its binary digest before using it:
+Build the real Cranelift backend at an independently pinned source commit.
+The expected compiler SHA-256 must come from a separately reviewed build receipt,
+not from simply hashing an arbitrary local binary and treating that as trust.
+Set `APPROVED_CRANELIFT_SHA256` from that independent receipt before running:
 
 ```sh
 # Run from the compiler-parity repository root.
 compiler=/absolute/oreslang-source.cranelift/target/release/orescranelift
 test -x "$compiler"
-export ORES_PARITY_CRANELIFT_COMPILER_SHA256="$(sha256sum "$compiler" | cut -d' ' -f1)"
+# APPROVED_CRANELIFT_SHA256 must originate in an independently reviewed
+# compiler build receipt; do not self-approve the hash calculated here.
+: "${APPROVED_CRANELIFT_SHA256:?provide independently reviewed compiler SHA-256}"
+test "$(sha256sum "$compiler" | cut -d' ' -f1)" = "$APPROVED_CRANELIFT_SHA256"
+export ORES_PARITY_CRANELIFT_COMPILER_SHA256="$APPROVED_CRANELIFT_SHA256"
 export ORES_PARITY_CRANELIFT_COMPILE="$compiler ir {source}"
 export ORES_PARITY_CRANELIFT_RUN="$compiler run {source}"
 cargo run --locked --manifest-path tools/parity-runner/Cargo.toml -- \
