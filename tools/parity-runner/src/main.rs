@@ -705,8 +705,29 @@ fn temp_dir(case_id: &str, backend: &str) -> Result<PathBuf, String> {
     Err("cannot allocate a unique parity workdir after 64 attempts".into())
 }
 
+fn case_sources_match(case: &TestCase, root: &Path) -> Result<bool, String> {
+    if sha256_file(&case.source)? != case.source_sha256 {
+        return Ok(false);
+    }
+    if let Some(expected_graph_sha256) = case.graph_sha256.as_ref() {
+        let actual_graph = reachable_graph(&case.source, root)?;
+        let actual_files = actual_graph
+            .iter()
+            .map(|path| relative_path(path, root))
+            .collect::<Result<Vec<_>, _>>()?;
+        if case.graph_files.as_ref() != Some(&actual_files) {
+            return Ok(false);
+        }
+        if fingerprint_graph(&actual_graph, root)? != *expected_graph_sha256 {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
 fn evaluate_case(
     case: &TestCase,
+    root: &Path,
     diagnostic_rules: &DiagnosticRules,
     backend: &str,
     env_name: &str,
@@ -746,6 +767,12 @@ fn evaluate_case(
         return Ok(record);
     }
 
+    // Detect corpus mutation or a changed recursive import graph after the
+    // inventory snapshot. Such a run has no trustworthy source identity.
+    if !case_sources_match(case, root)? {
+        record.status = "source_integrity_failure".into();
+        return Ok(record);
+    }
     let workdir = temp_dir(&case.case_id, backend)?;
     let artifact = workdir.join("program");
     let compile_argv = expand(
@@ -872,6 +899,9 @@ fn evaluate_case(
             "exploratory_match_not_parity_pass".into()
         };
     }
+    if !case_sources_match(case, root)? {
+        record.status = "source_integrity_failure".into();
+    }
     let _ = fs::remove_dir_all(workdir);
     Ok(record)
 }
@@ -956,6 +986,7 @@ fn main() -> Result<(), String> {
             }
             records.push(evaluate_case(
                 case,
+                &root,
                 &diagnostic_rules,
                 backend,
                 env_name,
@@ -1135,6 +1166,41 @@ mod tests {
         assert_eq!(path.parent(), Some(std::env::temp_dir().as_path()));
         assert!(path.is_dir());
         std::fs::remove_dir_all(path).unwrap();
+    }
+
+    #[test]
+    fn source_integrity_detects_changes_to_entry_and_import_graph() {
+        let root = super::temp_dir("graph-check", "java").unwrap();
+        std::fs::create_dir(root.join("case")).unwrap();
+        let entry = root.join("case/main.ores");
+        let dep = root.join("case/dependency.ores");
+        std::fs::write(&entry, b"import fnc x from \"./dependency.ores\";\n").unwrap();
+        std::fs::write(&dep, b"pub fnc x(): int { return 42; }\n").unwrap();
+        let graph = super::reachable_graph(&entry, &root).unwrap();
+        let case = super::TestCase {
+            suite: "test".into(),
+            case_id: "local-graph".into(),
+            name: "local-graph".into(),
+            source: entry.clone(),
+            source_sha256: super::sha256_file(&entry).unwrap(),
+            graph_sha256: Some(super::fingerprint_graph(&graph, &root).unwrap()),
+            graph_files: Some(graph.iter()
+                .map(|p| super::relative_path(p, &root).unwrap()).collect()),
+            expected_kind: "exit".into(),
+            expected_value: Some(42),
+            expected_diagnostic_category: None,
+            expected_stdout_prefix: None,
+            validation_status: "candidate".into(),
+            features: vec!["imports".into()],
+        };
+        assert!(super::case_sources_match(&case, &root).unwrap());
+        std::fs::write(&dep, b"pub fnc x(): int { return 43; }\n").unwrap();
+        assert!(!super::case_sources_match(&case, &root).unwrap());
+        std::fs::write(&dep, b"pub fnc x(): int { return 42; }\n").unwrap();
+        assert!(super::case_sources_match(&case, &root).unwrap());
+        std::fs::write(&entry, b"pub fnc main(): int { return 42; }\n").unwrap();
+        assert!(!super::case_sources_match(&case, &root).unwrap());
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
