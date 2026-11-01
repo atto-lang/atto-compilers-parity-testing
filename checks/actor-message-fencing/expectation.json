@@ -1,0 +1,17 @@
+{
+  "name": "actor-message-fencing",
+  "entry": "checks/actor-message-fencing/main.ores",
+  "expected": "run-pass",
+  "stable_stdout_prefix": "PARITY_OK|actor-message-fencing|",
+  "imported_files": 3,
+  "maturity": "frontier",
+  "features": [
+    "actor",
+    "mailbox",
+    "handle_state",
+    "generation-guard",
+    "application-tenant-guard"
+  ],
+  "verified": false,
+  "notes": "Reject stale generation and foreign actor messages, accept one current input; does not assert physical IsolateVM or runtime tenant security."
+}
