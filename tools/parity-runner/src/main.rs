@@ -626,12 +626,19 @@ fn temp_dir(case_id: &str, backend: &str) -> Result<PathBuf, String> {
 // Cranelift's experimental scalar CLI writes signed i64 to stdout and exits 0.
 // Other adapters retain the legacy process-exit oracle. Exact stdout bytes
 // are required: "42\nX" or fake receipt text can never pass.
-fn matches_expected_result(case: &TestCase, backend: &str, exit: Option<i32>, stdout_hex: &str) -> bool {
+fn matches_expected_result(
+    case: &TestCase,
+    backend: &str,
+    exit: Option<i32>,
+    stdout_hex: &str,
+) -> bool {
     if backend == "cranelift" && case.suite == "legacy" && case.expected_kind == "exit" {
-        return exit == Some(0)
-            && case.expected_value.is_some_and(|value| {
-                stdout_hex == hex(format!("{value}\n").as_bytes())
-            });
+        if exit != Some(0) {
+            return false;
+        }
+        return case
+            .expected_value
+            .is_some_and(|value| stdout_hex == hex(format!("{value}\n").as_bytes()));
     }
     exit == case.expected_value
 }
@@ -929,14 +936,33 @@ mod tests {
             features: vec!["int".into()],
         };
         let ok = hex(b"42\n");
-        assert!(super::matches_expected_result(&case, "cranelift", Some(0), &ok));
-        assert!(!super::matches_expected_result(&case, "cranelift", Some(42), &ok));
-        assert!(!super::matches_expected_result(&case, "cranelift", Some(0), &hex(b"42")));
-        assert!(!super::matches_expected_result(&case, "cranelift", Some(0), &hex(b"42\n43\n")));
-        assert!(!super::matches_expected_result(&case, "cranelift", Some(0), &hex(b"ORES_TEST|PASS\n")));
-        assert!(!super::matches_expected_result(&case, "cranelift", Some(1), &ok));
+        assert!(super::matches_expected_result(
+            &case,
+            "cranelift",
+            Some(0),
+            &ok
+        ));
+        for (exit, output) in [
+            (Some(42), ok.clone()),
+            (Some(0), hex(b"42")),
+            (Some(0), hex(b"42\n43\n")),
+            (Some(0), hex(b"ORES_TEST|PASS\n")),
+            (Some(1), ok.clone()),
+        ] {
+            assert!(!super::matches_expected_result(
+                &case,
+                "cranelift",
+                exit,
+                &output
+            ));
+        }
         assert!(super::matches_expected_result(&case, "java", Some(42), ""));
-        assert!(!super::matches_expected_result(&case, "java", Some(0), &ok));
+        assert!(!super::matches_expected_result(
+            &case,
+            "java",
+            Some(0),
+            &ok
+        ));
     }
 
     #[test]
