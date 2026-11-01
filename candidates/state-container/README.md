@@ -146,10 +146,15 @@ and nonzero executed CI steps, including Cranelift as a separate toolchain.
 
 ## Managed Stateful singleton source-admission candidate (2026-11-01)
 
-The three **candidate, non-required** sources in
+The four **candidate, non-required** sources in
 `managed-state-singleton-source-admission-v1.json` pin the exact same bytes
 for Java, LLVM, Wasm, Cranelift and .NET, with Forge separately tracked.
 
+- `trait-with-injected-singleton-unsupported.ores` (Git blob
+  `52785087b8343613c338ace4553fe9736dad2cd9`) is the canonical
+  proposed `with Stateful<BankState>` trait-composition spelling, with
+  compiler-provided state. Java draft #104 uses `with` for traits; this
+  negative candidate does **not** assert successful implementation.
 - `trait-injected-singleton-unsupported.ores` (Git blob
   `9f0f0a35db63264e7fd57ffe0a9986333e21f2a6`) is an injected
   `MutableStateContainer<BankState>` implementing proposed `Stateful<S>`.
