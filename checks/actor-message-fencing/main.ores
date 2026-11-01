@@ -1,0 +1,26 @@
+import actor MessageFence from "./fence.ores";
+import fnc is_fenced from "./guard.ores";
+import fnc expected_accepted_count from "./oracle.ores";
+
+pub async routine main(): void {
+  val gate = spawn MessageFence();
+  await gate.get_ready();
+  gate.send(7003);
+  gate.send(8004);
+  gate.send(7004);
+  gate.send(0);
+  val stale = (await gate.outputs.next()).value.unwrap();
+  val foreign = (await gate.outputs.next()).value.unwrap();
+  val current = (await gate.outputs.next()).value.unwrap();
+  val tally = (await gate.outputs.next()).value.unwrap();
+  await gate.get_done();
+  if !is_fenced(stale.value) || !is_fenced(foreign.value) ||
+     current.value != 1 || tally.value != expected_accepted_count(); do
+    stdio.stdout.println("PARITY_FAIL|actor-message-fencing|guard");
+    val Result<bool, String> failure = Err("application message fencing violated");
+    failure.expect("cross-compiler message admission failed");
+  fi
+  stdio.stdout.write("PARITY_OK|actor-message-fencing|");
+  stdio.stdout.println(expected_accepted_count());
+  return;
+}
