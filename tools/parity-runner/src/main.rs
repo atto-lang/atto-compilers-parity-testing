@@ -630,7 +630,7 @@ fn matches_expected_result(case: &TestCase, backend: &str, exit: Option<i32>, st
     if backend == "cranelift" && case.suite == "legacy" && case.expected_kind == "exit" {
         return exit == Some(0)
             && case.expected_value.is_some_and(|value| {
-                stdout_hex == hex(format!("{value}\\n").as_bytes())
+                stdout_hex == hex(format!("{value}\n").as_bytes())
             });
     }
     exit == case.expected_value
