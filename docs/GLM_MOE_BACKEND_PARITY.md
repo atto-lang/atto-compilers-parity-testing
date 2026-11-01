@@ -1,6 +1,6 @@
-# GLM/MoE four-backend parity acceptance — 2026-11-01
+# GLM/MoE five-toolchain parity acceptance — 2026-11-01
 
-**Status: authored shared-source candidate corpus; no four-backend parity proven.**
+**Status: authored shared-source candidate corpus; no five-toolchain parity proven.**
 
 The branch registers twenty *identical* Oreslang source programs at
 `programs/32-glm-*.ores` through `programs/51-glm-*.ores`.
@@ -25,7 +25,7 @@ The Wasm `contracts/v1/numeric-parity/backend.json` currently declares
 uses an externally pinned native LLVM compiler and isolates Wasm guest bytes.
 The .NET compiler currently has checked-i64 OresIR/CIL verification and a
 NativeAOT host pipeline, but that evidence does not establish `float`
-source lowering or GLM parity. Java/Graal and LLVM are also **unverified
+source lowering or GLM parity. Java/Graal, LLVM and Cranelift are also **unverified
 on the new exact source tree** until genuine guest runs occur.
 
 ## Promotion procedure
@@ -84,7 +84,7 @@ Truffle guest execution, NativeAOT linking, or numerical backends.
 The checked manifest contains 51 legacy cases and 16 positive whole-program
 checks plus 2 negative probes: **69 logical cases** and **345 five-backend
 cells**. All new 20 GLM manifest rows remain `candidate`, explicitly
-required on the four requested toolchains. The corpus now contains
+required on the five requested toolchains. The corpus now contains
 17 integer-control and 3 floating-source GLM files.
 
 The initial [Corpus audit run](https://github.com/ores-truffle-oreslang/oreslang-compilers-parity-testing/actions/runs/41343563533)
@@ -99,3 +99,7 @@ Tracked native acceptance by compiler:
 - [.NET NativeAOT #307](https://github.com/ores-truffle-oreslang/oreslang-source.net/issues/307)
 
 These are tracked implementation tasks, not passing evidence.
+
+### Cranelift / fifth compiler target
+
+Cranelift JIT must compile and execute the **identical 20 source files** under the sixth corpus adapter (`ORES_PARITY_CRANELIFT_COMPILE` and `ORES_PARITY_CRANELIFT_RUN`). A missing adapter, a checked-only result, or LLVM/Wasm execution claimed on behalf of Cranelift is **not** a pass. Validate the same 17 integer and three float programs against pinned compiler/runtime provenance, and record honest unsupported diagnostics until the frontend and lowering support them.
