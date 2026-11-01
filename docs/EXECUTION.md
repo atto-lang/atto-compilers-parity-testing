@@ -1,6 +1,6 @@
 # Execution and parity gate
 
-The checked-in corpus is fail-closed. The default CI audits 51 legacy programs, 16 positive multi-file checks and 2 negative probes, yielding 69 logical cases and 345 backend/case pairs. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
+The checked-in corpus is fail-closed. The default CI audits 51 legacy programs, 16 positive multi-file checks and 2 negative probes, yielding 69 logical cases and 414 backend/case pairs. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
 
 ## Rust-only tooling
 
@@ -13,7 +13,7 @@ Each backend uses two command templates:
 - `ORES_PARITY_<BACKEND>_COMPILE`
 - `ORES_PARITY_<BACKEND>_RUN`
 
-Tokens: `{source}`, `{artifact}`, `{workdir}`. Templates are split into argv without a shell. Supported backend names are LLVM, JAVA, WASM, DOTNET and JS.
+Tokens: `{source}`, `{artifact}`, `{workdir}`. Templates are split into argv without a shell. Supported backend names are LLVM, JAVA, WASM, DOTNET, CRANELIFT and JS.
 
 Example:
 
@@ -55,7 +55,7 @@ The Java reference adapter can now execute the full corpus exploratorily; see
 pinned reference run exposed corpus/compiler syntax and type-checking gaps;
 these must be resolved against canonical contracts without backend-specific rewrites.
 
-Case 31 is the Java-reference `do select ... over ... end` target. Explicit fail-closed rejection on LLVM/Wasm/.NET/JS is useful capability evidence, but remains a parity gap rather than a pass until those backends execute the same source semantics.
+Case 31 is the Java-reference `do select ... over ... end` target. Explicit fail-closed rejection on LLVM/Wasm/.NET/Cranelift/JS is useful capability evidence, but remains a parity gap rather than a pass until those backends execute the same source semantics.
 
 ## Intentional capability rejects
 
@@ -82,14 +82,14 @@ currently remain `unvalidated`. A compiler returning a generic
 nonzero exit does not constitute parity.
 
 Case 31 (static select delimiter equivalence) remains a Java-reference target,
-not five-backend execution proof. The `intentional_capability_reject` status
+not six-backend execution proof. The `intentional_capability_reject` status
 is a fail-closed gap, never a passing record.
 
 ## GLM four-backend execution gate
 
 The GLM cases `32`–`51` are required on all four Oreslang targets, but
 registration in the shared corpus gives **zero validated compiler outcomes**.
-For each of Java/Graal, LLVM, Wasm and .NET:
+For each of Java/Graal, LLVM, Wasm, .NET and Cranelift:
 
 1. Pin original source Git tree plus the exact compiler/build/runtime SHAs.
    Verify the compiler/runner provenance against an independently approved
@@ -105,7 +105,7 @@ For each of Java/Graal, LLVM, Wasm and .NET:
    unsupported diagnostics and all nonzero results. Fail closed if a backend
    is absent, times out, or the GitHub job has zero executed steps.
 
-The first required matrix has **20 × 4 = 80 backend/case outcomes**;
+The first required matrix has **20 × 5 = 100 backend/case outcomes**;
 legacy JS testing stays a fifth, independent target. Nothing in this PR
 establishes the required 80 executions. Source-only Rust unit tests are
 not cross-backend parity evidence.
