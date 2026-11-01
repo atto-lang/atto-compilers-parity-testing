@@ -1,0 +1,8 @@
+// 32: signed negative branch must choose the only valid path.
+// Candidate: requires compiler-backed five-backend execution.
+pub fnc main(): int {
+  val int input = -7;
+  if (input > 0) { return 1; } fi
+  if (input < 0) { return 42; } fi
+  return 2;
+}
