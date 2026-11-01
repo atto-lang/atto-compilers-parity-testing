@@ -138,3 +138,21 @@ These are Git blob identities, **not** native execution results. The runner
 independently reads the on-disk bytes and verifies their actual Git object
 identities before trying any compiler. Follow-on ORM changes require another
 exact-head and reviewed graph, not silent replacement of these blobs.
+
+### Source revision update (2026-11-01)
+
+The canonical ORM PR #13 advanced from `89ec3ed01de695d7f7f24602500041f659b294e2`
+to `bcc45900eb43b89c06bf5667f0e917255d50b770` (eight commits). This
+includes `SchemaRiskSummary`, `risk_summary_checked`, more migration
+portability checks and strengthened `.ores` invariants. The old revision is
+**not current** and may only be used when explicitly testing that historical
+source, not when claiming current ORM parity. Configure `--orm-head` to the
+exact immutable revision in the checked-out ORM repo; the runner now records
+both `source-commit` and `source-tree` on all four guest records and
+rejects an ORM path that is not the Git worktree top-level.
+
+Importantly, the check must exercise the *current* complete ORM module:
+`src/schema.ores` and `src/pg.ores` with their original test cases.
+Neither a source-identity receipt nor an inventory cell certifies an executed
+guest. Java/LLVM native execution and the unsupported Wasm/Cranelift/.NET
+frontends remain independent blocking gates.

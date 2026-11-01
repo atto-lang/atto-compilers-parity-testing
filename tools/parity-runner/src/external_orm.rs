@@ -71,9 +71,29 @@ pub(super) fn load(source_root: &Path, head: &str) -> Result<Vec<TestCase>, Stri
     if !root.is_dir() {
         return Err("ORM checkout is not a directory".into());
     }
+    // Reject a nested directory or a different enclosing repository that
+    // happens to expose a matching HEAD. Source paths are relative to the
+    // actual Git worktree root and must not be resolved by search paths.
+    let git_top = git(&root, &["rev-parse", "--show-toplevel"])?;
+    if !git_top.status.success()
+        || Path::new(String::from_utf8_lossy(&git_top.stdout).trim()) != root
+    {
+        return Err("ORM root must be the Git worktree top-level".into());
+    }
     let rev = git(&root, &["rev-parse", "HEAD"])?;
     if !rev.status.success() || String::from_utf8_lossy(&rev.stdout).trim() != head {
         return Err("ORM checkout HEAD does not match --orm-head".into());
+    }
+    let tree = git(&root, &["rev-parse", "HEAD^{tree}"])?;
+    if !tree.status.success() {
+        return Err("ORM Git tree lookup failed".into());
+    }
+    let tree_id = String::from_utf8(tree.stdout)
+        .map_err(|_| "ORM Git tree identity is not UTF-8")?
+        .trim()
+        .to_string();
+    if tree_id.len() != 40 || !tree_id.bytes().all(|x| x.is_ascii_hexdigit()) {
+        return Err("ORM tree identity must be a 40-hex Git SHA".into());
     }
     let mut validated = Vec::new();
     for rel in FILES {
@@ -152,7 +172,8 @@ pub(super) fn load(source_root: &Path, head: &str) -> Result<Vec<TestCase>, Stri
             expected_stdout_prefix: Some(stdout.into()),
             validation_status: "unvalidated".into(),
             features: vec!["pure-orm-source".into(), "schema-and-sql".into(),
-                           format!("source-commit:{head}")],
+                           format!("source-commit:{head}"),
+                           format!("source-tree:{tree_id}")],
         });
     }
     Ok(cases)
