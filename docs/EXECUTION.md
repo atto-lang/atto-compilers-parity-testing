@@ -1,6 +1,6 @@
 # Execution and parity gate
 
-The checked-in corpus is fail-closed. The default CI audits 31 legacy programs, 16 positive multi-file checks and 2 negative probes, yielding 49 logical cases and 245 backend/case pairs. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
+The checked-in corpus is fail-closed. The default CI audits 37 legacy programs, 16 positive multi-file checks and 2 negative probes, yielding 55 logical cases and 330 backend/case pairs. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
 
 ## Rust-only tooling
 
@@ -13,7 +13,7 @@ Each backend uses two command templates:
 - `ORES_PARITY_<BACKEND>_COMPILE`
 - `ORES_PARITY_<BACKEND>_RUN`
 
-Tokens: `{source}`, `{artifact}`, `{workdir}`. Templates are split into argv without a shell. Supported backend names are LLVM, JAVA, WASM, DOTNET and JS.
+Tokens: `{source}`, `{artifact}`, `{workdir}`. Templates are split into argv without a shell. Supported backend names are LLVM, JAVA, CRANELIFT, WASM, DOTNET and JS.
 
 Example:
 
@@ -84,3 +84,9 @@ nonzero exit does not constitute parity.
 Case 31 (static select delimiter equivalence) remains a Java-reference target,
 not five-backend execution proof. The `intentional_capability_reject` status
 is a fail-closed gap, never a passing record.
+
+### Six-case signed-i64 cohort (authoring versus execution)
+
+The scalar cohort 32–37 is built from independent native `.ores` sources in `programs/` and uses the same bytes for every backend. Select it with `--case-id 32 --case-id 33 --case-id 34 --case-id 35 --case-id 36 --case-id 37`; filters reject duplicate or unknown case IDs. Without `--execute`, even a successful inventory result is **not executed**. Without `--allow-unvalidated`, candidate cases are not run and no parity is credited.
+
+Cranelift's `ir` command compiles native IR, but its `run` command recompiles and executes a native JIT in-process; it reports signed-i64 output on stdout with exit 0. Thus the portable scalar adapter compares the **entire** stdout to the expected integer and one newline. Wrong exit status, trailing output, repeated values and forged ORES_TEST strings cannot satisfy this oracle. Other backends retain their existing process exit oracle. The distinction must not be generalized to multi-file, actor or native harness cases.
