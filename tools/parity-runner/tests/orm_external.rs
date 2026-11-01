@@ -192,3 +192,18 @@ fn nested_worktree_path_never_counts_as_separately_pinned_orm_checkout() {
         .contains("ORM root must be the Git worktree top-level"));
     fs::remove_dir_all(root).unwrap();
 }
+
+#[cfg(unix)]
+#[test]
+fn real_java_llvm_lane_has_valid_shell_and_rejects_missing_pins() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../scripts/run-orm-java-llvm.sh");
+    let syntax = Command::new("bash").arg("-n").arg(&path).output().unwrap();
+    assert!(syntax.status.success(), "bash syntax: {}",
+        String::from_utf8_lossy(&syntax.stderr));
+    let missing_args = Command::new("bash").arg(path).output().unwrap();
+    assert!(!missing_args.status.success());
+    assert!(missing_args.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&missing_args.stderr)
+        .contains("PRECHECK_FAILED"));
+}

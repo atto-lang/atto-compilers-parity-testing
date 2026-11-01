@@ -48,12 +48,20 @@ export ORES_PARITY_JAVA_COMPILE="$java_script --check {source}"
 export ORES_PARITY_JAVA_RUN="$java_script {source}"
 export ORES_PARITY_LLVM_COMPILE="$llvm_script {source} {artifact}"
 export ORES_PARITY_LLVM_RUN="{artifact}"
+failures=0
 for backend in java llvm; do
-  cargo run --locked --manifest-path "$root/tools/parity-runner/Cargo.toml" -- \
+  # Attempt each independent backend even if the other fails; retain both
+  # raw result reports, never hide either failure or synthesize a success.
+  if cargo run --locked --manifest-path "$root/tools/parity-runner/Cargo.toml" -- \
     --orm-root "$orm" --orm-head "$orm_head" --backend "$backend" \
     --case-id orm-schema-plans --case-id orm-schema-adversarial \
     --case-id orm-schema-invariants --case-id orm-sql-plans \
-    --execute --allow-unvalidated --output "$evidence/$backend.json" \
-    || fail "$backend did not compile+execute all four unchanged ORM guests"
+    --execute --allow-unvalidated --output "$evidence/$backend.json"; then
+    printf '%s\n' "$backend candidate execution returned 0 (review receipts)"
+  else
+    failures=$((failures + 1))
+    printf '%s\n' "$backend native guest attempt FAILED; inspect raw report" >&2
+  fi
 done
+[[ "$failures" -eq 0 ]] || fail "$failures independent native backend lanes failed"
 printf '%s\n' 'ORM_JAVA_LLVM_EXECUTED_CANDIDATES: inspect receipts for independent validation'
