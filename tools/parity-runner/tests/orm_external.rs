@@ -230,7 +230,7 @@ fn fake_compiler_success_without_native_artifact_cannot_certify_any_aot_orm() {
         let run = if backend == "wasm" {
             "sh -c 'echo Postgres SQL planning contracts passed' -- {artifact} {artifact_sha256}"
         } else {
-            "sh -c 'echo Postgres SQL planning contracts passed' -- {artifact}"
+            "{artifact}"
         };
         let env = backend.to_ascii_uppercase();
         let output = cmd.env(format!("ORES_PARITY_{env}_COMPILE"), compile)
@@ -326,4 +326,34 @@ fn aot_run_wrapper_cannot_forge_orm_stdout_by_echoing_sentinel() {
         assert_eq!(report["summary"]["runtime_infrastructure_failure"], 1);
         fs::remove_dir_all(root).unwrap();
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn empty_git_commit_cannot_rebind_native_orm_guest_to_unpinned_head() {
+    let (root, head) = fake_checkout();
+    let output_path = root.join("head-swapped.json");
+    // A fake Java check reports zero but changes the source repository HEAD.
+    // This must be an infrastructure failure before any real guest phase,
+    // even though the underlying source file bytes are still identical.
+    let compile = format!(
+        "sh -c 'git -C \"$2\" -c user.email=fixture@example.test \
+         -c user.name=Fixture commit --allow-empty -qm swapped' -- \
+         {{source}} {}",
+        root.display()
+    );
+    let result = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .arg("--orm-root").arg(&root).arg("--orm-head").arg(&head)
+        .args(["--backend", "java", "--case-id", "orm-sql-plans",
+               "--execute", "--allow-unvalidated", "--output"])
+        .arg(&output_path)
+        .env("ORES_PARITY_JAVA_COMPILE", compile)
+        .env("ORES_PARITY_JAVA_RUN",
+            "sh -c 'echo Postgres SQL planning contracts passed' -- {source}")
+        .output().unwrap();
+    assert!(!result.status.success());
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(output_path).unwrap()).unwrap();
+    assert_eq!(report["summary"]["compile_infrastructure_failure"], 1);
+    fs::remove_dir_all(root).unwrap();
 }

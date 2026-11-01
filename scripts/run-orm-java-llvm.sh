@@ -4,7 +4,14 @@
 set -euo pipefail
 fail() { printf 'ORM parity PRECHECK_FAILED: %s\n' "$*" >&2; exit 69; }
 [[ $# -eq 6 ]] || fail 'usage: run-orm-java-llvm.sh ORM_ROOT ORM_HEAD JAVA_ROOT LLVM_ROOT LLVM_HEAD NEW_EVIDENCE_DIR'
-for cmd in git cargo realpath sha256sum; do command -v "$cmd" >/dev/null || fail "missing $cmd"; done
+for cmd in git cargo realpath; do command -v "$cmd" >/dev/null || fail "missing $cmd"; done
+if command -v sha256sum >/dev/null 2>&1; then
+  hash_file() { sha256sum "$1" | awk '{print $1}'; }
+elif command -v shasum >/dev/null 2>&1; then
+  hash_file() { shasum -a 256 "$1" | awk '{print $1}'; }
+else
+  fail 'no SHA-256 utility (sha256sum or shasum)'
+fi
 orm="$(realpath -e -- "$1")" || fail 'ORM root missing'
 java_repo="$(realpath -e -- "$3")" || fail 'Java compiler root missing'
 llvm_repo="$(realpath -e -- "$4")" || fail 'LLVM compiler root missing'
@@ -38,8 +45,8 @@ root="$(cd "$(dirname "$0")/.." && pwd -P)"
   printf 'orm_tree=%s\n' "$(git -C "$orm" rev-parse 'HEAD^{tree}')"
   printf 'java_commit=%s\n' "$java_head"
   printf 'llvm_commit=%s\n' "$llvm_head"
-  printf 'llvm_compiler_sha256=%s\n' "$(sha256sum "$llvmc" | cut -d' ' -f1)"
-  printf 'java_binary_sha256=%s\n' "$(sha256sum "$ORES_JAVA" | cut -d' ' -f1)"
+  printf 'llvm_compiler_sha256=%s\n' "$(hash_file "$llvmc")"
+  printf 'java_binary_sha256=%s\n' "$(hash_file "$ORES_JAVA")"
 } > "$evidence/provenance.txt"
 printf -v java_script '%q' "$orm/scripts/ores"
 printf -v llvm_script '%q' "$llvm_repo/scripts/compile-aot.sh"

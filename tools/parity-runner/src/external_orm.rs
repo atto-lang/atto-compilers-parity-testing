@@ -37,6 +37,29 @@ pub(super) fn still_bound(case: &TestCase) -> bool {
     let Some(expected) = &case.graph_sha256 else {
         return false;
     };
+    // Holding identical source blobs is necessary but not sufficient if a
+    // concurrent Git checkout changes HEAD. The receipt also pins the exact
+    // commit and tree throughout the compile/guest lifetime.
+    let Some(commit) = case.features.iter()
+        .find_map(|f| f.strip_prefix("source-commit:")) else {
+        return false;
+    };
+    let Some(tree) = case.features.iter()
+        .find_map(|f| f.strip_prefix("source-tree:")) else {
+        return false;
+    };
+    let Ok(head_now) = git(root, &["rev-parse", "HEAD"]) else {
+        return false;
+    };
+    let Ok(tree_now) = git(root, &["rev-parse", "HEAD^{tree}"]) else {
+        return false;
+    };
+    if !head_now.status.success() || !tree_now.status.success()
+        || String::from_utf8_lossy(&head_now.stdout).trim() != commit
+        || String::from_utf8_lossy(&tree_now.stdout).trim() != tree
+    {
+        return false;
+    }
     let mut files = Vec::new();
     for path in paths {
         let original = root.join(path);
