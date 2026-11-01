@@ -787,6 +787,20 @@ fn main() -> Result<(), String> {
         .find(|window| window[0] == "--output")
         .map(|window| window[1].clone())
         .unwrap_or_else(|| "parity-results.json".into());
+    // Explicit case selection makes the portable scalar intersection executable
+    // without silently treating unsupported actor/async programs as successes.
+    let mut case_ids = BTreeSet::new();
+    for (index, arg) in args.iter().enumerate() {
+        if arg == "--case-id" {
+            let value = args
+                .get(index + 1)
+                .filter(|id| !id.is_empty() && !id.starts_with("--"))
+                .ok_or_else(|| "--case-id requires a nonempty case ID".to_string())?;
+            if !case_ids.insert(value.clone()) {
+                return Err(format!("duplicate --case-id: {value}"));
+            }
+        }
+    }
     let timeout_seconds: u64 = args
         .windows(2)
         .find(|window| window[0] == "--timeout")
@@ -802,6 +816,12 @@ fn main() -> Result<(), String> {
         .canonicalize()
         .map_err(|e| e.to_string())?;
     let (cases, corpus) = load_cases(&root)?;
+    let known_ids: BTreeSet<&str> = cases.iter().map(|case| case.case_id.as_str()).collect();
+    for id in &case_ids {
+        if !known_ids.contains(id.as_str()) {
+            return Err(format!("unknown --case-id: {id}"));
+        }
+    }
     let diagnostic_rules: DiagnosticRules = serde_json::from_str(
         &fs::read_to_string(root.join("diagnostics.json")).map_err(|e| e.to_string())?,
     )
@@ -809,6 +829,9 @@ fn main() -> Result<(), String> {
     let timeout = Duration::from_secs(timeout_seconds);
     let mut records = Vec::new();
     for case in &cases {
+        if !case_ids.is_empty() && !case_ids.contains(&case.case_id) {
+            continue;
+        }
         for &(backend, env_name) in &BACKENDS {
             if selected_backend
                 .as_deref()
