@@ -8,6 +8,7 @@
       "llvm",
       "wasm",
       "dotnet",
+      "cranelift",
       "js"
     ],
     "required_parity": true,
@@ -36,6 +37,12 @@
       "repo": "ores-truffle-oreslang/oreslang-source.net",
       "tree": "7d34276d09a99f05867eec92106af8bb5ecd2935",
       "role": "Native AOT bootstrap; current source subset one checked i64 function"
+    },
+    "cranelift": {
+      "repo": "ores-truffle-oreslang/oreslang-source.cranelift",
+      "tree": "5e1dade48467d6167034d781a8e14a05f53568d0",
+      "captured_on": "2026-11-01",
+      "role": "experimental scalar JIT; proxy modules/classes/arrays/Result unsupported"
     },
     "js": {
       "repo": "ores-truffle-oreslang/oreslang-source.js",

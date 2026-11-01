@@ -39,6 +39,7 @@
       "native async/channel/select boundary unsupported"
     ]
   },
+  "cranelift": {},
   "dotnet": {
     "unsupported_select": [
       "static select requires checked channel/future arbitration"
