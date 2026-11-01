@@ -24,16 +24,16 @@ jobs:
         run: cargo test --manifest-path tools/parity-runner/Cargo.toml --locked
       - name: Build parity runner
         run: cargo build --manifest-path tools/parity-runner/Cargo.toml --locked --bins
-      - name: Audit 67 x 6 matrix without making compiler claims
+      - name: Audit 75 x 6 matrix without making compiler claims
         run: |
           cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml -- --output parity-results.json
           node - <<'NODE'
           const d = require("./parity-results.json");
-          const expected = {legacy_cases:49,multifile_checks:16,negative_probes:2,total_cases:67};
+          const expected = {legacy_cases:57,multifile_checks:16,negative_probes:2,total_cases:75};
           if (JSON.stringify(d.corpus) !== JSON.stringify(expected)) process.exit(1);
           if (JSON.stringify(d.backends) !== JSON.stringify(["llvm","java","wasm","dotnet","js","cranelift"])) process.exit(1);
           if (d.executed !== false) process.exit(1);
-          if (d.cases !== 67 || d.records.length !== 402 || d.summary.not_run !== 402) process.exit(1);
+          if (d.cases !== 75 || d.records.length !== 450 || d.summary.not_run !== 450) process.exit(1);
           const checks = d.records.filter(r => r.suite === "checks");
           const positives = checks.filter(r => typeof r.graph_sha256 === "string");
           if (checks.length !== 108 || positives.length !== 96) process.exit(1);
