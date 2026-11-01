@@ -786,6 +786,11 @@ fn evaluate_case(
     let compile_status = compile.status.clone();
     let compile_exit = compile.exit_code;
     record.compile = Some(compile);
+    if !case_sources_match(case, root)? {
+        record.status = "source_integrity_failure".into();
+        let _ = fs::remove_dir_all(&workdir);
+        return Ok(record);
+    }
 
     if compile_status != "completed" || compile_exit.is_none() || compile_exit == Some(125) {
         record.status = "compile_infrastructure_failure".into();
@@ -898,6 +903,11 @@ fn evaluate_case(
         } else {
             "exploratory_match_not_parity_pass".into()
         };
+    }
+    if let Some(expected_digest) = digest.as_deref() {
+        if artifact_sha256(&artifact).ok().as_deref() != Some(expected_digest) {
+            record.status = "artifact_integrity_failure".into();
+        }
     }
     if !case_sources_match(case, root)? {
         record.status = "source_integrity_failure".into();
