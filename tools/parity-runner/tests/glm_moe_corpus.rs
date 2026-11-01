@@ -98,7 +98,11 @@ fn exactly_twenty_glm_programs_are_required_on_all_backends() {
 }
 
 fn route_top1(a: i64, b: i64) -> i64 {
-    if a >= b { 0 } else { 1 }
+    if a >= b {
+        0
+    } else {
+        1
+    }
 }
 
 fn capacity_route(a: i64, b: i64, l0: i64, l1: i64, cap: i64) -> i64 {
@@ -130,7 +134,9 @@ fn counted_loads(l0: i64, l1: i64, tokens: i64, k: i64, cap: i64) -> bool {
     {
         return false;
     }
-    let Some(total) = tokens.checked_mul(k) else { return false; };
+    let Some(total) = tokens.checked_mul(k) else {
+        return false;
+    };
     l0.checked_add(l1) == Some(total)
 }
 
