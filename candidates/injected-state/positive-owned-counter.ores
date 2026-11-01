@@ -1,0 +1,28 @@
+// Candidate only: compile/run after @Inject state lowering is implemented.
+// Expected stdout "2", process exit 0. This does not prove a forced heap allocation.
+@Inject(MutableStateContainer())
+define class Counter as
+  state { count: int = 0; }
+
+  pub increment(): void {
+    self.handle_state(critical[write] |s| -> {
+      s.count = s.count + 1;
+    });
+    return;
+  }
+
+  pub emit_count(): void {
+    self.handle_state(critical[read] |s| -> {
+      stdio.stdout.write(s.count);
+    });
+    return;
+  }
+end
+
+pub routine main(): void {
+  let mut Counter counter = new Counter();
+  counter.increment();
+  counter.increment();
+  counter.emit_count();
+  return;
+}
