@@ -122,12 +122,20 @@ fn invoke(template: &str, source: &Path, artifact: &Path, workdir: &Path,
     let errors = match File::create(&stderr) { Ok(v) => v, Err(e) => {
         result.error = Some(e.to_string()); return result;
     }};
-    let mut child = match Command::new(&argv[0]).args(&argv[1..])
-        .current_dir(workdir).stdout(Stdio::from(output))
-        .stderr(Stdio::from(errors)).spawn() {
-            Ok(v) => v,
-            Err(e) => { result.error = Some(format!("spawn failed: {e}")); return result; }
-        };
+    let mut command = Command::new(&argv[0]);
+    command.args(&argv[1..]).current_dir(workdir)
+        .stdout(Stdio::from(output)).stderr(Stdio::from(errors));
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        // Spawn a distinct process group so a timed-out compiler wrapper's
+        // ordinary children do not keep executing after the direct PID dies.
+        command.process_group(0);
+    }
+    let mut child = match command.spawn() {
+        Ok(v) => v,
+        Err(e) => { result.error = Some(format!("spawn failed: {e}")); return result; }
+    };
     let deadline = Instant::now() + TIMEOUT;
     loop {
         match child.try_wait() {
@@ -136,6 +144,15 @@ fn invoke(template: &str, source: &Path, artifact: &Path, workdir: &Path,
                 let oversized = [&stdout, &stderr].iter().any(|p|
                     fs::metadata(p).is_ok_and(|m| m.len() > OUTPUT_LIMIT));
                 if oversized || Instant::now() >= deadline {
+                    #[cfg(unix)]
+                    {
+                        let group = child.id() as i32;
+                        if group > 0 {
+                            // SAFETY: own child was started in a dedicated
+                            // process group; negative PID addresses its group.
+                            unsafe { libc::kill(-group, libc::SIGKILL); }
+                        }
+                    }
                     let _ = child.kill();
                     let _ = child.wait();
                     result.error = Some(if oversized { "process output budget exceeded" }
