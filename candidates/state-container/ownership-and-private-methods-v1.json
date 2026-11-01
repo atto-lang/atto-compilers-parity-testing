@@ -1,0 +1,43 @@
+{
+  "schema_version": "candidate-1.0",
+  "status": "not_run",
+  "required_parity_manifest_unchanged": true,
+  "branch": "test/private-state-container-candidate-20261030",
+  "cases": [
+    {
+      "file": "read-borrow-mutator-reject.ores",
+      "expect": "typecheck_reject",
+      "reason": "read loan cannot mutably borrow receiver"
+    },
+    {
+      "file": "exclusive-double-borrow-reject.ores",
+      "expect": "borrowcheck_reject",
+      "reason": "two active mut borrows same owner"
+    },
+    {
+      "file": "use-after-take-reject.ores",
+      "expect": "ownership_reject",
+      "reason": "state read after move"
+    },
+    {
+      "file": "public-method-read-owned.ores",
+      "expect": "run_stdout",
+      "stdout": "7",
+      "reason": "public immutable access is legal"
+    }
+  ],
+  "required_toolchains": [
+    "java",
+    "llvm",
+    "wasm",
+    "cranelift",
+    "net"
+  ],
+  "executable_parity": {
+    "java": "not_run",
+    "llvm": "not_run",
+    "wasm": "not_run",
+    "cranelift": "not_run",
+    "net": "not_run"
+  }
+}
