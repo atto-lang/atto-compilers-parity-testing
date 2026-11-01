@@ -176,3 +176,29 @@ fn wasm_missing_compiled_artifact_with_digest_template_fails_closed() {
         r["run"]["error"].as_str().unwrap_or("").contains("artifact")
     ));
 }
+
+#[cfg(unix)]
+#[test]
+fn wasm_artifact_rewrite_after_pinned_guest_invocation_fails_closed() {
+    let output = std::env::temp_dir().join(format!(
+        "ores-wasm-postrun-mutation-{}.json", std::process::id()
+    ));
+    let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .args(["--backend", "wasm", "--execute", "--allow-unvalidated", "--output"])
+        .arg(&output)
+        .env("ORES_PARITY_WASM_COMPILE", "sh -c 'printf wasm > {artifact}'")
+        .env(
+            "ORES_PARITY_WASM_RUN",
+            "sh -c 'printf injected >> {artifact}; exit 42' --sha256={artifact_sha256}",
+        )
+        .status()
+        .unwrap();
+    let report: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+    std::fs::remove_file(output).unwrap();
+    assert!(!status.success());
+    let first = report["records"].as_array().unwrap().iter()
+        .find(|record| record["case_id"] == "01").unwrap();
+    assert_eq!(first["status"], "artifact_integrity_failure");
+    assert!(report["summary"].get("pass").is_none());
+}
