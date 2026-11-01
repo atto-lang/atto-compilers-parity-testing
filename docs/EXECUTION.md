@@ -1,6 +1,6 @@
 # Execution and parity gate
 
-The checked-in corpus is fail-closed. The default CI audits 31 legacy programs, 16 positive multi-file checks and 2 negative probes, yielding 49 logical cases and 245 backend/case pairs. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
+The checked-in corpus is fail-closed. The default CI audits 51 legacy programs, 16 positive multi-file checks and 2 negative probes, yielding 69 logical cases and 345 backend/case pairs. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
 
 ## Rust-only tooling
 
@@ -84,3 +84,28 @@ nonzero exit does not constitute parity.
 Case 31 (static select delimiter equivalence) remains a Java-reference target,
 not five-backend execution proof. The `intentional_capability_reject` status
 is a fail-closed gap, never a passing record.
+
+## GLM four-backend execution gate
+
+The GLM cases `32`–`51` are required on all four Oreslang targets, but
+registration in the shared corpus gives **zero validated compiler outcomes**.
+For each of Java/Graal, LLVM, Wasm and .NET:
+
+1. Pin original source Git tree plus the exact compiler/build/runtime SHAs.
+   Verify the compiler/runner provenance against an independently approved
+   manifest. Do not export private compiler source across organizations.
+2. Compile the same 20 immutable `.ores` source files. For LLVM, execute
+   each supported case under O0 and O2 with an actual native executable.
+3. For Wasm, pin LLVM cross-compiler and emitted Wasm SHA, then run on a
+   Wasmtime-backed approved isolated core environment; unavailable binary32
+   support is an explicit *gap*.
+4. For .NET, require OresIR, emitted CIL, linked NativeAOT host and real
+   execution. A CIL-only interpreter check is not a NativeAOT pass.
+5. Capture the guest's actual returned 42, unexpected errors, classified
+   unsupported diagnostics and all nonzero results. Fail closed if a backend
+   is absent, times out, or the GitHub job has zero executed steps.
+
+The first required matrix has **20 × 4 = 80 backend/case outcomes**;
+legacy JS testing stays a fifth, independent target. Nothing in this PR
+establishes the required 80 executions. Source-only Rust unit tests are
+not cross-backend parity evidence.
