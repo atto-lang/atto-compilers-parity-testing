@@ -8,7 +8,8 @@
       "java",
       "wasm",
       "dotnet",
-      "forge"
+      "forge",
+      "cranelift"
     ],
     "required_parity": true,
     "unsupported_is_pass": false,
@@ -660,6 +661,176 @@
       "expected_diagnostic_category": null,
       "validation_status": "candidate",
       "source_basis": "Derived integer boundary/metamorphic oracle (2026-10-29); independently validated compiler execution pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "40",
+      "name": "wide-i64-difference",
+      "path": "programs/40-wide-i64-difference.ores",
+      "group": "scalar",
+      "features": [
+        "int",
+        "i64-exactness",
+        "above-f64-mantissa"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "Signed-i64 BigInt-checked candidate (2026-11-01); no compiler-backed proof",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "41",
+      "name": "min-i64-successor",
+      "path": "programs/41-min-i64-successor.ores",
+      "group": "scalar",
+      "features": [
+        "int",
+        "signed-min",
+        "checked-addition"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "Signed-i64 BigInt-checked candidate (2026-11-01); no compiler-backed proof",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "42",
+      "name": "max-i64-predecessor",
+      "path": "programs/42-max-i64-predecessor.ores",
+      "group": "scalar",
+      "features": [
+        "int",
+        "signed-max",
+        "checked-subtraction"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "Signed-i64 BigInt-checked candidate (2026-11-01); no compiler-backed proof",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "43",
+      "name": "wide-checked-product",
+      "path": "programs/43-wide-checked-product.ores",
+      "group": "scalar",
+      "features": [
+        "int",
+        "checked-multiply",
+        "precision"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "Signed-i64 BigInt-checked candidate (2026-11-01); no compiler-backed proof",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "44",
+      "name": "double-negative-product",
+      "path": "programs/44-double-negative-product.ores",
+      "group": "scalar",
+      "features": [
+        "int",
+        "negative-multiply",
+        "unary-minus"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "Signed-i64 BigInt-checked candidate (2026-11-01); no compiler-backed proof",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "45",
+      "name": "grouped-negation",
+      "path": "programs/45-grouped-negation.ores",
+      "group": "scalar",
+      "features": [
+        "int",
+        "nested-negation",
+        "parentheses"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "Signed-i64 BigInt-checked candidate (2026-11-01); no compiler-backed proof",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "46",
+      "name": "named-bitxor",
+      "path": "programs/46-named-bitxor.ores",
+      "group": "scalar",
+      "features": [
+        "int",
+        "named-intrinsic",
+        "xor"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "Signed-i64 BigInt-checked candidate (2026-11-01); no compiler-backed proof",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "47",
+      "name": "mantissa-precision-product",
+      "path": "programs/47-mantissa-precision-product.ores",
+      "group": "scalar",
+      "features": [
+        "int",
+        "i64-exactness",
+        "checked-multiply"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "Signed-i64 BigInt-checked candidate (2026-11-01); no compiler-backed proof",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "48",
+      "name": "max-i64-delta",
+      "path": "programs/48-max-i64-delta.ores",
+      "group": "scalar",
+      "features": [
+        "int",
+        "signed-max",
+        "checked-subtraction"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "Signed-i64 BigInt-checked candidate (2026-11-01); no compiler-backed proof",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "49",
+      "name": "signed-boundary-product",
+      "path": "programs/49-signed-boundary-product.ores",
+      "group": "scalar",
+      "features": [
+        "int",
+        "signed-max",
+        "checked-multiply"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "Signed-i64 BigInt-checked candidate (2026-11-01); no compiler-backed proof",
       "required_on_all_backends": true
     }
   ]
