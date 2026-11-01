@@ -82,8 +82,10 @@ pub(super) fn adapter_admitted(
         "wasm" => compile.contains("{artifact}")
             && run.contains("{artifact}")
             && run.contains("{artifact_sha256}"),
+        // AOT binaries must execute directly; a shell wrapper that prints
+        // a fabricated guest receipt cannot be the run phase.
         "llvm" | "dotnet" => compile.contains("{artifact}")
-            && run.contains("{artifact}"),
+            && run.trim() == "{artifact}",
         _ => false,
     }
 }

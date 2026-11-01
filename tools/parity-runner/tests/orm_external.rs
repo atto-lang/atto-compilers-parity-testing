@@ -265,3 +265,65 @@ fn missing_wasm_digest_placeholder_is_a_hard_adapter_failure() {
     assert_eq!(report["summary"]["runtime_infrastructure_failure"], 1);
     fs::remove_dir_all(root).unwrap();
 }
+
+#[cfg(unix)]
+#[test]
+fn empty_symlink_and_directory_aot_outputs_fail_before_any_orm_guest_result() {
+    // The three artifact types are adversarial and intentionally not backed
+    // by an Oreslang compiler. All must be infrastructural failures.
+    for (name, create) in [
+        ("empty", "touch"),
+        ("symlink", "ln -s /bin/true"),
+        ("directory", "mkdir"),
+    ] {
+        for backend in ["llvm", "dotnet", "wasm"] {
+            let (root, head) = fake_checkout();
+            let out = root.join(format!("{backend}-{name}.json"));
+            let compile = format!("sh -c '{create} \"$2\"' -- {{source}} {{artifact}}");
+            let run = if backend == "wasm" {
+                "sh -c 'exit 0' -- {artifact} {artifact_sha256}"
+            } else {
+                "{artifact}"
+            };
+            let k = backend.to_ascii_uppercase();
+            let result = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+                .arg("--orm-root").arg(&root).arg("--orm-head").arg(&head)
+                .args(["--backend", backend, "--case-id", "orm-schema-plans",
+                       "--execute", "--allow-unvalidated", "--output"])
+                .arg(&out)
+                .env(format!("ORES_PARITY_{k}_COMPILE"), compile)
+                .env(format!("ORES_PARITY_{k}_RUN"), run)
+                .output().unwrap();
+            assert!(!result.status.success(), "{backend}/{name} was accepted");
+            let report: serde_json::Value =
+                serde_json::from_slice(&fs::read(out).unwrap()).unwrap();
+            assert_eq!(report["summary"]["runtime_infrastructure_failure"], 1,
+                "wrong classification for {backend}/{name}");
+            fs::remove_dir_all(root).unwrap();
+        }
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn aot_run_wrapper_cannot_forge_orm_stdout_by_echoing_sentinel() {
+    for backend in ["llvm", "dotnet"] {
+        let (root, head) = fake_checkout();
+        let out = root.join("forged-run.json");
+        let result = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+            .arg("--orm-root").arg(&root).arg("--orm-head").arg(&head)
+            .args(["--backend", backend, "--case-id", "orm-sql-plans",
+                   "--execute", "--allow-unvalidated", "--output"])
+            .arg(&out)
+            .env(format!("ORES_PARITY_{}_COMPILE", backend.to_ascii_uppercase()),
+                 "sh -c 'exit 0' -- {source} {artifact}")
+            .env(format!("ORES_PARITY_{}_RUN", backend.to_ascii_uppercase()),
+                 "sh -c 'echo Postgres SQL planning contracts passed' -- {artifact}")
+            .output().unwrap();
+        assert!(!result.status.success());
+        let report: serde_json::Value =
+            serde_json::from_slice(&fs::read(out).unwrap()).unwrap();
+        assert_eq!(report["summary"]["runtime_infrastructure_failure"], 1);
+        fs::remove_dir_all(root).unwrap();
+    }
+}

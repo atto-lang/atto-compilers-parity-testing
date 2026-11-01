@@ -180,3 +180,17 @@ reviewed, stepful exact-head compiler-backed evidence is admitted.
 
 These are language-level ORM and SQL planning guests, not real PostgreSQL
 connections, migration execution, RLS or native Wasm/Cranelift/.NET proofs.
+
+## Native artifact source-to-execution hardening (2026-11-01)
+
+For the **original** ORM graph only, LLVM, WASM, and .NET now require the
+compiler stage to actually publish a bounded, nonempty, regular, non-symlink
+binary artifact. The runner records its SHA-256 and rechecks the digest after
+guest execution. WASM run templates **must** include `{artifact_sha256}` so a
+real WASM runtime can independently validate the artifact. LLVM and NativeAOT
+`.NET` run argv must be the emitted `{artifact}` executable directly; a shell
+`echo` wrapper is never admitted as native guest execution. Java/JVM and
+Cranelift JIT use their source-driven interfaces and are not credited for AOT
+artifacts. A positive source check, empty output, symlink, directory or
+missing binary remains an infrastructure failure. These are authored guards;
+not evidence that the compilers implement nominal ORM lowering.
