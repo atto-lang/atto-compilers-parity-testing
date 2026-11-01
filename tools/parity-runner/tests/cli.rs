@@ -107,3 +107,55 @@ fn unknown_case_filter_is_error_without_a_report() {
     assert!(!status.success());
     assert!(!output.exists());
 }
+
+#[cfg(unix)]
+#[test]
+fn rejection_artifact_and_stdout_spoof_never_count_as_guest_proof() {
+    // Real CLI + subprocess integration checks; the shell adapter is an
+    // intentional fake compiler used only to test fail-closed admission.
+    for (id, compile, expected) in [
+        (
+            "artifact",
+            "sh -c 'echo i64 literal out of range >&2; touch program; exit 1'",
+            "rejected_source_published_artifact",
+        ),
+        (
+            "stdout-spoof",
+            "sh -c 'echo i64 literal out of range; exit 1'",
+            "rejection_output_violation",
+        ),
+        (
+            "silent-reject",
+            "sh -c 'exit 1'",
+            "rejection_output_violation",
+        ),
+    ] {
+        let output = std::env::temp_dir().join(format!(
+            "ores-cli-{}-adversarial-{id}.json",
+            std::process::id()
+        ));
+        let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+            .args([
+                "--backend",
+                "cranelift",
+                "--case",
+                "13",
+                "--execute",
+                "--allow-unvalidated",
+                "--output",
+            ])
+            .arg(&output)
+            .env("ORES_PARITY_CRANELIFT_COMPILE", compile)
+            .env_remove("ORES_PARITY_CRANELIFT_RUN")
+            .status()
+            .unwrap();
+        let report: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+        std::fs::remove_file(output).unwrap();
+        assert!(!status.success(), "{id}: fake compiler must not certify parity");
+        assert_eq!(report["cases"], 1);
+        assert_eq!(report["records"][0]["case_id"], "13");
+        assert_eq!(report["records"][0]["status"], expected);
+        assert!(report["records"][0]["run"].is_null());
+    }
+}
