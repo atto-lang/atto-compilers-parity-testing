@@ -127,3 +127,52 @@ fn matching_exploratory_output_never_returns_success() {
     assert_eq!(positive["status"], "exploratory_match_not_parity_pass");
     assert!(report["summary"].get("pass").is_none());
 }
+
+#[cfg(unix)]
+#[test]
+fn wasm_run_adapter_without_artifact_digest_is_never_parity_success() {
+    let output = std::env::temp_dir().join(format!(
+        "ores-wasm-digest-{}.json", std::process::id()
+    ));
+    let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .args(["--backend", "wasm", "--execute", "--allow-unvalidated", "--output"])
+        .arg(&output)
+        // This fake compiler reports success, but produces no pinned Wasm
+        // artifact. The missing digest binding must fail before a run.
+        .env("ORES_PARITY_WASM_COMPILE", "sh -c 'exit 0'")
+        .env("ORES_PARITY_WASM_RUN", "sh -c 'exit 0'")
+        .status().unwrap();
+    let report: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+    std::fs::remove_file(output).unwrap();
+    assert!(!status.success());
+    assert_eq!(report["backends"], serde_json::json!(["wasm"]));
+    assert!(report["summary"]["runtime_infrastructure_failure"].as_u64().unwrap_or(0) > 0);
+    assert!(report["summary"].get("pass").is_none());
+}
+
+#[cfg(unix)]
+#[test]
+fn wasm_missing_compiled_artifact_with_digest_template_fails_closed() {
+    let output = std::env::temp_dir().join(format!(
+        "ores-wasm-missing-{}.json", std::process::id()
+    ));
+    let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .args(["--backend", "wasm", "--execute", "--allow-unvalidated", "--output"])
+        .arg(&output)
+        // A runner can print a false "success", but cannot hash absent bytes.
+        .env("ORES_PARITY_WASM_COMPILE", "sh -c 'exit 0'")
+        .env("ORES_PARITY_WASM_RUN", "sh -c 'exit 0' --sha256={artifact_sha256}")
+        .status().unwrap();
+    let report: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+    std::fs::remove_file(output).unwrap();
+    assert!(!status.success());
+    let infra = report["records"].as_array().unwrap().iter()
+        .filter(|r| r["status"] == "runtime_infrastructure_failure")
+        .collect::<Vec<_>>();
+    assert!(!infra.is_empty());
+    assert!(infra.iter().all(|r|
+        r["run"]["error"].as_str().unwrap_or("").contains("artifact")
+    ));
+}
