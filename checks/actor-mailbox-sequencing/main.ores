@@ -1,0 +1,25 @@
+import actor SequencedCounter from "./counter.ores";
+import fnc next_is_sequential from "./guard.ores";
+import fnc expected_checksum from "./oracle.ores";
+
+pub async routine main(): void {
+  val probe = spawn SequencedCounter();
+  await probe.get_ready();
+  probe.send(1);
+  probe.send(1);
+  probe.send(1);
+  val first = (await probe.outputs.next()).value.unwrap();
+  val second = (await probe.outputs.next()).value.unwrap();
+  val third = (await probe.outputs.next()).value.unwrap();
+  await probe.get_done();
+  if first.value != 1 || !next_is_sequential(first.value, second.value) ||
+     !next_is_sequential(second.value, third.value) ||
+     first.value + second.value + third.value != expected_checksum(); do
+    stdio.stdout.println("PARITY_FAIL|actor-mailbox-sequencing|order");
+    val Result<bool, String> failure = Err("mailbox order or actor-owned state violated");
+    failure.expect("cross-compiler actor sequence failed");
+  fi
+  stdio.stdout.write("PARITY_OK|actor-mailbox-sequencing|");
+  stdio.stdout.println(expected_checksum());
+  return;
+}
