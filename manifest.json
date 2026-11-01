@@ -880,6 +880,134 @@
       "validation_status": "candidate",
       "source_basis": "2026-11-01 five-backend checked-i64 identity-cast candidate, no executed guest evidence",
       "required_on_all_backends": true
+    },
+    {
+      "id": "50",
+      "name": "left-associative-product",
+      "path": "programs/50-left-associative-product.ores",
+      "group": "scalar",
+      "features": [
+        "associativity",
+        "multiplication"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 source-identical signed-i64 wave 2; native guest verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "51",
+      "name": "paired-negative-differences",
+      "path": "programs/51-paired-negative-differences.ores",
+      "group": "scalar",
+      "features": [
+        "signed-int",
+        "grouping"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 source-identical signed-i64 wave 2; native guest verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "52",
+      "name": "grouped-zero-difference",
+      "path": "programs/52-grouped-zero-difference.ores",
+      "group": "scalar",
+      "features": [
+        "grouping",
+        "zero"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 source-identical signed-i64 wave 2; native guest verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "53",
+      "name": "six-times-seven",
+      "path": "programs/53-six-times-seven.ores",
+      "group": "scalar",
+      "features": [
+        "int",
+        "multiplication"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 source-identical signed-i64 wave 2; native guest verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "54",
+      "name": "parenthesized-negative-product",
+      "path": "programs/54-parenthesized-negative-product.ores",
+      "group": "scalar",
+      "features": [
+        "signed-int",
+        "unary-negation"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 source-identical signed-i64 wave 2; native guest verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "55",
+      "name": "max-self-cancellation",
+      "path": "programs/55-max-self-cancellation.ores",
+      "group": "scalar",
+      "features": [
+        "i64-max",
+        "subtraction"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 source-identical signed-i64 wave 2; native guest verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "56",
+      "name": "min-self-cancellation",
+      "path": "programs/56-min-self-cancellation.ores",
+      "group": "scalar",
+      "features": [
+        "i64-min",
+        "subtraction"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 source-identical signed-i64 wave 2; native guest verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "57",
+      "name": "unit-multiplication-group",
+      "path": "programs/57-unit-multiplication-group.ores",
+      "group": "scalar",
+      "features": [
+        "grouping",
+        "multiplication"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 source-identical signed-i64 wave 2; native guest verification pending",
+      "required_on_all_backends": true
     }
   ]
 }
