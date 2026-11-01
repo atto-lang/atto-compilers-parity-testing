@@ -143,3 +143,36 @@ The 53-case required parity manifest remains unchanged, and no source bytes
 have been transferred to another organization. Cross-backend promotion
 requires identical source SHA, real guest compilation and executable output
 and nonzero executed CI steps, including Cranelift as a separate toolchain.
+
+## Managed Stateful singleton source-admission candidate (2026-11-01)
+
+The three **candidate, non-required** sources in
+`managed-state-singleton-source-admission-v1.json` pin the exact same bytes
+for Java, LLVM, Wasm, Cranelift and .NET, with Forge separately tracked.
+
+- `trait-injected-singleton-unsupported.ores` (Git blob
+  `9f0f0a35db63264e7fd57ffe0a9986333e21f2a6`) is an injected
+  `MutableStateContainer<BankState>` implementing proposed `Stateful<S>`.
+- `inline-state-singleton-unsupported.ores` (Git blob
+  `2f9b1c149c051eff1fb96dba795a914a37ed28b8`) uses an inline `state {}`
+  schema under a singleton.
+- `scalar-main-positive-control.ores` (Git blob
+  `4694ea3e708ddae2b190bb91d5aa3adc8b2549cb`) is the paired scalar
+  compiler/execution candidate, expected process exit 42 (not verified yet).
+
+The first two cases are **unsupported** until the managed-state feature is
+implemented, and must produce a compiler-owned singleton diagnostic with no
+emitted guest artifact; an unrelated syntax failure or host-only model check
+does not establish the intended diagnostic. They are *negative safety checks*,
+not implementations of `Stateful`, `@Inject`, or `define singleton`.
+The positive program must compile and execute with the exact same source bytes
+before any execution parity claim is permitted.
+
+Companion draft compiler tests: Java #2316, LLVM #1203, Wasm #191, Cranelift
+#59, .NET #267. The shared contract is platform-conformance #297.
+
+**Backend status remains `NOT_EXECUTED`.** These candidates do not alter
+the mandatory parity manifest or claim five-backend support. Require verified
+compiler binary and Git source identities, nonzero runner steps, real emitted
+artifacts on positives, explicit compiler diagnostics on negatives, and
+independent permission to move private source before any cross-org CI copy.
