@@ -62,6 +62,45 @@ pub(super) fn still_bound(case: &TestCase) -> bool {
             .is_ok_and(|actual| actual.as_str() == case.source_sha256.as_str())
 }
 
+
+// Strict native artifact admission only for REAL external ORM sources. A
+// compile wrapper that exits zero without emitting a bounded regular artifact
+// is NOT a native compiler-backed ORM execution. JVM/Cranelift/JS runners are
+// source-based and have separate guest requirements.
+pub(super) fn needs_artifact(case: &TestCase, backend: &str) -> bool {
+    case.suite == "external-orm-exact-head"
+        && matches!(backend, "llvm" | "wasm" | "dotnet")
+}
+
+pub(super) fn adapter_admitted(
+    case: &TestCase, backend: &str, compile: &str, run: &str
+) -> bool {
+    if case.suite != "external-orm-exact-head" { return true; }
+    if !compile.contains("{source}") || run.is_empty() { return false; }
+    match backend {
+        "java" | "cranelift" | "js" => run.contains("{source}"),
+        "wasm" => compile.contains("{artifact}")
+            && run.contains("{artifact}")
+            && run.contains("{artifact_sha256}"),
+        "llvm" | "dotnet" => compile.contains("{artifact}")
+            && run.contains("{artifact}"),
+        _ => false,
+    }
+}
+
+pub(super) fn compiled_artifact_digest(
+    case: &TestCase, backend: &str, path: &Path
+) -> Result<Option<String>, String> {
+    if !needs_artifact(case, backend) { return Ok(None); }
+    let meta = fs::symlink_metadata(path).map_err(|e| format!("native artifact absent: {e}"))?;
+    if !meta.file_type().is_file() || meta.file_type().is_symlink()
+        || meta.len() == 0 || meta.len() > 64 * 1024 * 1024
+    {
+        return Err("native artifact must be bounded nonempty regular file".into());
+    }
+    sha256_file(path).map(Some)
+}
+
 pub(super) fn load(source_root: &Path, head: &str) -> Result<Vec<TestCase>, String> {
     if head.len() != 40 || !head.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()) {
         return Err("--orm-head must be a full lowercase 40-hex Git commit".into());

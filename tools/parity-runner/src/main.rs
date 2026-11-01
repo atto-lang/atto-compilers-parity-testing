@@ -110,6 +110,8 @@ struct Record {
     status: String,
     compile: Option<Invocation>,
     run: Option<Invocation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    artifact_sha256: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -457,11 +459,19 @@ fn expand(
     source: &Path,
     artifact: &Path,
     workdir: &Path,
+    artifact_sha256: Option<&str>,
 ) -> Result<Vec<String>, String> {
+    if template.contains("{artifact_sha256}") && artifact_sha256.is_none() {
+        return Err("artifact digest requested before verified compiler output".into());
+    }
     let parts = shell_words::split(template).map_err(|e| e.to_string())?;
     Ok(parts
         .into_iter()
         .map(|p| {
+            let p = match artifact_sha256 {
+                Some(digest) => p.replace("{artifact_sha256}", digest),
+                None => p,
+            };
             p.replace("{source}", &source.to_string_lossy())
                 .replace("{artifact}", &artifact.to_string_lossy())
                 .replace("{workdir}", &workdir.to_string_lossy())
@@ -672,6 +682,7 @@ fn evaluate_case(
         status: "not_run".into(),
         compile: None,
         run: None,
+        artifact_sha256: None,
     };
     if !execute {
         return Ok(record);
@@ -688,6 +699,13 @@ fn evaluate_case(
         record.status = "backend_not_configured".into();
         return Ok(record);
     }
+    if !external_orm::adapter_admitted(case, backend,
+        compile_template.as_deref().unwrap_or(""),
+        run_template.as_deref().unwrap_or(""))
+    {
+        record.status = "runtime_infrastructure_failure".into();
+        return Ok(record);
+    }
 
     if !external_orm::still_bound(case) {
         record.status = "compile_infrastructure_failure".into();
@@ -700,6 +718,7 @@ fn evaluate_case(
         &case.source,
         &artifact,
         &workdir,
+        None,
     )?;
     let compile = invoke(&compile_argv, &workdir, timeout);
     let compile_status = compile.status.clone();
@@ -710,6 +729,21 @@ fn evaluate_case(
         let _ = fs::remove_dir_all(workdir);
         return Ok(record);
     }
+
+    let artifact_pin = if compile_status == "completed" && compile_exit == Some(0)
+        && case.expected_kind == "exit" {
+        match external_orm::compiled_artifact_digest(case, backend, &artifact) {
+            Ok(pin) => pin,
+            Err(_) => {
+                record.status = "runtime_infrastructure_failure".into();
+                let _ = fs::remove_dir_all(workdir);
+                return Ok(record);
+            }
+        }
+    } else {
+        None
+    };
+    record.artifact_sha256 = artifact_pin.clone();
 
     if compile_status != "completed" || compile_exit.is_none() || compile_exit == Some(125) {
         record.status = "compile_infrastructure_failure".into();
@@ -760,12 +794,21 @@ fn evaluate_case(
             &case.source,
             &artifact,
             &workdir,
+            artifact_pin.as_deref(),
         )?;
         let run = invoke(&run_argv, &workdir, timeout);
         let run_status = run.status.clone();
         let run_exit = run.exit_code;
         let stdout_hex = run.stdout_hex.clone();
         record.run = Some(run);
+        if artifact_pin.is_some()
+            && external_orm::compiled_artifact_digest(case, backend, &artifact)
+                != Ok(artifact_pin.clone())
+        {
+            record.status = "runtime_infrastructure_failure".into();
+            let _ = fs::remove_dir_all(workdir);
+            return Ok(record);
+        }
         if !external_orm::still_bound(case) {
             record.status = "runtime_infrastructure_failure".into();
             let _ = fs::remove_dir_all(workdir);
