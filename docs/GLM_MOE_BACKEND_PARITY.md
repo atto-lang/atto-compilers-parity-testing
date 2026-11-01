@@ -103,3 +103,26 @@ These are tracked implementation tasks, not passing evidence.
 ### Cranelift / fifth compiler target
 
 Cranelift JIT must compile and execute the **identical 20 source files** under the sixth corpus adapter (`ORES_PARITY_CRANELIFT_COMPILE` and `ORES_PARITY_CRANELIFT_RUN`). A missing adapter, a checked-only result, or LLVM/Wasm execution claimed on behalf of Cranelift is **not** a pass. Validate the same 17 integer and three float programs against pinned compiler/runtime provenance, and record honest unsupported diagnostics until the frontend and lowering support them.
+
+
+## Cranelift exact current capability and native-gate PR
+
+The independently examined [Cranelift repository](https://github.com/ores-truffle-oreslang/oreslang-source.cranelift)
+is a **distinct native JIT**, not Wasmtime's LLVM substitute. Its current
+`main` supports only one `main` function with 0–4 signed i64 parameters,
+checked `+`, `-`, `*`, unary operators, checked signed remainder with a
+literal divisor and a narrowly supported `Integer.bitXor` function.
+It *rejects* user helper functions, Boolean control flow, imports, float,
+actors, ownership and ordinary GLM/MoE modules.
+
+[Cranelift draft PR #69](https://github.com/ores-truffle-oreslang/oreslang-source.cranelift/pull/69)
+adds 11 integration tests that must run through the actual native JIT for
+the arithmetic intersection, and must fail closed for GLM syntax outside
+that supported subset. **A deliberate reject is an honest capability
+result but not a parity pass.** The current native CI has not established
+a stepful exact-head execution receipt. Extending Cranelift to all twenty
+unchanged GLM source files requires real parser/IR/CLIF lowering, not
+removing helpers, replacing float with int, or claiming the Rust host oracle.
+
+Cranelift's source tree snapshot is recorded in `manifest.json` as a
+**snapshot-only** reference, never as native compilation evidence.
