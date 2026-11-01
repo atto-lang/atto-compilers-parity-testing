@@ -4,7 +4,7 @@ A shared cross-backend conformance corpus for Java/GraalVM, LLVM, WebAssembly, .
 
 The suite is deliberately fail-closed. The same `.ores` bytes must be presented to every backend. Unsupported features, infrastructure failures, unclassified negative diagnostics, or backend-specific source rewrites are never counted as parity passes.
 
-The reference-grounded 31-program feature ladder covers scalar execution, control flow, diagnostics, ownership, cleanup/async/channels, actor isolation/lifecycle, and Java-reference static-select delimiter parity. A second whole-program layer under `checks/<lowercase-name>/` adds 16 positive multi-file checks plus 2 negative syntax probes. Together they form 67 logical cases and 402 backend/case cells (including the experimental Cranelift target). These are inventory cells, not executed proof of backend parity.
+The reference-grounded 31-program feature ladder covers scalar execution, control flow, diagnostics, ownership, cleanup/async/channels, actor isolation/lifecycle, and Java-reference static-select delimiter parity. A second whole-program layer under `checks/<lowercase-name>/` adds 16 positive multi-file checks plus 2 negative syntax probes. Together they form 75 logical cases and 450 backend/case cells (including the experimental Cranelift target). These are inventory cells, not executed proof of backend parity.
 
 Every positive multi-file entry point imports exactly three local source files, performs in-program assertions, and emits a stable `PARITY_OK|<name>|` prefix. The Rust runner recursively fingerprints the complete reachable import graph, including cycles, so a result is tied to all source bytes involved.
 
@@ -18,9 +18,9 @@ exploratory until their syntax and semantic oracles are independently validated.
 
 ## 2026-11-01 six-backend inventory and Cranelift scalar intersection
 
-The corpus now registers 49 legacy source programs, 16 multi-file checks and
-two negative probes: **67** logical cases over six target backends
-(Java, LLVM, Wasm, .NET, JS, and experimental Cranelift). These **402 cells
+The corpus now registers 57 legacy source programs, 16 multi-file checks and
+two negative probes: **75** logical cases over six target backends
+(Java, LLVM, Wasm, .NET, JS, and experimental Cranelift). These **450 cells
 are only inventory**, and are `not_run` unless explicitly executed.
 
 Programs 34 through 41 form the additional restricted checked-i64 scalar
