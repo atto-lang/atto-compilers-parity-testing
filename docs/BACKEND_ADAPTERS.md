@@ -104,7 +104,8 @@ cargo run --locked --manifest-path tools/parity-runner/Cargo.toml -- \
 
 The runner requires the **same absolute, regular, executable binary** in
 both command templates, matches the pinned SHA-256 before compilation, after
-compilation and after guest execution, and refuses `sh` or PATH wrappers
+compilation and after guest execution, records the digest as
+`compiler_binary_sha256` in the per-case JSON receipt, and refuses `sh` or PATH wrappers
 under this adapter. It also re-verifies the unchanged source graph around
 both invocations. Any mismatch is `compiler_identity_unverified`,
 `compiler_identity_changed` or `source_identity_changed`, never a pass.
