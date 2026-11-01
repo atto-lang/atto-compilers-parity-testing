@@ -922,6 +922,16 @@ fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     let execute = args.iter().any(|arg| arg == "--execute");
     let allow_unvalidated = args.iter().any(|arg| arg == "--allow-unvalidated");
+    let selected_case = args
+        .iter()
+        .position(|arg| arg == "--case")
+        .map(|index| {
+            args.get(index + 1)
+                .filter(|case_id| !case_id.starts_with("--") && !case_id.is_empty())
+                .cloned()
+                .ok_or_else(|| "--case requires one exact corpus case ID".to_string())
+        })
+        .transpose()?;
     let selected_backend = args
         .iter()
         .position(|arg| arg == "--backend")
@@ -959,8 +969,25 @@ fn main() -> Result<(), String> {
     )
     .map_err(|e| e.to_string())?;
     let timeout = Duration::from_secs(timeout_seconds);
+    let selected_cases = cases
+        .iter()
+        .filter(|case| {
+            selected_case
+                .as_deref()
+                .is_none_or(|selected| case.case_id == selected)
+        })
+        .collect::<Vec<_>>();
+    if selected_cases.is_empty() {
+        return Err(format!(
+            "unknown corpus case ID: {}",
+            selected_case.as_deref().unwrap_or("")
+        ));
+    }
+    if selected_case.is_some() && selected_cases.len() != 1 {
+        return Err("ambiguous corpus case ID".into());
+    }
     let mut records = Vec::new();
-    for case in &cases {
+    for case in &selected_cases {
         for &(backend, env_name) in &BACKENDS {
             if selected_backend
                 .as_deref()
@@ -988,7 +1015,7 @@ fn main() -> Result<(), String> {
     let report = Report {
         schema_version: 2,
         executed: execute,
-        cases: cases.len(),
+        cases: selected_cases.len(),
         corpus,
         backends: BACKENDS
             .iter()
