@@ -360,6 +360,61 @@ mod tests {
         assert_eq!(evaluate(&case, &compile, Some(&guest), &artifact, &scratch.0).0, "mismatch");
     }
     #[test]
+    fn expected_semantic_rejection_needs_correct_phase_and_no_artifacts() {
+        let case = Candidate { name: "reject-after-take".into(), path: "".into(),
+            expected_kind: "compile_reject".into(), expected_stdout: None,
+            expected_exit_code: None, expected_diagnostic_category: Some("use_after_move".into()),
+            required_phase: Some("ownership".into()),
+            validation_status: "candidate_unverified".into() };
+        let scratch = Scratch::new().unwrap();
+        let workdir = scratch.0.join("work");
+        fs::create_dir(&workdir).unwrap();
+        let artifact = workdir.join("guest-artifact");
+        let mut compiler = Process {
+            status: Some(1),
+            stderr: "ORES_SEMANTIC_REJECT:ownership:use_after_move\n".into(),
+            ..Default::default()
+        };
+        assert_eq!(evaluate(&case, &compiler, None, &artifact, &workdir).0,
+                   "candidate_observed_reject");
+        compiler.stderr = "ORES_SEMANTIC_REJECT:type:use_after_move\n".into();
+        assert_eq!(evaluate(&case, &compiler, None, &artifact, &workdir).0, "mismatch");
+        compiler.stderr = "ORES_SEMANTIC_REJECT:ownership:use_after_move\n".into();
+        fs::write(&artifact, b"bad ir").unwrap();
+        assert_eq!(evaluate(&case, &compiler, None, &artifact, &workdir).0, "mismatch");
+    }
+    #[test]
+    fn positive_execution_requires_artifact_and_exact_guest_output() {
+        let case = Candidate { name: "positive-owned-counter".into(), path: "".into(),
+            expected_kind: "run".into(), expected_stdout: Some("2".into()),
+            expected_exit_code: Some(0), expected_diagnostic_category: None,
+            required_phase: None, validation_status: "candidate_unverified".into() };
+        let scratch = Scratch::new().unwrap();
+        let artifact = scratch.0.join("guest-artifact");
+        fs::write(&artifact, b"guest").unwrap();
+        let compiler = Process { status: Some(0), ..Default::default() };
+        let guest = Process { status: Some(0), stdout: "2".into(), ..Default::default() };
+        assert_eq!(evaluate(&case, &compiler, Some(&guest), &artifact, &scratch.0).0,
+                   "candidate_observed_run");
+        let corrupted = Process { status: Some(0), stdout: "2\n".into(), ..Default::default() };
+        assert_eq!(evaluate(&case, &compiler, Some(&corrupted), &artifact, &scratch.0).0,
+                   "mismatch");
+        fs::write(&artifact, b"").unwrap();
+        assert_eq!(evaluate(&case, &compiler, Some(&guest), &artifact, &scratch.0).0,
+                   "mismatch");
+    }
+    #[test]
+    fn unknown_template_placeholders_fail_before_spawn() {
+        let scratch = Scratch::new().unwrap();
+        let source = scratch.0.join("input.ores");
+        let artifact = scratch.0.join("artifact");
+        fs::write(&source, b"fnc main():int{return 2;}").unwrap();
+        let result = invoke(
+            "untrusted-compiler {source} --output={unknown}",
+            &source, &artifact, &scratch.0, &scratch.0, "compile");
+        assert_eq!(result.error.as_deref(), Some("unknown command placeholder"));
+    }
+    #[test]
     fn no_compiler_config_is_never_a_parity_pass() {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
             .canonicalize().unwrap();
