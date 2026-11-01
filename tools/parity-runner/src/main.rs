@@ -302,6 +302,37 @@ fn fingerprint_graph(paths: &[PathBuf], root: &Path) -> Result<String, String> {
     sha256_bytes(&payload)
 }
 
+// Re-admit each byte of an unchanged source graph before compilation, after
+// compilation and after guest execution. This prevents mutable worktrees or
+// hostile adapters from laundering new bytes under an old source SHA receipt.
+fn source_still_matches(case: &TestCase, root: &Path) -> bool {
+    let source_relative = match case.source.strip_prefix(root) {
+        Ok(path) => path,
+        Err(_) => return false,
+    };
+    let admitted_source = match safe_file(root, &source_relative.to_string_lossy()) {
+        Ok(path) => path,
+        Err(_) => return false,
+    };
+    if sha256_file(&admitted_source).ok().as_deref() != Some(case.source_sha256.as_str()) {
+        return false;
+    }
+    match (&case.graph_files, &case.graph_sha256) {
+        (None, None) => true,
+        (Some(files), Some(expected_graph)) => {
+            let paths = files
+                .iter()
+                .map(|path| safe_file(root, path))
+                .collect::<Result<Vec<_>, _>>();
+            match paths {
+                Ok(paths) => fingerprint_graph(&paths, root).ok().as_deref() == Some(expected_graph),
+                Err(_) => false,
+            }
+        }
+        _ => false,
+    }
+}
+
 fn lowercase_kebab(name: &str) -> bool {
     !name.is_empty()
         && name.split('-').all(|part| {
@@ -657,6 +688,7 @@ fn evaluate_case(
     execute: bool,
     allow_unvalidated: bool,
     timeout: Duration,
+    root: &Path,
 ) -> Result<Record, String> {
     let mut record = Record {
         suite: case.suite.clone(),
@@ -681,6 +713,10 @@ fn evaluate_case(
         record.status = "unvalidated".into();
         return Ok(record);
     }
+    if !source_still_matches(case, root) {
+        record.status = "source_identity_changed".into();
+        return Ok(record);
+    }
 
     let prefix = format!("ORES_PARITY_{env_name}");
     let compile_template = env::var(format!("{prefix}_COMPILE")).ok();
@@ -702,6 +738,11 @@ fn evaluate_case(
     let compile_status = compile.status.clone();
     let compile_exit = compile.exit_code;
     record.compile = Some(compile);
+    if !source_still_matches(case, root) {
+        record.status = "source_identity_changed".into();
+        let _ = fs::remove_dir_all(&workdir);
+        return Ok(record);
+    }
 
     if compile_status != "completed" || compile_exit.is_none() || compile_exit == Some(125) {
         record.status = "compile_infrastructure_failure".into();
@@ -758,6 +799,11 @@ fn evaluate_case(
         let run_exit = run.exit_code;
         let stdout_hex = run.stdout_hex.clone();
         record.run = Some(run);
+        if !source_still_matches(case, root) {
+            record.status = "source_identity_changed".into();
+            let _ = fs::remove_dir_all(&workdir);
+            return Ok(record);
+        }
         record.status = if run_status != "completed" || run_exit.is_none() || run_exit == Some(125)
         {
             "runtime_infrastructure_failure".into()
@@ -843,6 +889,7 @@ fn main() -> Result<(), String> {
                 execute,
                 allow_unvalidated,
                 timeout,
+                &root,
             )?);
         }
     }
@@ -926,6 +973,58 @@ mod tests {
             .iter()
             .any(|(name, env)| *name == "cranelift" && *env == "CRANELIFT");
         assert!(found);
+    }
+
+    #[test]
+    fn detects_source_and_import_graph_mutation() {
+        let id = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "ores-parity-integrity-{}-{id}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(root.join("checks")).unwrap();
+        let entry = root.join("checks/main.ores");
+        let dependency = root.join("checks/dep.ores");
+        std::fs::write(&entry, "import module dep from \"./dep\";").unwrap();
+        std::fs::write(&dependency, "pub fnc answer(): int { return 42; }").unwrap();
+        let graph = vec![entry.clone(), dependency.clone()];
+        let files = graph
+            .iter()
+            .map(|path| super::relative_path(path, &root).unwrap())
+            .collect::<Vec<_>>();
+        let original = super::TestCase {
+            suite: "checks".into(),
+            case_id: "integrity".into(),
+            name: "integrity".into(),
+            source_sha256: super::sha256_file(&entry).unwrap(),
+            source: entry.clone(),
+            graph_sha256: Some(super::fingerprint_graph(&graph, &root).unwrap()),
+            graph_files: Some(files),
+            expected_kind: "exit".into(),
+            expected_value: Some(42),
+            expected_diagnostic_category: None,
+            expected_stdout_prefix: None,
+            validation_status: "validated".into(),
+            features: vec!["integrity".into()],
+        };
+        assert!(super::source_still_matches(&original, &root));
+        std::fs::write(&dependency, "pub fnc answer(): int { return 0; }").unwrap();
+        assert!(!super::source_still_matches(&original, &root));
+        std::fs::write(&dependency, "pub fnc answer(): int { return 42; }").unwrap();
+        assert!(super::source_still_matches(&original, &root));
+        std::fs::write(&entry, "pub fnc main(): int { return 0; }").unwrap();
+        assert!(!super::source_still_matches(&original, &root));
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            std::fs::remove_file(&entry).unwrap();
+            symlink("dep.ores", &entry).unwrap();
+            assert!(!super::source_still_matches(&original, &root));
+        }
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
