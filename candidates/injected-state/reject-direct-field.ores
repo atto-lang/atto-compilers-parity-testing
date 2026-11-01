@@ -1,0 +1,10 @@
+// Must reject private injected state bypass, not merely fail to parse @Inject.
+@Inject(MutableStateContainer())
+define class Counter as
+  state { count: int = 0; }
+end
+
+pub fnc main(): int {
+  let mut Counter counter = new Counter();
+  return counter.count;
+}
