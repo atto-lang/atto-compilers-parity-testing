@@ -1,0 +1,2 @@
+// 61: default int binding is readonly; reassignment must reject.
+pub fnc main(): int { int x = 7; x = 8; return x; }
