@@ -21,20 +21,27 @@ jobs:
       - name: Format-check parity runner
         run: cargo fmt --manifest-path tools/parity-runner/Cargo.toml -- --check
       - name: Test parity runner
-        run: cargo test --manifest-path tools/parity-runner/Cargo.toml --locked
+        run: cargo test --manifest-path tools/parity-runner/Cargo.toml --locked --all-targets
+      - name: Deny Rust warnings across all parity-runner targets
+        run: cargo clippy --manifest-path tools/parity-runner/Cargo.toml --locked --all-targets -- -D warnings
       - name: Build parity runner
         run: cargo build --manifest-path tools/parity-runner/Cargo.toml --locked --bins
-      - name: Audit 69 x 5 matrix without making compiler claims
+      - name: Audit 69 x 6 matrix without making compiler claims
         run: |
           cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml -- --output parity-results.json
           node - <<'NODE'
           const d = require("./parity-results.json");
           const expected = {legacy_cases:51,multifile_checks:16,negative_probes:2,total_cases:69};
           if (JSON.stringify(d.corpus) !== JSON.stringify(expected)) process.exit(1);
-          if (d.cases !== 69 || d.records.length !== 345 || d.summary.not_run !== 345) process.exit(1);
+          if (d.cases !== 69 || d.records.length !== 414 || d.summary.not_run !== 414) process.exit(1);
+          if (JSON.stringify(d.backends) !== JSON.stringify(
+            ["llvm","java","wasm","dotnet","cranelift","js"])) process.exit(1);
+          const missingCranelift = d.records.filter(r => r.backend === "cranelift");
+          if (missingCranelift.length !== 69 ||
+              !missingCranelift.every(r => r.status === "not_run")) process.exit(1);
           const checks = d.records.filter(r => r.suite === "checks");
           const positives = checks.filter(r => typeof r.graph_sha256 === "string");
-          if (checks.length !== 90 || positives.length !== 80) process.exit(1);
+          if (checks.length !== 108 || positives.length !== 96) process.exit(1);
           if (!positives.every(r => Array.isArray(r.graph_files) && r.graph_files.length >= 4)) process.exit(1);
           if (!checks.every(r => Array.isArray(r.features) && r.features.length > 0)) process.exit(1);
           NODE
