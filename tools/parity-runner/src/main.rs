@@ -680,6 +680,45 @@ fn temp_dir(case_id: &str, backend: &str) -> Result<PathBuf, String> {
     Ok(path)
 }
 
+// This adapter is deliberately limited to the actual Cranelift stage-0 CLI.
+// It refuses shell wrappers, PATH lookups, unpinned binaries or changing
+// compile/run executables. Other backends need their own provenance checks.
+fn cranelift_cli_pinned(
+    compile: &[String],
+    run: &[String],
+    source: &Path,
+    expected_sha: &str,
+) -> bool {
+    if expected_sha.len() != 64
+        || !expected_sha.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+        || compile.len() != 3
+        || run.len() != 3
+        || compile[1] != "ir"
+        || run[1] != "run"
+        || compile[2] != source.to_string_lossy()
+        || run[2] != source.to_string_lossy()
+        || compile[0] != run[0]
+    {
+        return false;
+    }
+    let binary = Path::new(&compile[0]);
+    if !binary.is_absolute() {
+        return false;
+    }
+    let metadata = match fs::symlink_metadata(binary) {
+        Ok(metadata) => metadata,
+        Err(_) => return false,
+    };
+    if !metadata.is_file() || metadata.file_type().is_symlink() {
+        return false;
+    }
+    sha256_file(binary).ok().as_deref() == Some(expected_sha)
+}
+
+fn cranelift_scalar_oracle(exit_code: Option<i32>, stdout_hex: &str, expected: i32) -> bool {
+    exit_code == Some(0) && stdout_hex == hex(format!("{expected}\n").as_bytes())
+}
+
 fn evaluate_case(
     case: &TestCase,
     diagnostic_rules: &DiagnosticRules,
@@ -734,6 +773,20 @@ fn evaluate_case(
         &artifact,
         &workdir,
     )?;
+    let run_argv = run_template
+        .as_deref()
+        .map(|template| expand(template, &case.source, &artifact, &workdir))
+        .transpose()?;
+    if backend == "cranelift" {
+        let compiler_pin = env::var("ORES_PARITY_CRANELIFT_COMPILER_SHA256").unwrap_or_default();
+        if !run_argv.as_deref().is_some_and(|run| {
+            cranelift_cli_pinned(&compile_argv, run, &case.source, &compiler_pin)
+        }) {
+            record.status = "compiler_identity_unverified".into();
+            let _ = fs::remove_dir_all(&workdir);
+            return Ok(record);
+        }
+    }
     let compile = invoke(&compile_argv, &workdir, timeout);
     let compile_status = compile.status.clone();
     let compile_exit = compile.exit_code;
@@ -788,13 +841,11 @@ fn evaluate_case(
             "compile_failure".into()
         };
     } else {
-        let run_argv = expand(
-            run_template.as_ref().expect("checked above"),
-            &case.source,
-            &artifact,
+        let run = invoke(
+            run_argv.as_ref().expect("checked above"),
             &workdir,
-        )?;
-        let run = invoke(&run_argv, &workdir, timeout);
+            timeout,
+        );
         let run_status = run.status.clone();
         let run_exit = run.exit_code;
         let stdout_hex = run.stdout_hex.clone();
@@ -804,10 +855,17 @@ fn evaluate_case(
             let _ = fs::remove_dir_all(&workdir);
             return Ok(record);
         }
+        let result_matches = if backend == "cranelift" && case.expected_stdout_prefix.is_none() {
+            case.expected_value.is_some_and(|expected| {
+                cranelift_scalar_oracle(run_exit, &stdout_hex, expected)
+            })
+        } else {
+            run_exit == case.expected_value
+        };
         record.status = if run_status != "completed" || run_exit.is_none() || run_exit == Some(125)
         {
             "runtime_infrastructure_failure".into()
-        } else if run_exit != case.expected_value {
+        } else if !result_matches {
             "wrong_result".into()
         } else if let Some(prefix) = &case.expected_stdout_prefix {
             if !stdout_hex.starts_with(&hex(prefix.as_bytes())) {
@@ -947,6 +1005,54 @@ mod tests {
         promotable_status, Invocation,
     };
     use std::collections::BTreeMap;
+
+    #[test]
+    fn cranelift_native_stdout_oracle_is_strict() {
+        use super::cranelift_scalar_oracle;
+        let correct = super::hex(b"42\n");
+        assert!(cranelift_scalar_oracle(Some(0), &correct, 42));
+        for wrong in ["42", "42\n\n", " 42\n", "42 \n", "43\n", "42\nFAKE"] {
+            assert!(!cranelift_scalar_oracle(
+                Some(0),
+                &super::hex(wrong.as_bytes()),
+                42
+            ));
+        }
+        assert!(!cranelift_scalar_oracle(Some(42), &correct, 42));
+        assert!(!cranelift_scalar_oracle(Some(1), &correct, 42));
+        assert!(!cranelift_scalar_oracle(None, &correct, 42));
+    }
+
+    #[test]
+    fn cranelift_cli_requires_pinned_same_binary_and_exact_argv() {
+        let id = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let bin = std::env::temp_dir().join(format!(
+            "ores-parity-cranelift-binary-{}-{id}",
+            std::process::id()
+        ));
+        std::fs::write(&bin, b"synthetic compiler identity; not executable").unwrap();
+        let sha = super::sha256_file(&bin).unwrap();
+        let source = std::path::Path::new("/synthetic/sample.ores");
+        let path = bin.to_string_lossy().to_string();
+        let compile = vec![path.clone(), "ir".into(), source.display().to_string()];
+        let run = vec![path.clone(), "run".into(), source.display().to_string()];
+        assert!(super::cranelift_cli_pinned(&compile, &run, source, &sha));
+        assert!(!super::cranelift_cli_pinned(&compile, &run, source, &"0".repeat(64)));
+        let mut wrong_run = run.clone();
+        wrong_run[0] = "/bin/sh".into();
+        assert!(!super::cranelift_cli_pinned(
+            &compile, &wrong_run, source, &sha
+        ));
+        wrong_run = run.clone();
+        wrong_run[1] = "ir".into();
+        assert!(!super::cranelift_cli_pinned(
+            &compile, &wrong_run, source, &sha
+        ));
+        std::fs::remove_file(bin).unwrap();
+    }
 
     #[test]
     fn exploratory_and_unknown_statuses_never_promote() {
