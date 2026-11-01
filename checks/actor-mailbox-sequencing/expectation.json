@@ -1,0 +1,17 @@
+{
+  "name": "actor-mailbox-sequencing",
+  "entry": "checks/actor-mailbox-sequencing/main.ores",
+  "expected": "run-pass",
+  "stable_stdout_prefix": "PARITY_OK|actor-mailbox-sequencing|",
+  "imported_files": 3,
+  "maturity": "frontier",
+  "features": [
+    "actor",
+    "mailbox",
+    "ordering",
+    "handle_state",
+    "critical"
+  ],
+  "verified": false,
+  "notes": "Three ordered messages must traverse actor-owned critical handle_state and produce 1,2,3. No await inside critical; not a suspension non-reentrancy proof."
+}
