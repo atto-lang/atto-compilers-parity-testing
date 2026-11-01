@@ -64,9 +64,11 @@ fn four_real_orm_source_candidates_are_not_compiler_evidence() {
         assert_eq!(case["backend"], "cranelift");
         assert_eq!(case["suite"], "external-orm-exact-head");
         assert_eq!(case["graph_sha256"].as_str().unwrap().len(), 64);
-        let needle = format!("source-commit:{head}");
-        assert!(case["features"].as_array().unwrap().iter()
-            .any(|feature| feature.as_str() == Some(needle.as_str())));
+        let sha = format!("source-commit:{head}");
+        let tree = format!("source-tree:{}", git(&root, &["rev-parse", "HEAD^{tree}"]));
+        let feature_list = case["features"].as_array().unwrap();
+        assert!(feature_list.iter().any(|feature| feature.as_str() == Some(sha.as_str())));
+        assert!(feature_list.iter().any(|feature| feature.as_str() == Some(tree.as_str())));
     }
     fs::remove_dir_all(root).unwrap();
 }
@@ -164,5 +166,29 @@ fn missing_real_backend_compiler_cannot_be_reported_as_orm_parity() {
     assert_eq!(report["summary"]["backend_not_configured"], 1);
     assert_eq!(report["records"][0]["status"], "backend_not_configured");
     assert_eq!(report["executed"], true);
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn wrong_exact_head_never_admits_actual_orm_source() {
+    let (root, _) = fake_checkout();
+    let (accepted, report) = run(&root, "0000000000000000000000000000000000000000");
+    assert!(!accepted);
+    assert!(report.is_null());
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn nested_worktree_path_never_counts_as_separately_pinned_orm_checkout() {
+    let (root, head) = fake_checkout();
+    let nested = root.join("nested");
+    fs::create_dir_all(&nested).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .arg("--orm-root").arg(nested)
+        .arg("--orm-head").arg(head)
+        .output().unwrap();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr)
+        .contains("ORM root must be the Git worktree top-level"));
     fs::remove_dir_all(root).unwrap();
 }
