@@ -1096,15 +1096,22 @@ mod tests {
 
     #[test]
     fn workdirs_are_distinct_and_never_delete_legacy_collisions() {
+        let case_id = format!(
+            "collision-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
         let legacy = std::env::temp_dir().join(format!(
             "ores-parity-{}-{}-{}",
-            std::process::id(), "collision", "cranelift"
+            std::process::id(), case_id, "cranelift"
         ));
-        std::fs::create_dir_all(&legacy).unwrap();
+        std::fs::create_dir(&legacy).unwrap();
         let sentinel = legacy.join("must-survive.txt");
         std::fs::write(&sentinel, b"untouched").unwrap();
-        let a = super::temp_dir("collision", "cranelift").unwrap();
-        let b = super::temp_dir("collision", "cranelift").unwrap();
+        let a = super::temp_dir(&case_id, "cranelift").unwrap();
+        let b = super::temp_dir(&case_id, "cranelift").unwrap();
         assert_ne!(a, b);
         assert_ne!(a, legacy);
         assert_ne!(b, legacy);
