@@ -24,8 +24,8 @@ fn selected_missing_backend_fails_instead_of_claiming_success() {
     let (status, report) = execute("missing", false);
     assert!(!status.success());
     assert_eq!(report["backends"], serde_json::json!(["java"]));
-    assert_eq!(report["records"].as_array().unwrap().len(), 53);
-    assert_eq!(report["summary"]["backend_not_configured"], 53);
+    assert_eq!(report["records"].as_array().unwrap().len(), 63);
+    assert_eq!(report["summary"]["backend_not_configured"], 63);
 }
 
 #[cfg(unix)]
@@ -33,11 +33,11 @@ fn selected_missing_backend_fails_instead_of_claiming_success() {
 fn adapter_error_is_infrastructure_failure_even_for_negative_probes() {
     let (status, report) = execute("adapter-error", true);
     assert!(!status.success());
-    assert_eq!(report["summary"]["compile_infrastructure_failure"], 53);
+    assert_eq!(report["summary"]["compile_infrastructure_failure"], 63);
 }
 
 #[test]
-fn required_inventory_includes_forge_but_not_optional_js() {
+fn required_inventory_includes_forge_and_cranelift_but_not_optional_js() {
     let output =
         std::env::temp_dir().join(format!("ores-parity-required-{}.json", std::process::id()));
     let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
@@ -51,24 +51,24 @@ fn required_inventory_includes_forge_but_not_optional_js() {
     std::fs::remove_file(output).unwrap();
     assert_eq!(
         report["backends"],
-        serde_json::json!(["llvm", "java", "wasm", "dotnet", "forge"])
+        serde_json::json!(["llvm", "java", "wasm", "dotnet", "forge", "cranelift"])
     );
     let manifest_path =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../manifest.json");
     let manifest: serde_json::Value =
         serde_json::from_slice(&std::fs::read(manifest_path).unwrap()).unwrap();
     assert_eq!(report["backends"], manifest["policy"]["target_backends"]);
-    assert_eq!(report["corpus"]["legacy_cases"], 35);
-    assert_eq!(report["cases"], 53);
-    assert_eq!(report["records"].as_array().unwrap().len(), 265);
-    assert_eq!(report["summary"]["not_run"], 265);
+    assert_eq!(report["corpus"]["legacy_cases"], 45);
+    assert_eq!(report["cases"], 63);
+    assert_eq!(report["records"].as_array().unwrap().len(), 378);
+    assert_eq!(report["summary"]["not_run"], 378);
     let candidates: Vec<_> = report["records"]
         .as_array()
         .unwrap()
         .iter()
         .filter(|r| ["32", "33", "34", "35"].contains(&r["case_id"].as_str().unwrap_or("")))
         .collect();
-    assert_eq!(candidates.len(), 20);
+    assert_eq!(candidates.len(), 24);
     assert!(candidates
         .iter()
         .all(|r| r["validation_status"] == "candidate" && r["status"] == "not_run"));
@@ -87,8 +87,8 @@ fn optional_js_requires_explicit_selection() {
         serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
     std::fs::remove_file(output).unwrap();
     assert_eq!(report["backends"], serde_json::json!(["js"]));
-    assert_eq!(report["records"].as_array().unwrap().len(), 53);
-    assert_eq!(report["summary"]["not_run"], 53);
+    assert_eq!(report["records"].as_array().unwrap().len(), 63);
+    assert_eq!(report["summary"]["not_run"], 63);
 }
 
 #[test]
@@ -129,6 +129,49 @@ fn missing_required_forge_adapter_is_a_hard_failure() {
         serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
     std::fs::remove_file(output).unwrap();
     assert_eq!(report["backends"], serde_json::json!(["forge"]));
-    assert_eq!(report["records"].as_array().unwrap().len(), 53);
-    assert_eq!(report["summary"]["backend_not_configured"], 53);
+    assert_eq!(report["records"].as_array().unwrap().len(), 63);
+    assert_eq!(report["summary"]["backend_not_configured"], 63);
+}
+
+#[test]
+fn cranelift_missing_adapter_fails_instead_of_fabricating_parity() {
+    let output = std::env::temp_dir()
+        .join(format!("ores-parity-cranelift-missing-{}.json", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .args(["--backend", "cranelift", "--execute", "--allow-unvalidated", "--output"])
+        .arg(&output)
+        .env_remove("ORES_PARITY_CRANELIFT_COMPILE")
+        .env_remove("ORES_PARITY_CRANELIFT_RUN")
+        .status()
+        .unwrap();
+    assert!(!status.success());
+    let report: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+    std::fs::remove_file(output).unwrap();
+    assert_eq!(report["backends"], serde_json::json!(["cranelift"]));
+    assert_eq!(report["records"].as_array().unwrap().len(), 63);
+    assert_eq!(report["summary"]["backend_not_configured"], 63);
+}
+
+#[test]
+fn new_i64_candidates_remain_not_run_even_with_sha256_fingerprints() {
+    let output = std::env::temp_dir()
+        .join(format!("ores-parity-cranelift-candidates-{}.json", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .args(["--backend", "cranelift", "--output"])
+        .arg(&output)
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let report: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+    std::fs::remove_file(output).unwrap();
+    let new_cases: Vec<_> = report["records"].as_array().unwrap().iter()
+        .filter(|item| item["case_id"].as_str().and_then(|s| s.parse::<u8>().ok())
+            .is_some_and(|id| (40..=49).contains(&id)))
+        .collect();
+    assert_eq!(new_cases.len(), 10);
+    assert!(new_cases.iter().all(|item| item["status"] == "not_run"
+        && item["validation_status"] == "candidate"
+        && item["source_sha256"].as_str().is_some_and(|s| s.len() == 64)));
 }
