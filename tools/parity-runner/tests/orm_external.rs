@@ -99,3 +99,69 @@ fn committed_import_graph_drift_requires_new_review() {
     assert!(!run(&root, &head).0);
     fs::remove_dir_all(root).unwrap();
 }
+
+
+#[test]
+fn all_six_backends_receive_identical_real_orm_guest_graph_fingerprints() {
+    // This tests inventory/provenance only, NOT actual Oreslang compilation.
+    let (root, head) = fake_checkout();
+    let out = root.join("six-backend-inventory.json");
+    let output = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .arg("--orm-root").arg(&root)
+        .arg("--orm-head").arg(&head)
+        .args([
+            "--case-id", "orm-schema-plans",
+            "--case-id", "orm-schema-adversarial",
+            "--case-id", "orm-schema-invariants",
+            "--case-id", "orm-sql-plans",
+            "--output",
+        ])
+        .arg(&out).output().unwrap();
+    assert!(output.status.success());
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(out).unwrap()).unwrap();
+    assert_eq!(report["executed"], false);
+    assert_eq!(report["records"].as_array().unwrap().len(), 24);
+    assert_eq!(report["summary"]["not_run"], 24);
+    let mut by_case = std::collections::BTreeMap::new();
+    for cell in report["records"].as_array().unwrap() {
+        assert_eq!(cell["suite"], "external-orm-exact-head");
+        assert_eq!(cell["status"], "not_run");
+        let name = cell["case_id"].as_str().unwrap().to_string();
+        let identity = (
+            cell["source_sha256"].as_str().unwrap().to_string(),
+            cell["graph_sha256"].as_str().unwrap().to_string(),
+        );
+        let entry = by_case.entry(name).or_insert_with(|| identity.clone());
+        assert_eq!(*entry, identity, "backend-specific ORM source was substituted");
+    }
+    assert_eq!(by_case.len(), 4);
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn missing_real_backend_compiler_cannot_be_reported_as_orm_parity() {
+    let (root, head) = fake_checkout();
+    let out = root.join("no-compiler.json");
+    let output = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .arg("--orm-root").arg(&root)
+        .arg("--orm-head").arg(&head)
+        .args([
+            "--backend", "cranelift",
+            "--case-id", "orm-sql-plans",
+            "--execute", "--allow-unvalidated",
+            "--output",
+        ])
+        .arg(&out)
+        .env_remove("ORES_PARITY_CRANELIFT_COMPILE")
+        .env_remove("ORES_PARITY_CRANELIFT_RUN")
+        .output().unwrap();
+    assert!(!output.status.success());
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(out).unwrap()).unwrap();
+    assert_eq!(report["records"].as_array().unwrap().len(), 1);
+    assert_eq!(report["summary"]["backend_not_configured"], 1);
+    assert_eq!(report["records"][0]["status"], "backend_not_configured");
+    assert_eq!(report["executed"], true);
+    fs::remove_dir_all(root).unwrap();
+}
