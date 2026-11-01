@@ -55,12 +55,26 @@ A scalar adapter can publish to `{artifact}.mjs` and use Node's module mode to i
 
 ### WASM gap
 
-The Wasm bridge is intentionally stronger than a plain "run this file" command: execution requires the SHA-256 of the exact emitted Wasm bytes. The current parity template vocabulary does not expose a post-compile artifact digest to the run command.
+The Wasm bridge is intentionally stronger than a plain "run this file" command: execution requires the SHA-256 of the exact emitted Wasm bytes. The parity runner now supports a post-compile `{artifact_sha256}` placeholder in
+the **run** argv template. It hashes the opened, non-symlink, nonempty bounded
+artifact bytes after the compile command exits successfully. On Unix it opens
+with `O_NOFOLLOW` and `O_NONBLOCK`; missing, directory, symlink, oversized, and
+changing artifacts fail closed. A Wasm run template **must** include the
+placeholder: omission is `runtime_infrastructure_failure`, not a parity
+result. This binding does not authenticate the compiler or prove a trusted
+release. The Wasm runtime must independently check its received digest.
 
-Do **not** weaken `run-guest.mjs` by omitting its SHA pin. Close this gap either by:
+Configure a reviewed adapter (with an exact binary/source SHA manifest), for
+example:
 
-1. extending the Rust runner with an explicitly selected artifact path and `{artifact_sha256}` placeholder, or
-2. using a reviewed backend wrapper that compiles, hashes, admits and executes the Wasm artifact as one fail-closed operation.
+~~~sh
+export ORES_PARITY_WASM_COMPILE='node /abs/wasm/scripts/compile-ores.mjs --compiler=/abs/oreslang-llvmc --source={source} --output={artifact}'
+export ORES_PARITY_WASM_RUN='node /abs/wasm/scripts/run-guest.mjs --wasm={artifact} --sha256={artifact_sha256}'
+~~~
+
+The compiled Wasm artifact remains a core `() -> i64`-only guest; it cannot
+implement Orestra actor/state/OCI behavior yet. A compiler failure or missing
+backend remains a parity gap, even with a valid digest.
 
 The current Wasm bridge also documents that relative source imports require a future pinned module-graph gate, so multi-file checks should presently report an unsupported parity gap rather than being flattened or rewritten.
 
