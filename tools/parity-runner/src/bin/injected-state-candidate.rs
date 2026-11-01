@@ -201,15 +201,15 @@ fn evaluate(case: &Candidate, compile: &Process, run: Option<&Process>,
     if case.expected_kind == "compile_reject" {
         let classified = diagnostic(&compile.stderr);
         let expected = case.expected_diagnostic_category.as_deref();
-        let accepted_phase = match case.required_phase.as_deref() {
-            Some("ownership") => ["ownership"].as_slice(),
-            Some("type_or_ownership") => ["type", "ownership"].as_slice(),
-            _ => [].as_slice()
+        let phase_ok = |phase: &str| match case.required_phase.as_deref() {
+            Some("ownership") => phase == "ownership",
+            Some("type_or_ownership") => phase == "type" || phase == "ownership",
+            _ => false,
         };
         if compile.status.is_some_and(|s| s != 0)
             && compile.stdout.trim().is_empty()
             && classified.as_ref().is_some_and(|(phase, category)|
-                accepted_phase.contains(&phase.as_str()) && expected == Some(category.as_str()))
+                phase_ok(phase) && expected == Some(category.as_str()))
             && !artifact.exists()
             && fs::read_dir(workdir).is_ok_and(|mut d| d.next().is_none()) {
             return ("candidate_observed_reject".into(),
@@ -246,17 +246,27 @@ fn make_report(root: &Path, execute: bool) -> Result<Report, String> {
        m.target_backends != BACKENDS.iter().map(|(name, _)| name.to_string()).collect::<Vec<_>>() {
         return Err("candidate suite changed; review before executing".into());
     }
+    // Pin every canonical source hash BEFORE the first backend starts.
+    // A backend that rewrites an input may not establish a new reference
+    // for the next backend in the matrix.
+    let pinned: Vec<(PathBuf, String)> = m.cases.iter()
+        .map(|case| {
+            let source = safe_source(root, case)?;
+            let hash = sha256(&source)?;
+            Ok((source, hash))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
     let scratch = Scratch::new()?;
     let mut records = Vec::new();
     for (backend, env_name) in BACKENDS {
         let compile_template = env::var(format!("ORES_INJECTED_{env_name}_COMPILE")).ok();
         let run_template = env::var(format!("ORES_INJECTED_{env_name}_RUN")).ok();
-        for case in &m.cases {
+        for (i, case) in m.cases.iter().enumerate() {
             if case.validation_status != "candidate_unverified" {
                 return Err("unexpected validated candidate status".into());
             }
-            let source = safe_source(root, case)?;
-            let original_sha = sha256(&source)?;
+            let source = &pinned[i].0;
+            let original_sha = &pinned[i].1;
             let mut receipt = Receipt {
                 backend: backend.into(), case: case.name.clone(),
                 source_sha256: original_sha.clone(), state: "not_run".into(),
@@ -264,18 +274,24 @@ fn make_report(root: &Path, execute: bool) -> Result<Report, String> {
                 diagnostic_category: None, diagnostic_phase: None,
                 reason: "candidate not executed".into(),
             };
+            if sha256(source)? != *original_sha {
+                receipt.state = "source_mutated".into();
+                receipt.reason = "canonical source modified by an earlier backend".into();
+                records.push(receipt);
+                continue;
+            }
             if execute {
                 if let Some(ref compile_command) = compile_template {
                     let base = scratch.0.join(format!("{backend}-{}", case.name));
                     let work = base.join("work");
                     fs::create_dir_all(&work).map_err(|e| e.to_string())?;
                     let artifact = work.join("guest-artifact");
-                    let compile = invoke(compile_command, &source, &artifact, &work, &base, "compile");
+                    let compile = invoke(compile_command, source, &artifact, &work, &base, "compile");
                     receipt.compiler_exit = compile.status;
                     let guest = if case.expected_kind == "run" && compile.status == Some(0)
                         && compile.error.is_none() {
                         run_template.as_ref().map(|command|
-                            invoke(command, &source, &artifact, &work, &base, "run"))
+                            invoke(command, source, &artifact, &work, &base, "run"))
                     } else { None };
                     receipt.guest_exit = guest.as_ref().and_then(|g| g.status);
                     let (state, reason, found) = evaluate(
@@ -285,7 +301,7 @@ fn make_report(root: &Path, execute: bool) -> Result<Report, String> {
                         receipt.diagnostic_category = Some(category);
                         receipt.diagnostic_phase = Some(phase);
                     }
-                    if sha256(&source)? != original_sha {
+                    if sha256(source)? != *original_sha {
                         receipt.state = "source_mutated".into();
                         receipt.reason = "backend modified canonical source bytes".into();
                     }
