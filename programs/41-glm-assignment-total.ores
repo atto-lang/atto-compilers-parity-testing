@@ -1,0 +1,4 @@
+// 41: GLM/MoE shared-source parity candidate. No backend-specific rewriting.
+// Return 42 on correct semantic behavior, 1 on mismatch. Compiler-backed evidence pending.
+fnc counted(int load0, int load1, int tokens, int k): bool { return load0 + load1 == tokens * k; }
+pub fnc main(): int { if (counted(1, 1, 4, 1)) { return 1; } fi return 42; }
