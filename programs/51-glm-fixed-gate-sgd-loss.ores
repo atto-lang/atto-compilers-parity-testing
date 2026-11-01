@@ -2,4 +2,23 @@
 // Source stays identical across Java, LLVM, WASM and .NET; unsupported float lowering is a GAP.
 fnc predict(float w0, float w1): float { return 0.75 * w0 + 0.25 * w1; }
 fnc squared_loss(float w0, float w1): float { const float residual = predict(w0, w1) - 1.0; return residual * residual; }
-pub fnc main(): int { const float old_loss = squared_loss(0.0, 0.0); const float new_loss = squared_loss(0.375, 0.125); if (new_loss < old_loss && new_loss == 0.47265625) { return 42; } fi return 1; }
+fnc bounded_post_sgd(float weight, float gradient, float rate): bool {
+  if (weight != weight || gradient != gradient || rate != rate) { return false; } fi
+  if (rate <= 0.0 || rate > 1.0) { return false; } fi
+  if (weight > 1000000000.0 || weight < -1000000000.0) { return false; } fi
+  if (gradient > 1000000000.0 || gradient < -1000000000.0) { return false; } fi
+  const float updated = weight - rate * gradient;
+  return updated >= -1000000000.0 && updated <= 1000000000.0;
+}
+pub fnc main(): int {
+  const float old_loss = squared_loss(0.0, 0.0);
+  const float new_loss = squared_loss(0.375, 0.125);
+  if (new_loss < old_loss && new_loss == 0.47265625 &&
+      bounded_post_sgd(0.0, -1.5, 0.25) &&
+      bounded_post_sgd(1000000000.0, 0.0, 1.0) &&
+      !bounded_post_sgd(1000000000.0, -1000000000.0, 1.0) &&
+      !bounded_post_sgd(-1000000000.0, 1000000000.0, 1.0)) {
+    return 42;
+  } fi
+  return 1;
+}
