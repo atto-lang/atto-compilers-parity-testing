@@ -42,6 +42,13 @@
       "repo": "ores-truffle-oreslang/oreslang-source.js",
       "tree": "fce498c3984870f03e4b0a07e844f6907a1918ad",
       "role": "ESM transpiler; scalar/program-v2 subsets"
+    },
+    "cranelift": {
+      "repo": "ores-truffle-oreslang/oreslang-source.cranelift",
+      "tree": "ce624ecdf6f912329b06a6b6dc9f6501eb1d876d",
+      "role": "independent native stage-0 Cranelift JIT; integer expression subset only",
+      "captured_on": "2026-11-01",
+      "evidence_status": "snapshot-only-not-shared-guest-execution"
     }
   },
   "cases": [
