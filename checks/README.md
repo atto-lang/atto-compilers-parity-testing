@@ -26,6 +26,7 @@ A compiler/backend only passes when it consumes the same source graph, finishes 
 - `checks/anonymous-functions/`
 - `checks/recursion/`
 - `checks/classes-traits-casting/`
+- `checks/orm-schema-backend-parity/` (cross-backend stable IDs, nominal classes, risk and migration denial)
 
 `nb-match` and `nb-switch` deserve special treatment: the current grammar permits `do match` and `do switch`, but not `nb match` or `nb switch`. Ordinary value-producing `match` already has tested suspension semantics, so that folder asserts await in the subject, guard, and arm and separately includes a compile-reject `nb match` probe. `nb-switch` follows the same model.
 

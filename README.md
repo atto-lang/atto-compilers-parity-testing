@@ -4,7 +4,7 @@ A shared cross-backend conformance corpus for Java/GraalVM, LLVM, WebAssembly, .
 
 The suite is deliberately fail-closed. The same `.ores` bytes must be presented to every backend. Unsupported features, infrastructure failures, unclassified negative diagnostics, or backend-specific source rewrites are never counted as parity passes.
 
-The reference-grounded 31-program feature ladder covers scalar execution, control flow, diagnostics, ownership, cleanup/async/channels, actor isolation/lifecycle, and Java-reference static-select delimiter parity. A second whole-program layer under `checks/<lowercase-name>/` adds 16 positive multi-file checks plus 2 negative syntax probes. Together they form 49 logical cases and 245 backend/case cells.
+The reference-grounded 31-program feature ladder covers scalar execution, control flow, diagnostics, ownership, cleanup/async/channels, actor isolation/lifecycle, and Java-reference static-select delimiter parity. A second whole-program layer under `checks/<lowercase-name>/` adds 17 positive multi-file checks plus 2 negative syntax probes. Together they form 50 logical cases and 250 backend/case cells.
 
 Every positive multi-file entry point imports exactly three local source files, performs in-program assertions, and emits a stable `PARITY_OK|<name>|` prefix. The Rust runner recursively fingerprints the complete reachable import graph, including cycles, so a result is tied to all source bytes involved.
 
@@ -15,3 +15,5 @@ Tooling follows the Oreslang Rust-only tooling policy; Python is prohibited.
 For pinned Java reference execution and compiler/runtime identity receipts, see
 [`docs/JAVA_REFERENCE.md`](docs/JAVA_REFERENCE.md). Reference matches remain
 exploratory until their syntax and semantic oracles are independently validated.
+
+ORM schema feature parity is now tracked as a four-file unchanged guest graph under `checks/orm-schema-backend-parity/`. All backends remain unverified until pinned native compiler execution. See `docs/ORM_BACKEND_PARITY.md`.
