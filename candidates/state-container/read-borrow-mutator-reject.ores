@@ -20,5 +20,6 @@ fnc invalid(borrow InventoryState state): bool {
 
 pub fnc main(): int {
   let mut InventoryState state = new InventoryState();
-  return invalid(rt borrow state) ? 1 : 0;
+  if invalid(rt borrow state) then return 1; fi
+  return 0;
 }
