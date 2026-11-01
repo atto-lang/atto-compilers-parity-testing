@@ -43,7 +43,13 @@ fn cranelift_is_explicit_and_unconfigured_is_a_failure() {
         std::process::id()
     ));
     let result = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
-        .args(["--backend", "cranelift", "--execute", "--allow-unvalidated", "--output"])
+        .args([
+            "--backend",
+            "cranelift",
+            "--execute",
+            "--allow-unvalidated",
+            "--output",
+        ])
         .arg(&path)
         .env_remove("ORES_PARITY_CRANELIFT_COMPILE")
         .env_remove("ORES_PARITY_CRANELIFT_RUN")
