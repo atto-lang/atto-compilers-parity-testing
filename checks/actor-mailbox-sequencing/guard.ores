@@ -1,0 +1,3 @@
+pub fnc next_is_sequential(int prior, int current): bool {
+  return current == prior + 1;
+}
