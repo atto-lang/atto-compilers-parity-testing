@@ -70,3 +70,32 @@ on the new exact source tree** until genuine guest runs occur.
   `verification/Ores.Net.Tests/SharedScalarParityConformance.cs`
 - Shared failure evidence: 
   [OresLLM native guest gate #16](https://github.com/ores-llm/ores-llm-ml-conformance-tests/issues/16)
+
+
+## Initial implementation audit — not native execution
+
+The 20 programs were independently checked by a **restricted host-side
+JavaScript surrogate** that translated their scalar function/if syntax into
+JavaScript and evaluated each numerical control. All **20 of 20** produced
+the required result `42`. This validates the *expected control arithmetic*
+only; it does **not** validate Oreslang grammar, emitted LLVM/Wasm/CIL,
+Truffle guest execution, NativeAOT linking, or numerical backends.
+
+The checked manifest contains 51 legacy cases and 16 positive whole-program
+checks plus 2 negative probes: **69 logical cases** and **345 five-backend
+cells**. All new 20 GLM manifest rows remain `candidate`, explicitly
+required on the four requested toolchains. The corpus now contains
+17 integer-control and 3 floating-source GLM files.
+
+The initial [Corpus audit run](https://github.com/ores-truffle-oreslang/oreslang-compilers-parity-testing/actions/runs/41343563533)
+failed with `steps=null`, so runner admission/execution proof is absent.
+Do not misclassify this as a Rust test, compiler or native guest failure.
+There is no approved compiler-backed result for the new exact tree.
+
+Tracked native acceptance by compiler:
+- [Java/Graal #2421](https://github.com/ores-truffle-oreslang/oreslang-source.java/issues/2421)
+- [LLVM #1276](https://github.com/ores-truffle-oreslang/oreslang-source.llvm/issues/1276)
+- [Wasm #244](https://github.com/ores-truffle-oreslang/oreslang-source.wasm/issues/244)
+- [.NET NativeAOT #307](https://github.com/ores-truffle-oreslang/oreslang-source.net/issues/307)
+
+These are tracked implementation tasks, not passing evidence.
