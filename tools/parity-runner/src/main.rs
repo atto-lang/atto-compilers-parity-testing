@@ -689,8 +689,32 @@ fn matches_scalar_result(
     }
 }
 
+// The manifest is read before execution. A compiler or guest which changes
+// any fixture in-place must never inherit the pre-execution source digest.
+fn case_source_unchanged(case: &TestCase, root: &Path) -> bool {
+    if sha256_file(&case.source).ok().as_deref() != Some(case.source_sha256.as_str()) {
+        return false;
+    }
+    if let Some(expected) = &case.graph_sha256 {
+        let graph = match reachable_graph(&case.source, root) {
+            Ok(graph) => graph,
+            Err(_) => return false,
+        };
+        let paths: Result<Vec<String>, _> = graph
+            .iter()
+            .map(|path| relative_path(path, root))
+            .collect();
+        if paths.ok().as_ref() != case.graph_files.as_ref() {
+            return false;
+        }
+        return fingerprint_graph(&graph, root).ok().as_ref() == Some(expected);
+    }
+    true
+}
+
 fn evaluate_case(
     case: &TestCase,
+    root: &Path,
     diagnostic_rules: &DiagnosticRules,
     backend: &str,
     env_name: &str,
@@ -742,6 +766,11 @@ fn evaluate_case(
     let compile_status = compile.status.clone();
     let compile_exit = compile.exit_code;
     record.compile = Some(compile);
+    if !case_source_unchanged(case, root) {
+        record.status = "source_mutated_during_compile".into();
+        let _ = fs::remove_dir_all(workdir);
+        return Ok(record);
+    }
 
     if compile_status != "completed" || compile_exit.is_none() || compile_exit == Some(125) {
         record.status = "compile_infrastructure_failure".into();
@@ -810,6 +839,11 @@ fn evaluate_case(
         let stdout_hex = run.stdout_hex.clone();
         let stderr_hex = run.stderr_hex.clone();
         record.run = Some(run);
+        if !case_source_unchanged(case, root) {
+            record.status = "source_mutated_during_run".into();
+            let _ = fs::remove_dir_all(workdir);
+            return Ok(record);
+        }
         let value_matches = case.expected_value.is_some_and(|expected| {
             matches_scalar_result(backend, run_exit, &stdout_hex, &stderr_hex, expected)
                 && (backend == "cranelift"
@@ -938,6 +972,7 @@ fn main() -> Result<(), String> {
             }
             records.push(evaluate_case(
                 case,
+                &root,
                 &diagnostic_rules,
                 backend,
                 env_name,
@@ -992,6 +1027,8 @@ fn main() -> Result<(), String> {
                 | "rejection_unclassified"
                 | "rejection_output_violation"
                 | "rejected_source_published_artifact"
+                | "source_mutated_during_compile"
+                | "source_mutated_during_run"
                 | "wrong_result"
                 | "wrong_stdout"
                 | "unexpected_compile_success"
@@ -1221,6 +1258,42 @@ mod tests {
             classify_diagnostic(&rules, "cranelift", &genuine).as_deref(),
             Some("integer_range")
         );
+    }
+
+    #[test]
+    fn source_identity_detects_in_place_mutation_and_restoration() {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        let dir = std::env::temp_dir().join(format!(
+            "ores-source-hash-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::create_dir(&dir).unwrap();
+        let source = dir.join("main.ores");
+        std::fs::write(&source, b"pub fnc main():int{return 42;}\n").unwrap();
+        let digest = super::sha256_file(&source).unwrap();
+        let case = super::TestCase {
+            suite: "legacy".into(),
+            case_id: "source-identity-negative".into(),
+            name: "source-identity-negative".into(),
+            source: source.clone(),
+            source_sha256: digest,
+            graph_sha256: None,
+            graph_files: None,
+            expected_kind: "exit".into(),
+            expected_value: Some(42),
+            expected_diagnostic_category: None,
+            expected_stdout_prefix: None,
+            validation_status: "candidate".into(),
+            features: vec!["source-identity".into()],
+        };
+        assert!(super::case_source_unchanged(&case, &dir));
+        std::fs::write(&source, b"pub fnc main():int{return 43;}\n").unwrap();
+        assert!(!super::case_source_unchanged(&case, &dir));
+        std::fs::remove_file(&source).unwrap();
+        assert!(!super::case_source_unchanged(&case, &dir));
+        std::fs::remove_dir(&dir).unwrap();
     }
 
 }
