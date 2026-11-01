@@ -671,17 +671,38 @@ fn safe_temp_component(value: &str) -> String {
 }
 
 fn temp_dir(case_id: &str, backend: &str) -> Result<PathBuf, String> {
-    let path = env::temp_dir().join(format!(
-        "ores-parity-{}-{}-{}",
-        std::process::id(),
-        safe_temp_component(case_id),
-        safe_temp_component(backend)
-    ));
-    if path.exists() {
-        fs::remove_dir_all(&path).map_err(|e| e.to_string())?;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    static NEXT_WORKDIR: AtomicU64 = AtomicU64::new(0);
+    // Do not delete a predictable pre-existing /tmp path. A prior runner or
+    // unrelated user might own it; deleting it before creating a workspace
+    // could destroy files or follow malicious directory structures.
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .as_nanos();
+    for _ in 0..64 {
+        let sequence = NEXT_WORKDIR.fetch_add(1, Ordering::Relaxed);
+        let path = env::temp_dir().join(format!(
+            "ores-parity-{}-{nonce:x}-{sequence:x}-{}-{}",
+            std::process::id(),
+            safe_temp_component(case_id),
+            safe_temp_component(backend)
+        ));
+        let mut builder = fs::DirBuilder::new();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::DirBuilderExt;
+            builder.mode(0o700);
+        }
+        match builder.create(&path) {
+            Ok(()) => return Ok(path),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(format!("cannot create isolated parity workdir: {error}")),
+        }
     }
-    fs::create_dir_all(&path).map_err(|e| e.to_string())?;
-    Ok(path)
+    Err("cannot allocate a unique parity workdir after 64 attempts".into())
 }
 
 fn evaluate_case(
@@ -1071,6 +1092,42 @@ mod tests {
         assert!(validate_cli_args(&argv(&["--backend", "--execute"])).is_err());
         assert!(validate_cli_args(&argv(&["--not-a-real-mode"])).is_err());
         assert!(validate_cli_args(&argv(&["--allow-unvalidated"])).is_err());
+    }
+
+    #[test]
+    fn workdirs_are_distinct_and_never_delete_legacy_collisions() {
+        let legacy = std::env::temp_dir().join(format!(
+            "ores-parity-{}-{}-{}",
+            std::process::id(), "collision", "cranelift"
+        ));
+        std::fs::create_dir_all(&legacy).unwrap();
+        let sentinel = legacy.join("must-survive.txt");
+        std::fs::write(&sentinel, b"untouched").unwrap();
+        let a = super::temp_dir("collision", "cranelift").unwrap();
+        let b = super::temp_dir("collision", "cranelift").unwrap();
+        assert_ne!(a, b);
+        assert_ne!(a, legacy);
+        assert_ne!(b, legacy);
+        assert_eq!(std::fs::read(&sentinel).unwrap(), b"untouched");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            for path in [&a, &b] {
+                assert_eq!(std::fs::metadata(path).unwrap().permissions().mode() & 0o777, 0o700);
+            }
+        }
+        std::fs::remove_dir_all(a).unwrap();
+        std::fs::remove_dir_all(b).unwrap();
+        std::fs::remove_file(sentinel).unwrap();
+        std::fs::remove_dir(legacy).unwrap();
+    }
+
+    #[test]
+    fn workdir_name_components_cannot_escape_temp_root() {
+        let path = super::temp_dir("../../outside", "..\\\\evil").unwrap();
+        assert_eq!(path.parent(), Some(std::env::temp_dir().as_path()));
+        assert!(path.is_dir());
+        std::fs::remove_dir_all(path).unwrap();
     }
 
     #[test]
