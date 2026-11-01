@@ -629,6 +629,10 @@ fn temp_dir(case_id: &str, backend: &str) -> Result<PathBuf, String> {
     Ok(path)
 }
 
+fn matches_exact_guest_receipt(stdout_hex: &str, stderr_hex: &str, exact: &str) -> bool {
+    stdout_hex == hex(exact.as_bytes()) && stderr_hex.is_empty()
+}
+
 fn evaluate_case(
     case: &TestCase,
     diagnostic_rules: &DiagnosticRules,
@@ -747,7 +751,7 @@ fn evaluate_case(
         } else if let Some(exact) = &case.expected_stdout_exact {
             // Frontier actor receipts may not add text after the success
             // marker, claim a pass with stderr, or forge a second result.
-            if stdout_hex != hex(exact.as_bytes()) || !stderr_hex.is_empty() {
+            if !matches_exact_guest_receipt(&stdout_hex, &stderr_hex, exact) {
                 "wrong_stdout".into()
             } else if case.validation_status == "validated" {
                 "pass".into()
@@ -937,6 +941,22 @@ mod tests {
         assert!(!lowercase_kebab("Actor-System"));
         assert!(!lowercase_kebab("actor_system"));
         assert!(!lowercase_kebab("actor--system"));
+    }
+
+    #[test]
+    fn exact_actor_receipts_reject_forged_and_duplicated_stdout() {
+        let good = "PARITY_OK|actor-message-fencing|1\n";
+        let valid = super::hex(good.as_bytes());
+        assert!(super::matches_exact_guest_receipt(&valid, "", good));
+        assert!(!super::matches_exact_guest_receipt("", "", good));
+        assert!(!super::matches_exact_guest_receipt(
+            &super::hex(format!("{good}{good}").as_bytes()), "", good
+        ));
+        assert!(!super::matches_exact_guest_receipt(
+            &super::hex(format!("{good}PARITY_FAIL|actor-message-fencing|guard\n").as_bytes()),
+            "", good
+        ));
+        assert!(!super::matches_exact_guest_receipt(&valid, &super::hex(b"panic"), good));
     }
 
     #[test]
