@@ -745,6 +745,57 @@
       "validation_status": "candidate",
       "source_basis": "2026-11-01 source-identical scalar candidate, compiler-backed evidence pending",
       "required_on_all_backends": true
+    },
+    {
+      "id": "42",
+      "name": "immutable-default-local",
+      "path": "programs/42-immutable-default-local.ores",
+      "group": "scalar",
+      "features": [
+        "immutable-default",
+        "typed-local",
+        "inferred-const"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 byte-identical five-backend immutable-scalar guest candidate; Cranelift real-JIT tests authored, all five backend evidence pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "43",
+      "name": "const-typed-local",
+      "path": "programs/43-const-typed-local.ores",
+      "group": "scalar",
+      "features": [
+        "immutable-default",
+        "const-typed",
+        "local-reference"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 byte-identical five-backend immutable-scalar guest candidate; Cranelift real-JIT tests authored, all five backend evidence pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "44",
+      "name": "annotated-const-int",
+      "path": "programs/44-annotated-const-int.ores",
+      "group": "scalar",
+      "features": [
+        "immutable-default",
+        "annotated-const",
+        "double-negation"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 byte-identical five-backend immutable-scalar guest candidate; Cranelift real-JIT tests authored, all five backend evidence pending",
+      "required_on_all_backends": true
     }
   ]
 }
