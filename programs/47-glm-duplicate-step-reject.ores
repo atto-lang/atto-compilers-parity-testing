@@ -1,0 +1,4 @@
+// 47: GLM/MoE shared-source parity candidate. No backend-specific rewriting.
+// Return 42 on correct semantic behavior, 1 on mismatch. Compiler-backed evidence pending.
+fnc admit(int prior, int proposed): bool { if (prior < 0) { return false; } fi return proposed == prior + 1; }
+pub fnc main(): int { if (admit(3, 3)) { return 1; } fi return 42; }
