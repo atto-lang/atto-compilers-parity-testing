@@ -1066,16 +1066,26 @@ mod tests {
         assert_eq!(hex(b"PARITY_OK"), "5041524954595f4f4b");
     }
 
+    fn artifact_test_dir() -> std::path::PathBuf {
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let id = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let path = std::env::temp_dir().join(format!(
+            "ores-parity-artifact-{}-{id}", std::process::id()
+        ));
+        std::fs::create_dir(&path).unwrap();
+        path
+    }
+
     #[test]
     fn artifact_hash_is_bound_to_compiled_file_content() {
-        let root = tempfile::tempdir().unwrap();
-        let artifact = root.path().join("program");
+        let root = artifact_test_dir();
+        let artifact = root.join("program");
         std::fs::write(&artifact, b"wasm-build-a").unwrap();
         let a = super::artifact_sha256(&artifact).unwrap();
         assert_eq!(a.len(), 64);
         let argv = super::expand(
             "runner --sha256={artifact_sha256} --file={artifact}",
-            &artifact, &artifact, root.path(), Some(&a)
+            &artifact, &artifact, &root, Some(&a)
         ).unwrap();
         assert_eq!(argv[1], format!("--sha256={a}"));
         assert_eq!(argv[2], format!("--file={}", artifact.display()));
@@ -1086,10 +1096,10 @@ mod tests {
 
     #[test]
     fn digest_cannot_be_available_before_compile() {
-        let root = tempfile::tempdir().unwrap();
-        let artifact = root.path().join("program");
+        let root = artifact_test_dir();
+        let artifact = root.join("program");
         let result = super::expand(
-            "compile {artifact_sha256}", &artifact, &artifact, root.path(), None
+            "compile {artifact_sha256}", &artifact, &artifact, &root, None
         );
         assert!(result.unwrap_err().contains("before a verified compile"));
         assert!(super::artifact_sha256(&artifact).is_err());
@@ -1101,13 +1111,13 @@ mod tests {
     #[test]
     fn digest_admission_rejects_symlink_and_directory_artifacts() {
         use std::os::unix::fs::symlink;
-        let root = tempfile::tempdir().unwrap();
-        let original = root.path().join("original");
+        let root = artifact_test_dir();
+        let original = root.join("original");
         std::fs::write(&original, b"verified").unwrap();
-        let symlink_path = root.path().join("program");
+        let symlink_path = root.join("program");
         symlink(&original, &symlink_path).unwrap();
         assert!(super::artifact_sha256(&symlink_path).is_err());
-        assert!(super::artifact_sha256(root.path()).is_err());
+        assert!(super::artifact_sha256(&root).is_err());
     }
 
     #[cfg(unix)]
