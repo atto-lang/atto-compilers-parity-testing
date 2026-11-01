@@ -1,0 +1,24 @@
+// REJECT: shared read loan cannot invoke a mutable receiver method.
+define class InventoryState as
+  let int available = 10;
+
+  pub available_count(): int {
+    return self.available;
+  }
+
+  pub try_reserve(mut self InventoryState)(int amount): bool {
+    if amount <= 0; then return false; fi
+    if amount > self.available; then return false; fi
+    self.available = self.available - amount;
+    return true;
+  }
+end
+
+fnc invalid(borrow InventoryState state): bool {
+  return state.try_reserve(1);
+}
+
+pub fnc main(): int {
+  let mut InventoryState state = new InventoryState();
+  return invalid(rt borrow state) ? 1 : 0;
+}
