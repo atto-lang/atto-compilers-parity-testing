@@ -6,6 +6,7 @@
     "target_backends": [
       "java",
       "llvm",
+      "cranelift",
       "wasm",
       "dotnet",
       "js"
@@ -41,6 +42,11 @@
       "repo": "ores-truffle-oreslang/oreslang-source.js",
       "tree": "fce498c3984870f03e4b0a07e844f6907a1918ad",
       "role": "ESM transpiler; scalar/program-v2 subsets"
+    },
+    "cranelift": {
+      "repo": "ores-truffle-oreslang/oreslang-source.cranelift",
+      "tree": null,
+      "role": "experimental native JIT i64 scalar subset; source-tree exact-head execution not yet verified"
     }
   },
   "cases": [
@@ -579,6 +585,108 @@
       "expected_diagnostic_category": null,
       "validation_status": "reference_test",
       "source_basis": "Java PR #2079 SelectOverEndSyntaxTest and delimiter-equivalence contract",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "32",
+      "name": "grouping-multiplication",
+      "path": "programs/32-grouping-multiplication.ores",
+      "group": "scalar-grouping",
+      "features": [
+        "int",
+        "entrypoint",
+        "nested parenthesis, multiply then add"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "source expressions consistent with Java/Cranelift scalar grammar",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "33",
+      "name": "subtraction-precedence",
+      "path": "programs/33-subtraction-precedence.ores",
+      "group": "scalar-precedence",
+      "features": [
+        "int",
+        "entrypoint",
+        "multiplication binds before subtraction"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "source expressions consistent with Java/Cranelift scalar grammar",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "34",
+      "name": "unary-plus-digit-separator",
+      "path": "programs/34-unary-plus-digit-separator.ores",
+      "group": "scalar-literal",
+      "features": [
+        "int",
+        "entrypoint",
+        "unary plus and digit separators"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "Cranellift scalar source admission and Java numeric separator policy",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "35",
+      "name": "upper-bound-difference",
+      "path": "programs/35-upper-bound-difference.ores",
+      "group": "scalar-checked-i64",
+      "features": [
+        "int",
+        "entrypoint",
+        "signed i64 MAX arithmetic without overflow"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "Java/LLVM/Cranelift signed i64 contract",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "36",
+      "name": "lower-bound-cancellation",
+      "path": "programs/36-lower-bound-cancellation.ores",
+      "group": "scalar-checked-i64",
+      "features": [
+        "int",
+        "entrypoint",
+        "signed i64 MIN+MAX cancellation left-to-right"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "Java/LLVM/Cranelift signed i64 contract",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "37",
+      "name": "named-bitxor",
+      "path": "programs/37-named-bitxor.ores",
+      "group": "scalar-named-int-op",
+      "features": [
+        "int",
+        "entrypoint",
+        "Integer.bitXor(a,b) named builtin, no caret operator"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "Cranelift/Java named bitwise operation contract",
       "required_on_all_backends": true
     }
   ]
