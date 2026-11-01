@@ -748,19 +748,23 @@ fn evaluate_case(
     } else if case.expected_kind == "compile_reject" {
         if compile_exit == Some(0) {
             record.status = "unexpected_compile_success".into();
+        } else if record.compile.as_ref().is_some_and(|c| {
+            !c.stdout_hex.is_empty() || c.stderr_hex.is_empty()
+        }) {
+            // Rejected sources must not publish partial IR or a silent failure.
+            record.status = "rejection_output_violation".into();
+        } else if fs::read_dir(&workdir)
+            .map_err(|e| format!("cannot inspect rejected-source output: {e}"))?
+            .next()
+            .is_some()
+        {
+            record.status = "rejected_source_published_artifact".into();
         } else {
-            let invalid_stdout = record
-                .compile
-                .as_ref()
-                .is_some_and(|c| !c.stdout_hex.is_empty());
             record.actual_diagnostic_category = record
                 .compile
                 .as_ref()
                 .and_then(|c| classify_diagnostic(diagnostic_rules, backend, c));
-            record.status = if invalid_stdout {
-                "rejection_output_violation"
-            } else {
-                match (
+            record.status = match (
                 case.expected_diagnostic_category.as_deref(),
                 record.actual_diagnostic_category.as_deref(),
             ) {
@@ -773,7 +777,6 @@ fn evaluate_case(
                 }
                 (_, Some(_)) => "wrong_diagnostic".into(),
                 _ => "rejection_unclassified".into(),
-                }
             };
         }
     } else if compile_exit != Some(0) {
@@ -954,6 +957,7 @@ fn main() -> Result<(), String> {
                 | "wrong_diagnostic"
                 | "rejection_unclassified"
                 | "rejection_output_violation"
+                | "rejected_source_published_artifact"
                 | "wrong_result"
                 | "wrong_stdout"
                 | "unexpected_compile_success"
@@ -999,6 +1003,17 @@ mod tests {
             classify_diagnostic(&rules, "dotnet", &invocation).as_deref(),
             Some("unsupported_select")
         );
+    }
+
+    #[test]
+    fn temporary_workdirs_do_not_delete_preexisting_data() {
+        let first = super::temp_dir("collision", "llvm").unwrap();
+        std::fs::write(first.join("sentinel"), b"keep").unwrap();
+        let second = super::temp_dir("collision", "llvm").unwrap();
+        assert_ne!(first, second);
+        assert_eq!(std::fs::read(first.join("sentinel")).unwrap(), b"keep");
+        std::fs::remove_dir_all(first).unwrap();
+        std::fs::remove_dir_all(second).unwrap();
     }
 
     #[test]
