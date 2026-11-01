@@ -117,3 +117,24 @@ All unsupported capabilities are gaps. Full database parity further requires
 portable async database capabilities, parameter/OID codecs, actor-owned
 connections, tenant RLS, cancellation and transactions, TypeSpec/JSON parity,
 and DPM SQL catalog replay. No ORM migration apply authority is granted.
+
+
+### Concrete pinned ORM source candidate (not a compiler pass)
+
+Source ORM commit `89ec3ed01de695d7f7f24602500041f659b294e2`,
+Git tree `60da9563917ca166f00c9a09ef3346196fec378e`.
+The six genuine `.ores` blobs at that exact immutable commit are:
+
+| File | Git blob SHA-1 |
+| --- | --- |
+| `src/schema.ores` | `5cda802a2b257928a8f102ec1fc127eb61f263b6` |
+| `src/pg.ores` | `d9cfe1c1f3cc1ed14ee61cf80e648dd22291d924` |
+| `tests/schema-plans.ores` | `c73e36b0d4622c43fa8506c3100fe33b2213d2c9` |
+| `tests/schema-adversarial.ores` | `0beb839b9908b6c4995e1522bbfa03e6c1e04a99` |
+| `tests/schema-invariants.ores` | `624121a254440116423e220e89c9d7db09b162c0` |
+| `tests/plans.ores` | `58482d494207f657c85f56805c719d409181aedd` |
+
+These are Git blob identities, **not** native execution results. The runner
+independently reads the on-disk bytes and verifies their actual Git object
+identities before trying any compiler. Follow-on ORM changes require another
+exact-head and reviewed graph, not silent replacement of these blobs.
