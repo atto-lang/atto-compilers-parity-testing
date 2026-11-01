@@ -464,17 +464,58 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
     Ok((cases, corpus))
 }
 
+// Hash the opened artifact rather than relying on its name or compiler stdout.
+// The consumer (e.g. Wasm host) must independently verify this exact digest.
+const MAX_ARTIFACT_BYTES: u64 = 128 * 1024 * 1024;
+
+fn artifact_sha256(path: &Path) -> Result<String, String> {
+    let mut options = fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK);
+    }
+    let mut file = options.open(path)
+        .map_err(|e| format!("compiled artifact unavailable: {e}"))?;
+    let metadata = file.metadata().map_err(|e| e.to_string())?;
+    if !metadata.is_file() || metadata.len() == 0 || metadata.len() > MAX_ARTIFACT_BYTES {
+        return Err("compiled artifact must be a bounded nonempty regular file".into());
+    }
+    let mut hasher = Sha256::new();
+    let mut buffer = [0u8; 16 * 1024];
+    let mut count = 0u64;
+    loop {
+        let n = file.read(&mut buffer).map_err(|e| e.to_string())?;
+        if n == 0 { break; }
+        count += n as u64;
+        if count > MAX_ARTIFACT_BYTES {
+            return Err("compiled artifact exceeded bounded read limit".into());
+        }
+        hasher.update(&buffer[..n]);
+    }
+    if count != metadata.len() {
+        return Err("compiled artifact changed during hashing".into());
+    }
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
 fn expand(
     template: &str,
     source: &Path,
     artifact: &Path,
     workdir: &Path,
+    artifact_digest: Option<&str>,
 ) -> Result<Vec<String>, String> {
+    if template.contains("{artifact_sha256}") && artifact_digest.is_none() {
+        return Err("artifact SHA-256 requested before a verified compile".into());
+    }
     let parts = shell_words::split(template).map_err(|e| e.to_string())?;
     Ok(parts
         .into_iter()
         .map(|p| {
-            p.replace("{source}", &source.to_string_lossy())
+            p.replace("{artifact_sha256}", artifact_digest.unwrap_or(""))
+                .replace("{source}", &source.to_string_lossy())
                 .replace("{artifact}", &artifact.to_string_lossy())
                 .replace("{workdir}", &workdir.to_string_lossy())
         })
@@ -688,6 +729,7 @@ fn evaluate_case(
         &case.source,
         &artifact,
         &workdir,
+        None,
     )?;
     let compile = invoke(&compile_argv, &workdir, timeout);
     let compile_status = compile.status.clone();
@@ -748,11 +790,39 @@ fn evaluate_case(
             "compile_failure".into()
         };
     } else {
+        let template = run_template.as_ref().expect("checked above");
+        // The Wasm host requires an exact output digest. A run adapter that
+        // omits the digest is not a legitimate Wasm parity configuration.
+        let requires_digest = template.contains("{artifact_sha256}");
+        if backend == "wasm" && !requires_digest {
+            record.status = "runtime_infrastructure_failure".into();
+            let _ = fs::remove_dir_all(&workdir);
+            return Ok(record);
+        }
+        let digest = if requires_digest {
+            match artifact_sha256(&artifact) {
+                Ok(hash) => Some(hash),
+                Err(message) => {
+                    record.status = "runtime_infrastructure_failure".into();
+                    record.run = Some(Invocation {
+                        status: "infrastructure_error".into(),
+                        exit_code: None, stdout_hex: String::new(),
+                        stderr_hex: String::new(), duration_ms: 0,
+                        error: Some(message),
+                    });
+                    let _ = fs::remove_dir_all(&workdir);
+                    return Ok(record);
+                }
+            }
+        } else {
+            None
+        };
         let run_argv = expand(
-            run_template.as_ref().expect("checked above"),
+            template,
             &case.source,
             &artifact,
             &workdir,
+            digest.as_deref(),
         )?;
         let run = invoke(&run_argv, &workdir, timeout);
         let run_status = run.status.clone();
@@ -994,6 +1064,50 @@ mod tests {
     #[test]
     fn hex_encoding_is_stable() {
         assert_eq!(hex(b"PARITY_OK"), "5041524954595f4f4b");
+    }
+
+    #[test]
+    fn artifact_hash_is_bound_to_compiled_file_content() {
+        let root = tempfile::tempdir().unwrap();
+        let artifact = root.path().join("program");
+        std::fs::write(&artifact, b"wasm-build-a").unwrap();
+        let a = super::artifact_sha256(&artifact).unwrap();
+        assert_eq!(a.len(), 64);
+        let argv = super::expand(
+            "runner --sha256={artifact_sha256} --file={artifact}",
+            &artifact, &artifact, root.path(), Some(&a)
+        ).unwrap();
+        assert_eq!(argv[1], format!("--sha256={a}"));
+        assert_eq!(argv[2], format!("--file={}", artifact.display()));
+        std::fs::write(&artifact, b"wasm-build-b").unwrap();
+        let b = super::artifact_sha256(&artifact).unwrap();
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn digest_cannot_be_available_before_compile() {
+        let root = tempfile::tempdir().unwrap();
+        let artifact = root.path().join("program");
+        let result = super::expand(
+            "compile {artifact_sha256}", &artifact, &artifact, root.path(), None
+        );
+        assert!(result.unwrap_err().contains("before a verified compile"));
+        assert!(super::artifact_sha256(&artifact).is_err());
+        std::fs::write(&artifact, b"").unwrap();
+        assert!(super::artifact_sha256(&artifact).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn digest_admission_rejects_symlink_and_directory_artifacts() {
+        use std::os::unix::fs::symlink;
+        let root = tempfile::tempdir().unwrap();
+        let original = root.path().join("original");
+        std::fs::write(&original, b"verified").unwrap();
+        let symlink_path = root.path().join("program");
+        symlink(&original, &symlink_path).unwrap();
+        assert!(super::artifact_sha256(&symlink_path).is_err());
+        assert!(super::artifact_sha256(root.path()).is_err());
     }
 
     #[cfg(unix)]
