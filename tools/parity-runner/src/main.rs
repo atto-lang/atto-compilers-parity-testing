@@ -195,15 +195,46 @@ fn sha256_bytes(bytes: &[u8]) -> Result<String, String> {
     Ok(format!("{digest:x}"))
 }
 
-fn safe_file(root: &Path, path_text: &str) -> Result<PathBuf, String> {
-    let path = root
-        .join(path_text)
-        .canonicalize()
-        .map_err(|e| format!("{path_text}: {e}"))?;
-    if !path.starts_with(root) || !path.is_file() {
-        return Err(format!("invalid source path: {path_text}"));
+// Refuse symlinked leaves AND ancestor directories before opening source.
+// Relative imports may traverse ".." but can never leave the canonical root.
+fn checked_repo_path(root: &Path, relative: &Path) -> Result<PathBuf, String> {
+    let mut current = root.to_path_buf();
+    for part in relative.components() {
+        match part {
+            std::path::Component::Normal(name) => {
+                current.push(name);
+                let metadata = fs::symlink_metadata(&current)
+                    .map_err(|e| format!("{}: {e}", current.display()))?;
+                if metadata.file_type().is_symlink() {
+                    return Err(format!("symlinked source component: {}", current.display()));
+                }
+            }
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                if current == root {
+                    return Err("source path escapes the corpus root".into());
+                }
+                current.pop();
+            }
+            _ => return Err("absolute or invalid source component".into()),
+        }
     }
-    Ok(path)
+    let canonical = current.canonicalize().map_err(|e| e.to_string())?;
+    if !canonical.starts_with(root) || !canonical.is_file() {
+        return Err(format!("invalid source path: {}", relative.display()));
+    }
+    Ok(canonical)
+}
+
+fn safe_file(root: &Path, path_text: &str) -> Result<PathBuf, String> {
+    let relative = Path::new(path_text);
+    if relative
+        .components()
+        .any(|part| !matches!(part, std::path::Component::Normal(_)))
+    {
+        return Err(format!("manifest path is not canonical: {path_text}"));
+    }
+    checked_repo_path(root, relative)
 }
 
 fn import_target(line: &str) -> Option<String> {
@@ -225,22 +256,17 @@ fn local_imports(path: &Path, root: &Path) -> Result<Vec<PathBuf>, String> {
         if !target.starts_with('.') {
             continue;
         }
-        let mut candidate = path
+        let parent = path
             .parent()
             .ok_or_else(|| format!("source has no parent: {}", path.display()))?
-            .join(&target);
-        if candidate.extension().is_none() {
-            candidate.set_extension("ores");
+            .strip_prefix(root)
+            .map_err(|e| e.to_string())?;
+        let mut relative = parent.join(&target);
+        if relative.extension().is_none() {
+            relative.set_extension("ores");
         }
-        let candidate = candidate
-            .canonicalize()
+        let candidate = checked_repo_path(root, &relative)
             .map_err(|e| format!("{} imports {target}: {e}", path.display()))?;
-        if !candidate.starts_with(root) || !candidate.is_file() {
-            return Err(format!(
-                "invalid local import from {}: {target}",
-                path.display()
-            ));
-        }
         result.push(candidate);
     }
     Ok(result)
@@ -894,6 +920,42 @@ mod tests {
         let backends = super::BACKENDS;
         assert_eq!(backends.len(), 6);
         assert!(backends.iter().any(|(name, env)| *name == "cranelift" && *env == "CRANELIFT"));
+    }
+
+    #[test]
+    fn corpus_paths_reject_traversal_and_symlink_aliases() {
+        let id = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "ores-parity-path-test-{}-{id}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(root.join("checks/nested")).unwrap();
+        std::fs::write(root.join("checks/nested/real.ores"), "pub fnc main(): int { return 42; }").unwrap();
+        assert!(super::safe_file(&root, "checks/nested/real.ores").is_ok());
+        for invalid in [
+            "../outside.ores",
+            "./checks/nested/real.ores",
+            "checks/../checks/nested/real.ores",
+            "/tmp/absolute.ores",
+        ] {
+            assert!(super::safe_file(&root, invalid).is_err(), "{invalid}");
+        }
+        assert!(super::checked_repo_path(&root, std::path::Path::new("../escape.ores")).is_err());
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            symlink("real.ores", root.join("checks/nested/link.ores")).unwrap();
+            assert!(super::safe_file(&root, "checks/nested/link.ores").is_err());
+            symlink("nested", root.join("checks/alias")).unwrap();
+            assert!(super::safe_file(&root, "checks/alias/real.ores").is_err());
+            let entry = root.join("checks/nested/entry.ores");
+            std::fs::write(&entry, "import module target from \"./link\";").unwrap();
+            assert!(super::local_imports(&entry, &root).is_err());
+        }
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
