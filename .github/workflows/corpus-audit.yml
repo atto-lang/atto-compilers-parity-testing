@@ -21,7 +21,9 @@ jobs:
       - name: Format-check parity runner
         run: cargo fmt --manifest-path tools/parity-runner/Cargo.toml -- --check
       - name: Test parity runner
-        run: cargo test --manifest-path tools/parity-runner/Cargo.toml --locked
+        run: cargo test --manifest-path tools/parity-runner/Cargo.toml --locked --all-targets
+      - name: Deny Rust warnings across all parity-runner targets
+        run: cargo clippy --manifest-path tools/parity-runner/Cargo.toml --locked --all-targets -- -D warnings
       - name: Build parity runner
         run: cargo build --manifest-path tools/parity-runner/Cargo.toml --locked --bins
       - name: Audit 49 x 6 matrix without making compiler claims
