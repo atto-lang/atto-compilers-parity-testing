@@ -1008,6 +1008,102 @@
       "validation_status": "candidate",
       "source_basis": "2026-11-01 source-identical signed-i64 wave 2; native guest verification pending",
       "required_on_all_backends": true
+    },
+    {
+      "id": "58",
+      "name": "removed-percent-operator",
+      "path": "programs/58-removed-percent-operator.ores",
+      "group": "negative-semantics",
+      "features": [
+        "operator-removal",
+        "percent"
+      ],
+      "expected_kind": "compile_reject",
+      "expected_value": null,
+      "expected_diagnostic_category": "removed_operator",
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 safety contract; diagnostic parity NOT YET VERIFIED",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "59",
+      "name": "removed-xor-operator",
+      "path": "programs/59-removed-xor-operator.ores",
+      "group": "negative-semantics",
+      "features": [
+        "operator-removal",
+        "xor"
+      ],
+      "expected_kind": "compile_reject",
+      "expected_value": null,
+      "expected_diagnostic_category": "removed_operator",
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 safety contract; diagnostic parity NOT YET VERIFIED",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "60",
+      "name": "removed-double-xor-operator",
+      "path": "programs/60-removed-double-xor-operator.ores",
+      "group": "negative-semantics",
+      "features": [
+        "operator-removal",
+        "double-xor"
+      ],
+      "expected_kind": "compile_reject",
+      "expected_value": null,
+      "expected_diagnostic_category": "removed_operator",
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 safety contract; diagnostic parity NOT YET VERIFIED",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "61",
+      "name": "immutable-default-binding-rebind",
+      "path": "programs/61-immutable-default-binding-rebind.ores",
+      "group": "negative-semantics",
+      "features": [
+        "readonly-binding",
+        "mutation"
+      ],
+      "expected_kind": "compile_reject",
+      "expected_value": null,
+      "expected_diagnostic_category": "immutable_binding",
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 safety contract; diagnostic parity NOT YET VERIFIED",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "62",
+      "name": "implicit-bool-to-int-cast",
+      "path": "programs/62-implicit-bool-to-int-cast.ores",
+      "group": "negative-semantics",
+      "features": [
+        "no-implicit-conversion",
+        "checked-cast"
+      ],
+      "expected_kind": "compile_reject",
+      "expected_value": null,
+      "expected_diagnostic_category": "type_mismatch",
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 safety contract; diagnostic parity NOT YET VERIFIED",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "63",
+      "name": "null-literal-prohibited",
+      "path": "programs/63-null-literal-prohibited.ores",
+      "group": "negative-semantics",
+      "features": [
+        "no-null",
+        "option"
+      ],
+      "expected_kind": "compile_reject",
+      "expected_value": null,
+      "expected_diagnostic_category": "null_prohibited",
+      "validation_status": "candidate",
+      "source_basis": "2026-11-01 safety contract; diagnostic parity NOT YET VERIFIED",
+      "required_on_all_backends": true
     }
   ]
 }
