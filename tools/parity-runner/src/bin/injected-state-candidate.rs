@@ -187,7 +187,7 @@ fn safe_source(root: &Path, case: &Candidate) -> Result<PathBuf, String> {
     let candidate_root = root.join("candidates/injected-state").canonicalize()
         .map_err(|e| e.to_string())?;
     let path = root.join(&case.path).canonicalize().map_err(|e| e.to_string())?;
-    if !path.starts_with(&candidate_root) || path.extension().is_none_or(|x| x != "ores") ||
+    if !path.starts_with(&candidate_root) || path.extension().and_then(|x| x.to_str()) != Some("ores") ||
        !path.is_file() {
         return Err("candidate source path must be a regular .ores within suite".into());
     }
@@ -309,8 +309,8 @@ fn main() {
 }
 fn run() -> Result<(), String> {
     let args: Vec<_> = env::args_os().skip(1).collect();
-    let execute = args.iter().any(|a| a == "--execute");
-    if args.iter().any(|a| a != "--execute") {
+    let execute = args.iter().any(|a| a.to_str() == Some("--execute"));
+    if args.iter().any(|a| a.to_str() != Some("--execute")) {
         return Err("usage: injected-state-candidate [--execute]".into());
     }
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
