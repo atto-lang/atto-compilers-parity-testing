@@ -5,11 +5,13 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-const FILES: [&str; 4] = [
+const FILES: [&str; 6] = [
     "src/schema.ores",
+    "src/pg.ores",
     "tests/schema-plans.ores",
     "tests/schema-adversarial.ores",
     "tests/schema-invariants.ores",
+    "tests/plans.ores",
 ];
 
 fn git(root: &Path, args: &[&str]) -> Result<std::process::Output, String> {
@@ -64,39 +66,50 @@ pub(super) fn load(source_root: &Path, head: &str) -> Result<Vec<TestCase>, Stri
         }
         validated.push(path);
     }
-    let shared = &validated[0];
-    let module = fs::read_to_string(shared).map_err(|e| e.to_string())?;
-    if module.lines().any(|line| line.trim_start().starts_with("import ")) {
-        return Err("ORM schema module dependency graph changed; reviewer must re-admit it".into());
+    for (index, shared) in validated.iter().take(2).enumerate() {
+        let module = fs::read_to_string(shared).map_err(|e| e.to_string())?;
+        if module.lines().any(|line| line.trim_start().starts_with("import ")) {
+            return Err(format!("ORM source module dependency graph changed: {}", FILES[index]));
+        }
     }
     let tests = [
-        ("orm-schema-plans", "Pure Oreslang schema-diff planning contracts passed\n"),
-        ("orm-schema-adversarial", "Pure Oreslang adversarial schema contracts passed\n"),
-        ("orm-schema-invariants", "Pure Oreslang schema invariant and metamorphic contracts passed\n"),
+        ("orm-schema-plans", 2usize, 0usize,
+         "import module schema from '../src/schema';",
+         "Pure Oreslang schema-diff planning contracts passed\n"),
+        ("orm-schema-adversarial", 3, 0,
+         "import module schema from '../src/schema';",
+         "Pure Oreslang adversarial schema contracts passed\n"),
+        ("orm-schema-invariants", 4, 0,
+         "import module schema from '../src/schema';",
+         "Pure Oreslang schema invariant and metamorphic contracts passed\n"),
+        ("orm-sql-plans", 5, 1,
+         "import module pg from '../src/pg';",
+         "Postgres SQL planning contracts passed\n"),
     ];
     let mut cases = Vec::new();
-    for (index, (name, stdout)) in tests.iter().enumerate() {
-        let entry = &validated[index + 1];
+    for (name, file_index, module_index, import, stdout) in tests {
+        let entry = &validated[file_index];
         let code = fs::read_to_string(entry).map_err(|e| e.to_string())?;
-        let imports: Vec<_> = code.lines().filter(|line| line.trim_start().starts_with("import ")).collect();
-        if imports.len() != 1 || imports[0].trim() != "import module schema from '../src/schema';" {
-            return Err(format!("ORM guest import graph changed: {}", FILES[index + 1]));
+        let imports: Vec<_> = code.lines()
+            .filter(|line| line.trim_start().starts_with("import ")).collect();
+        if imports.len() != 1 || imports[0].trim() != import {
+            return Err(format!("ORM guest import graph changed: {}", FILES[file_index]));
         }
-        let graph = vec![shared.clone(), entry.clone()];
+        let graph = vec![validated[module_index].clone(), entry.clone()];
         cases.push(TestCase {
             suite: "external-orm-exact-head".into(),
-            case_id: (*name).into(),
-            name: (*name).into(),
+            case_id: name.into(),
+            name: name.into(),
             source: entry.clone(),
             source_sha256: sha256_file(entry)?,
             graph_sha256: Some(fingerprint_graph(&graph, &root)?),
-            graph_files: Some(vec![FILES[0].into(), FILES[index + 1].into()]),
+            graph_files: Some(vec![FILES[module_index].into(), FILES[file_index].into()]),
             expected_kind: "exit".into(),
             expected_value: Some(0),
             expected_diagnostic_category: None,
-            expected_stdout_prefix: Some((*stdout).into()),
+            expected_stdout_prefix: Some(stdout.into()),
             validation_status: "unvalidated".into(),
-            features: vec!["pure-orm-source".into(), "schema-stable-id".into(),
+            features: vec!["pure-orm-source".into(), "schema-and-sql".into(),
                            format!("source-commit:{head}")],
         });
     }
