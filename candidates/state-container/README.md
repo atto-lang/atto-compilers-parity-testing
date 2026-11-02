@@ -181,3 +181,28 @@ the mandatory parity manifest or claim five-backend support. Require verified
 compiler binary and Git source identities, nonzero runner steps, real emitted
 artifacts on positives, explicit compiler diagnostics on negatives, and
 independent permission to move private source before any cross-org CI copy.
+
+## Java/Graal owned-state v0 hardening candidates (2026-11-01)
+
+The Java stacked implementation [#2443](https://github.com/ores-truffle-oreslang/oreslang-source.java/pull/2443)
+accepts **exclusively owned** class instance state only, with
+`@Inject(MutableStateContainer())` and private literal-initialized `int`/`bool`
+slots. This is neither provider DI nor singleton/shared-actor state.
+
+- `injected-owned-bool-java-v0.ores`, exact Git blob
+  `e0cd09ea1832384af2d0cd0b7c8955d44528bd58`, is an additional real
+  Java guest candidate. Two independently allocated `Flag` objects should
+  print **`false|true`** after one mutates its private state. Its byte
+  identity matches Java #2443; runtime execution has **not** been confirmed.
+- `prepublication-call-reject.ores` (blob
+  `a00a023bcbd3f8a96314a8d5e48c559db1d3416f`) and
+  `prepublication-self-reject.ores` (blob
+  `65c02e5d68b403a5cff8b749eec2b4fd9a2c9e51`) must fail with
+  **initialization-before-publication** diagnostics once this feature is
+  implemented on each backend. A generic annotation/syntax denial is NOT a
+  positive semantic checker verdict.
+
+All cases remain outside the mandatory parity manifest. Backend execution
+status remains **NOT_EXECUTED** for Java/Graal, LLVM, Wasm, Cranelift and .NET;
+Forge is separate. Do not promote Java v0 to a shared-state or full
+five-backend claim, and do not merge based only on source-free checks.
