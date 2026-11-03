@@ -194,6 +194,31 @@ fn classify_diagnostic(
 
 const MAX_SOURCE_BYTES: u64 = 4 * 1024 * 1024;
 
+fn read_source_text(path: &Path) -> Result<String, String> {
+    // Parser/import discovery must obey the same admission rules as hashing.
+    // A late FIFO or symlink substitution must not block or escape the audit.
+    let mut options = fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK);
+    }
+    let file = options.open(path)
+        .map_err(|e| format!("failed to open source text: {e}"))?;
+    let metadata = file.metadata().map_err(|e| e.to_string())?;
+    if !metadata.file_type().is_file() || metadata.len() > MAX_SOURCE_BYTES {
+        return Err("source text must be a bounded regular file".into());
+    }
+    let mut bytes = Vec::new();
+    file.take(MAX_SOURCE_BYTES + 1).read_to_end(&mut bytes)
+        .map_err(|e| format!("source text read failed: {e}"))?;
+    if bytes.len() as u64 != metadata.len() || bytes.len() as u64 > MAX_SOURCE_BYTES {
+        return Err("source text changed size or exceeded admission limit".into());
+    }
+    String::from_utf8(bytes).map_err(|e| format!("source is not UTF-8: {e}"))
+}
+
 fn sha256_file(path: &Path) -> Result<String, String> {
     // Source admission must not load unbounded compiler-controlled files,
     // follow a replaced symlink, or block on a FIFO after a preflight race.
@@ -268,7 +293,7 @@ fn import_target(line: &str) -> Option<String> {
 }
 
 fn local_imports(path: &Path, root: &Path) -> Result<Vec<PathBuf>, String> {
-    let text = fs::read_to_string(path).map_err(|e| e.to_string())?;
+    let text = read_source_text(path)?;
     let mut result = Vec::new();
     for target in text.lines().filter_map(import_target) {
         if !target.starts_with('.') {
@@ -393,7 +418,7 @@ fn validate_legacy_cases(cases: &[LegacyCase]) -> Result<(), String> {
 
 fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
     let legacy: LegacyManifest = serde_json::from_str(
-        &fs::read_to_string(root.join("manifest.json")).map_err(|e| e.to_string())?,
+        &read_source_text(&root.join("manifest.json"))?,
     )
     .map_err(|e| e.to_string())?;
     validate_backend_policy(&legacy.policy)?;
@@ -420,7 +445,7 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
     }
 
     let checks_manifest: ChecksManifest = serde_json::from_str(
-        &fs::read_to_string(root.join("checks/manifest.json")).map_err(|e| e.to_string())?,
+        &read_source_text(&root.join("checks/manifest.json"))?,
     )
     .map_err(|e| e.to_string())?;
     let mut manifest_names = BTreeSet::new();
@@ -438,7 +463,7 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
         }
         let expectation_path = safe_file(root, &item.expectation)?;
         let expectation: Expectation = serde_json::from_str(
-            &fs::read_to_string(&expectation_path).map_err(|e| e.to_string())?,
+            &read_source_text(&expectation_path)?,
         )
         .map_err(|e| format!("{}: {e}", item.expectation))?;
         if expectation.name != item.name {
@@ -1083,7 +1108,7 @@ fn main() -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     let (cases, corpus) = load_cases(&root)?;
     let diagnostic_rules: DiagnosticRules = serde_json::from_str(
-        &fs::read_to_string(root.join("diagnostics.json")).map_err(|e| e.to_string())?,
+        &read_source_text(&root.join("diagnostics.json"))?,
     )
     .map_err(|e| e.to_string())?;
     let timeout = Duration::from_secs(timeout_seconds);
@@ -1312,6 +1337,32 @@ mod tests {
         assert!(super::case_sources_match(&case, &root).unwrap());
         std::fs::write(&entry, b"pub fnc main(): int { return 42; }\n").unwrap();
         assert!(!super::case_sources_match(&case, &root).unwrap());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn imported_source_text_is_bounded_before_decoding() {
+        let root = super::temp_dir("bounded-import-source", "wasm").unwrap();
+        let source = root.join("import.ores");
+        std::fs::write(&source, "fnc value(): int { return 42; }").unwrap();
+        assert!(super::read_source_text(&source).unwrap().contains("return 42"));
+        std::fs::write(&source, vec![b'x'; (super::MAX_SOURCE_BYTES + 1) as usize]).unwrap();
+        assert!(super::read_source_text(&source).is_err());
+        std::fs::write(&source, [0xff, 0xfe]).unwrap();
+        assert!(super::read_source_text(&source).is_err());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn import_source_read_refuses_symlink_to_regular_file() {
+        use std::os::unix::fs::symlink;
+        let root = super::temp_dir("import-source-symlink", "net").unwrap();
+        let source = root.join("real.ores");
+        let alias = root.join("alias.ores");
+        std::fs::write(&source, "fnc value(): int { return 42; }").unwrap();
+        symlink(&source, &alias).unwrap();
+        assert!(super::read_source_text(&alias).is_err());
         std::fs::remove_dir_all(root).unwrap();
     }
 
