@@ -117,4 +117,4 @@ An adapter is executable evidence only when it records the exact compiler/runtim
 
 ### Cranelift explicit fail-closed admission
 
-The runner now includes `cranelift` as a sixth independent backend with `ORES_PARITY_CRANELIFT_COMPILE` and `ORES_PARITY_CRANELIFT_RUN`. The user-facing five native/managed backends are Java, LLVM, WASM, Cranelift and .NET; existing JS coverage remains. An absent adapter is `backend_not_configured` in all 49 cases, and exit 125 is `compile_infrastructure_failure`; neither grants parity. The scalar-only Cranelift JIT currently cannot claim ODB1 WAL/actor integration.
+The runner now includes `cranelift` as a sixth independent backend with `ORES_PARITY_CRANELIFT_COMPILE` and `ORES_PARITY_CRANELIFT_RUN`. The user-facing five native/managed backends are Java, LLVM, WASM, Cranelift and .NET; existing JS coverage remains. An absent adapter is `backend_not_configured` in all 69 current cases, and exit 125 is `compile_infrastructure_failure`; neither grants parity. The scalar-only Cranelift JIT currently cannot claim ODB1 WAL/actor integration.
