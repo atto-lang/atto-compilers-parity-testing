@@ -192,10 +192,40 @@ fn classify_diagnostic(
     None
 }
 
+const MAX_SOURCE_BYTES: u64 = 4 * 1024 * 1024;
+
 fn sha256_file(path: &Path) -> Result<String, String> {
-    let bytes = fs::read(path).map_err(|e| format!("failed to read source for SHA-256: {e}"))?;
-    let digest = Sha256::digest(bytes);
-    Ok(format!("{digest:x}"))
+    // Source admission must not load unbounded compiler-controlled files,
+    // follow a replaced symlink, or block on a FIFO after a preflight race.
+    let mut options = fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK);
+    }
+    let mut file = options.open(path)
+        .map_err(|e| format!("failed to open source for SHA-256: {e}"))?;
+    let metadata = file.metadata().map_err(|e| e.to_string())?;
+    if !metadata.file_type().is_file() || metadata.len() > MAX_SOURCE_BYTES {
+        return Err("source must be a bounded regular file".into());
+    }
+    let mut hasher = Sha256::new();
+    let mut buf = [0u8; 16384];
+    let mut count = 0u64;
+    loop {
+        let n = file.read(&mut buf).map_err(|e| format!("source SHA-256 read failed: {e}"))?;
+        if n == 0 { break; }
+        count += n as u64;
+        if count > MAX_SOURCE_BYTES {
+            return Err("source exceeded bounded SHA-256 read limit".into());
+        }
+        hasher.update(&buf[..n]);
+    }
+    if count != metadata.len() {
+        return Err("source changed size during SHA-256 admission".into());
+    }
+    Ok(format!("{:x}", hasher.finalize()))
 }
 
 fn sha256_bytes(bytes: &[u8]) -> Result<String, String> {
@@ -1282,6 +1312,30 @@ mod tests {
         assert!(super::case_sources_match(&case, &root).unwrap());
         std::fs::write(&entry, b"pub fnc main(): int { return 42; }\n").unwrap();
         assert!(!super::case_sources_match(&case, &root).unwrap());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn source_sha256_is_streamed_and_size_bounded() {
+        let root = super::temp_dir("source-hash-budget", "java").unwrap();
+        let source = root.join("guest.ores");
+        std::fs::write(&source, b"pub fnc main():int{return 42;}").unwrap();
+        assert_eq!(super::sha256_file(&source).unwrap().len(), 64);
+        std::fs::write(&source, vec![b'x'; (super::MAX_SOURCE_BYTES + 1) as usize]).unwrap();
+        assert!(super::sha256_file(&source).is_err());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn source_digest_refuses_same_byte_symlink_alias() {
+        use std::os::unix::fs::symlink;
+        let root = super::temp_dir("source-hash-symlink", "llvm").unwrap();
+        let original = root.join("original.ores");
+        let link = root.join("alias.ores");
+        std::fs::write(&original, b"pub fnc main():int{return 42;}").unwrap();
+        symlink(&original, &link).unwrap();
+        assert!(super::sha256_file(&link).is_err());
         std::fs::remove_dir_all(root).unwrap();
     }
 
