@@ -63,6 +63,76 @@ jobs:
           if (checks.length !== 108 || positives.length !== 96) process.exit(1);
           if (!positives.every(r => Array.isArray(r.graph_files) && r.graph_files.length >= 4)) process.exit(1);
           if (!checks.every(r => Array.isArray(r.features) && r.features.length > 0)) process.exit(1);
+          // Independent manifest-to-record identity and source SHA audit.
+          // Counting 414 rows alone cannot detect a duplicate case displacing
+          // an omitted case, or a report over a different set of source bytes.
+          const {createHash} = require("node:crypto");
+          const {readFileSync, lstatSync} = require("node:fs");
+          const {isAbsolute} = require("node:path");
+          const sha = value => createHash("sha256").update(value).digest("hex");
+          const source = rel => {
+            if (typeof rel !== "string" || isAbsolute(rel) ||
+                rel.split("/").some(x => x === ".." || x === "")) {
+              throw new Error("unsafe source reference: " + rel);
+            }
+            if (!lstatSync(rel).isFile()) throw new Error("nonregular or symlinked source: " + rel);
+            return readFileSync(rel);
+          };
+          const expectedSource = new Map();
+          const add = (suite, id, rel) => {
+            const key = suite + "/" + id;
+            if (expectedSource.has(key)) throw new Error("duplicate logical case: " + key);
+            expectedSource.set(key, {rel, digest: sha(source(rel))});
+          };
+          const manifest = JSON.parse(readFileSync("manifest.json"));
+          if (JSON.stringify(manifest.policy.target_backends) !== JSON.stringify(
+              ["java","llvm","wasm","dotnet","cranelift","js"])) process.exit(1);
+          for (const c of manifest.cases) {
+            if (c.required_on_all_backends !== true || !c.features.length)
+              throw new Error("optional legacy case: " + c.id);
+            add("legacy", c.id, c.path);
+          }
+          const checkManifest = JSON.parse(readFileSync("checks/manifest.json"));
+          for (const c of checkManifest.checks) {
+            const e = JSON.parse(source(c.expectation));
+            if (e.name !== c.name) throw new Error("check name mismatch");
+            add("checks", c.name, e.entry);
+            for (const [index, negative] of (e.negative_cases || []).entries()) {
+              add("checks", c.name + "/negative-" + (index + 1), negative.path);
+            }
+          }
+          if (expectedSource.size !== 69 || d.executed !== false || d.schema_version !== 2)
+            throw new Error("wrong static matrix count or execution state");
+          const expectedBackends = ["llvm","java","wasm","dotnet","cranelift","js"];
+          const observed = new Set();
+          for (const r of d.records) {
+            const key = r.suite + "/" + r.case_id;
+            const expected = expectedSource.get(key);
+            if (!expected) throw new Error("unregistered case: " + key);
+            if (!expectedBackends.includes(r.backend)) throw new Error("unknown backend");
+            const pair = key + "/" + r.backend;
+            if (observed.has(pair)) throw new Error("duplicate backend/case record: " + pair);
+            observed.add(pair);
+            if (r.source_sha256 !== expected.digest ||
+                r.status !== "not_run" || r.compile !== null || r.run !== null)
+              throw new Error("fabricated or mismatched static evidence: " + pair);
+            if (r.graph_files !== null) {
+              if (!Array.isArray(r.graph_files) || r.graph_files.length < 4 ||
+                  JSON.stringify(r.graph_files) !== JSON.stringify([...new Set(r.graph_files)].sort()) ||
+                  !r.graph_files.includes(expected.rel))
+                throw new Error("invalid graph inventory: " + pair);
+              const payload = r.graph_files.map(rel =>
+                rel + String.fromCharCode(0) + sha(source(rel)) + "\\n").join("");
+              if (sha(Buffer.from(payload, "utf8")) !== r.graph_sha256)
+                throw new Error("source graph identity mismatch: " + pair);
+            } else if (r.graph_sha256 !== null) {
+              throw new Error("graph digest without source inventory: " + pair);
+            }
+          }
+          if (observed.size !== expectedSource.size * expectedBackends.length)
+            throw new Error("missing backend/case pair despite correct record count");
+          if (Object.keys(d.summary).length !== 1 || d.summary.not_run !== 414)
+            throw new Error("unexpected result classified as executed");
           NODE
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
