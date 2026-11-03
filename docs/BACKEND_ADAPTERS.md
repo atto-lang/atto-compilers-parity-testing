@@ -43,6 +43,29 @@ After building `oreslang-llvmc`:
 ```sh
 export ORES_PARITY_LLVM_COMPILE='/abs/oreslang-source.llvm/scripts/compile-aot.sh {source} {artifact}'
 export ORES_PARITY_LLVM_RUN='{artifact}'
+
+**O0/O2 differential gate (pending compiler-backed execution):** The
+[LLVM draft #1346](https://github.com/ores-truffle-oreslang/oreslang-source.llvm/pull/1346)
+introduces `ORESLANG_LLVM_AOT_OPT_LEVEL=0|2` for the Clang IR-to-native
+stage (default `2`). Run the **same reviewed source SHA** twice with the two
+values, separate artifacts and stable compiler/toolchain identities. This
+changes Clang optimization, **not necessarily earlier Oreslang frontend
+passes**. Its CI synthetic-IR script and local Clang smoke are
+**host-pipeline only** and do not certify any AttoLang guest.
+
+A source-free canary workflow is also on shared parity PR #23. Its missing
+job steps, compared with stepful source-free canaries on
+`gha-indie-worker/gha-indie-worker.rs`, isolate the issue to source-repo/org
+runner admission or billing/policy. Do **not** transfer private source solely
+because an unrelated canary runs elsewhere. Review and authorize the exact
+source tree and destination independently before any new mirror.
+
+The shared runner now resolves an extensionless relative import from
+`.atto` to `.atto`, or from historical `.ores` to `.ores`, without silently
+rewriting the source. This tests inventory and source-graph fingerprinting
+only; separate compiler-backed `.atto` acceptance is required on every
+toolchain.
+
 ```
 
 The compile script fails closed if the source subset is unsupported and never falls back to an interpreter.
