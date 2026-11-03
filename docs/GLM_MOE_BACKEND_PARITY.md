@@ -4,7 +4,7 @@
 
 The branch registers twenty *identical* Oreslang source programs at
 `programs/32-glm-*.ores` through `programs/51-glm-*.ores`.
-Every case is required on Java/Graal, LLVM, WASM and .NET. Each successful
+Every case is required on Java/Graal, LLVM, WASM, Cranelift and .NET NativeAOT; JS is a separate sixth corpus adapter. Each successful
 guest returns integer 42; a semantic mismatch returns 1. None is marked
 `validated` before trusted execution.
 
@@ -42,7 +42,7 @@ on the new exact source tree** until genuine guest runs occur.
    a real NativeAOT host. No interpreter/IR-only substitute is accepted.
 6. Reject absent compiler, unclassified diagnostic, timeout, missing guest,
    wrong return, unsanctioned source rewrite, or CI `steps=null`.
-7. Keep all 80 required outcomes pending until separately executed and
+7. Keep all 100 required five-compiler outcomes pending until separately executed and
    reviewed. Exact-head stepful CI is distinct from native guest receipts.
 
 ## What this corpus cannot prove
@@ -116,7 +116,7 @@ It *rejects* user helper functions, Boolean control flow, imports, float,
 actors, ownership and ordinary GLM/MoE modules.
 
 [Cranelift draft PR #69](https://github.com/ores-truffle-oreslang/oreslang-source.cranelift/pull/69)
-adds 11 integration tests that must run through the actual native JIT for
+adds 14 authored integration tests that must run through the actual native JIT for
 the arithmetic intersection, and must fail closed for GLM syntax outside
 that supported subset. **A deliberate reject is an honest capability
 result but not a parity pass.** The current native CI has not established
@@ -127,6 +127,25 @@ removing helpers, replacing float with int, or claiming the Rust host oracle.
 Cranelift's source tree snapshot is recorded in `manifest.json` as a
 **snapshot-only** reference, never as native compilation evidence.
 
+
+## Current target counts (supersedes historical initial-matrix arithmetic)
+
+The initial 80 / 345 figures elsewhere on this page describe an **earlier
+four-compiler / five-backend snapshot**, not the current acceptance target.
+The current twenty GLM programs are required on **five independent compilers**:
+20 × 5 = **100 compiler-backed guest outcomes**. The historical JS adapter
+remains a separate sixth target. The full 51 legacy + 16 positive multi-file
++ 2 negative checks form **69 logical cases × 6 targets = 414 inventory cells**.
+These numbers are **required cells, not verified native passes**.
+
+Source-free runner probes now distinguish upstream admission from code execution:
+the current source organization fails before job steps even for a no-checkout
+canary; the alternate `gha-indie-worker` org has stepful, source-free Ubuntu
+and macOS evidence. An independent, revision-scoped security approval remains
+mandatory before any private compiler/corpus source transfer. See
+[runner governance issue #2](https://github.com/ores-truffle-oreslang/oreslang-compilers-parity-testing/issues/2)
+and [LLVM O0/O2 host-pipeline draft #1346](https://github.com/ores-truffle-oreslang/oreslang-source.llvm/pull/1346).
+The latter's synthetic LLVM IR proof is **not AttoLang guest execution**.
 
 ## Security and audit hardening — 2026-11-03
 
