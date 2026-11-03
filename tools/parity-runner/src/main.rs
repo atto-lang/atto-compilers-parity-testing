@@ -258,6 +258,43 @@ fn sha256_bytes(bytes: &[u8]) -> Result<String, String> {
     Ok(format!("{digest:x}"))
 }
 
+// Walk the lexical path before canonicalization. Checking only the leaf
+// permits a symlinked ancestor to redirect a same-byte import after inventory.
+fn no_symlink_source_path(root: &Path, original: &Path) -> Result<PathBuf, String> {
+    let rel = original.strip_prefix(root)
+        .map_err(|_| format!("source path outside corpus root: {}", original.display()))?;
+    let mut current = root.to_path_buf();
+    for component in rel.components() {
+        match component {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                if current == root {
+                    return Err("relative import escapes corpus root".into());
+                }
+                current.pop();
+            }
+            std::path::Component::Normal(part) => {
+                current.push(part);
+                let meta = fs::symlink_metadata(&current)
+                    .map_err(|e| format!("untrusted source path {}: {e}", current.display()))?;
+                if meta.file_type().is_symlink() {
+                    return Err(format!("symlinked source path component: {}", current.display()));
+                }
+            }
+            _ => return Err("invalid source path component".into()),
+        }
+    }
+    let meta = fs::symlink_metadata(&current).map_err(|e| e.to_string())?;
+    if !meta.file_type().is_file() {
+        return Err("source must be a regular file".into());
+    }
+    let canonical = current.canonicalize().map_err(|e| e.to_string())?;
+    if !canonical.starts_with(root) {
+        return Err("resolved source escaped corpus root".into());
+    }
+    Ok(canonical)
+}
+
 fn safe_file(root: &Path, path_text: &str) -> Result<PathBuf, String> {
     // Reject absolute/parent-traversing manifest paths and symlinked files
     // before canonicalization erases the original source entry's provenance.
@@ -265,19 +302,7 @@ fn safe_file(root: &Path, path_text: &str) -> Result<PathBuf, String> {
     if !relative.components().all(|part| matches!(part, std::path::Component::Normal(_))) {
         return Err(format!("invalid or traversing source path: {path_text}"));
     }
-    let original = root.join(relative);
-    let metadata = fs::symlink_metadata(&original)
-        .map_err(|e| format!("{path_text}: {e}"))?;
-    if !metadata.file_type().is_file() {
-        return Err(format!("symlink or nonregular source path: {path_text}"));
-    }
-    let path = original
-        .canonicalize()
-        .map_err(|e| format!("{path_text}: {e}"))?;
-    if !path.starts_with(root) || !path.is_file() {
-        return Err(format!("invalid source path: {path_text}"));
-    }
-    Ok(path)
+    no_symlink_source_path(root, &root.join(relative))
 }
 
 fn import_target(line: &str) -> Option<String> {
@@ -304,24 +329,22 @@ fn local_imports(path: &Path, root: &Path) -> Result<Vec<PathBuf>, String> {
             .ok_or_else(|| format!("source has no parent: {}", path.display()))?
             .join(&target);
         if candidate.extension().is_none() {
-            candidate.set_extension("ores");
+            // A new AttoLang .atto source resolves extensionless imports to
+            // .atto, while legacy .ores files retain their historical behavior.
+            let extension = path.extension().and_then(|ext| ext.to_str())
+                .ok_or_else(|| format!("unknown importing source extension: {}", path.display()))?;
+            if !matches!(extension, "atto" | "ores") {
+                return Err(format!("unsupported importing source extension: {extension}"));
+            }
+            candidate.set_extension(extension);
         }
-        // Do not resolve through a symlinked source leaf; otherwise a
-        // rewritten alias could evade the reviewed reachable-file inventory.
-        let metadata = fs::symlink_metadata(&candidate)
+        if !matches!(candidate.extension().and_then(|ext| ext.to_str()), Some("atto" | "ores")) {
+            return Err(format!("local import is not an .atto/.ores source file: {target}"));
+        }
+        // Check EVERY lexical ancestor, not merely the last source component.
+        // Canonicalization alone would erase the reviewed path's provenance.
+        let candidate = no_symlink_source_path(root, &candidate)
             .map_err(|e| format!("{} imports {target}: {e}", path.display()))?;
-        if !metadata.file_type().is_file() {
-            return Err(format!("symlink or nonregular local import: {target}"));
-        }
-        let candidate = candidate
-            .canonicalize()
-            .map_err(|e| format!("{} imports {target}: {e}", path.display()))?;
-        if !candidate.starts_with(root) || !candidate.is_file() {
-            return Err(format!(
-                "invalid local import from {}: {target}",
-                path.display()
-            ));
-        }
         result.push(candidate);
     }
     Ok(result)
@@ -1374,6 +1397,49 @@ mod tests {
         assert_eq!(super::sha256_file(&source).unwrap().len(), 64);
         std::fs::write(&source, vec![b'x'; (super::MAX_SOURCE_BYTES + 1) as usize]).unwrap();
         assert!(super::sha256_file(&source).is_err());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn attolang_extensionless_local_imports_follow_the_entry_extension() {
+        let root = super::temp_dir("atto-import", "java").unwrap();
+        std::fs::write(root.join("entry.atto"),
+            "import fnc answer from \"./answer\";\npub fnc main(): int {return answer();}").unwrap();
+        std::fs::write(root.join("answer.atto"), "pub fnc answer(): int {return 42;}").unwrap();
+        std::fs::write(root.join("answer.ores"), "pub fnc answer(): int {return 1;}").unwrap();
+        let entry = super::safe_file(&root, "entry.atto").unwrap();
+        let imports = super::local_imports(&entry, &root).unwrap();
+        assert_eq!(imports, vec![root.join("answer.atto")]);
+        assert_eq!(super::reachable_graph(&entry, &root).unwrap().len(), 2);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn legacy_extensionless_local_imports_keep_ores_resolution() {
+        let root = super::temp_dir("ores-import", "llvm").unwrap();
+        std::fs::write(root.join("entry.ores"),
+            "import fnc answer from \"./answer\";\npub fnc main(): int {return answer();}").unwrap();
+        std::fs::write(root.join("answer.ores"), "pub fnc answer(): int {return 42;}").unwrap();
+        std::fs::write(root.join("answer.atto"), "pub fnc answer(): int {return 1;}").unwrap();
+        let entry = super::safe_file(&root, "entry.ores").unwrap();
+        assert_eq!(super::local_imports(&entry, &root).unwrap(), vec![root.join("answer.ores")]);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlinked_ancestor_cannot_hide_same_byte_guest_source() {
+        use std::os::unix::fs::symlink;
+        let root = super::temp_dir("ancestor-symlink", "cranelift").unwrap();
+        std::fs::create_dir(root.join("original")).unwrap();
+        std::fs::write(root.join("original/guest.atto"),
+            "pub fnc main(): int {return 42;}").unwrap();
+        symlink(root.join("original"), root.join("alias")).unwrap();
+        assert!(super::safe_file(&root, "alias/guest.atto").is_err());
+        std::fs::write(root.join("entry.atto"),
+            "import fnc guest from \"./alias/guest.atto\";").unwrap();
+        let entry = super::safe_file(&root, "entry.atto").unwrap();
+        assert!(super::local_imports(&entry, &root).is_err());
         std::fs::remove_dir_all(root).unwrap();
     }
 
