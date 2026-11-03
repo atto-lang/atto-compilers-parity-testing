@@ -1,0 +1,32 @@
+name: Source-free runner admission (no checkout)
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# A deliberately source-free job. No checkout, no repository content,
+# no secrets, no private-source mirror and no external actions.
+permissions: {}
+
+jobs:
+  runner-admission:
+    name: source-free-ubuntu
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Record actual runner admission
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$RUNNER_OS" = "Linux"
+          test -n "$GITHUB_RUN_ID"
+          test -n "$GITHUB_SHA"
+          test -n "$GITHUB_RUN_ATTEMPT"
+          {
+            echo "SOURCE_FREE_CANARY=executed"
+            echo "RUN_ID=$GITHUB_RUN_ID"
+            echo "RUN_ATTEMPT=$GITHUB_RUN_ATTEMPT"
+            echo "HEAD_OR_MERGE_REF=$GITHUB_SHA"
+            echo "RUNNER_OS=$RUNNER_OS"
+            echo "No source was checked out or transferred."
+          } >> "$GITHUB_STEP_SUMMARY"
