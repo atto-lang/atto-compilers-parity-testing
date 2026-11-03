@@ -126,3 +126,43 @@ removing helpers, replacing float with int, or claiming the Rust host oracle.
 
 Cranelift's source tree snapshot is recorded in `manifest.json` as a
 **snapshot-only** reference, never as native compilation evidence.
+
+
+## Security and audit hardening — 2026-11-03
+
+This change is **source-level audit hardening**, not compiler-backed guest
+conformance. Key protections added on the shared draft branch:
+
+- **Exact source revision:** the Corpus audit workflow checks out the actual
+  pull-request head SHA instead of GitHub's synthetic merge ref, verifies
+  `git rev-parse HEAD` against the expected revision, requires a clean
+  working tree, and prints the immutable source Git tree identity.
+- **Independent static matrix audit:** all 414 records must be unique
+  backend/case pairs, with exactly 69 registered logical cases and six
+  independently named targets. The workflow independently SHA-256 hashes
+  all canonical files and positive reachable import graphs; a missing,
+  duplicated, rewritten or fabricated `not_run` record is rejected.
+- **Fail-closed source admission:** the Rust runner reads source and imported
+  text through descriptor-level nonblocking/nofollow admission (on Unix)
+  with a 4 MiB source budget, checked UTF-8, bounded SHA-256 reads and
+  size-change detection. Source symlink, unbounded content, and invalid
+  UTF-8 negative regressions are authored.
+- **Cranelift frontier:** the independent [PR #69](https://github.com/ores-truffle-oreslang/oreslang-source.cranelift/pull/69)
+  now drains native compiler stdout/stderr concurrently with a per-stream
+  64 KiB limit, rejects timeouts, and checks genuine frontend-diagnostic
+  exit codes rather than accepting any nonzero process failure. It also
+  adds oversized-output/source cases.
+
+**Evidence restriction:** GitHub-hosted attempts on these exact heads still
+end before step records are populated (`steps=null`). Neither Rust unit
+tests, workflow checks, nor true Java/LLVM/Wasmtime/NativeAOT/Cranelift
+guests have a newly verified stepful receipt from these commits. CI
+execution, independent review, and native positive + negative cases are
+required before any draft is promoted or merged.
+
+**AttoLang migration boundary:** this historical compatibility corpus still
+uses `.ores` source filenames. A separate exact-source `.atto` conformance
+gate is needed for the public AttoLang naming transition across all
+compilers; none of the current `.ores` receipts establish `.atto`
+frontend/file-import parity. Do not silently rename or rewrite fixtures
+behind backend adapters.
