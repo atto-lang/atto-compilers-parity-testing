@@ -249,3 +249,18 @@ fn fixed_gate_guest_requires_bounded_post_sgd_before_returning_success() {
     assert!(guest.contains("!bounded_post_sgd(-1000000000.0, 1000000000.0, 1.0)"));
     assert!(guest.contains("new_loss == 0.47265625"));
 }
+
+#[test]
+fn hosted_corpus_audit_uses_exact_head_and_rejects_duplicate_result_rows() {
+    let workflow = fs::read_to_string(root().join(".github/workflows/corpus-audit.yml")).unwrap();
+    assert!(workflow.contains("ref: ${{ github.event.pull_request.head.sha || github.sha }}"),
+        "PR audits must use the true head, not a synthetic GitHub merge ref");
+    assert!(workflow.contains("git rev-parse --verify HEAD"));
+    assert!(workflow.contains("git status --porcelain --untracked-files=all"));
+    assert!(workflow.contains("git rev-parse --verify 'HEAD^{tree}'"));
+    assert!(workflow.contains("duplicate backend/case record"));
+    assert!(workflow.contains("fabricated or mismatched static evidence"));
+    assert!(workflow.contains("source graph identity mismatch"));
+    assert!(workflow.contains("if (observed.size !== expectedSource.size * expectedBackends.length)"));
+    assert!(workflow.contains("d.executed !== false"));
+}
