@@ -122,7 +122,7 @@ jobs:
                   !r.graph_files.includes(expected.rel))
                 throw new Error("invalid graph inventory: " + pair);
               const payload = r.graph_files.map(rel =>
-                rel + String.fromCharCode(0) + sha(source(rel)) + "\\n").join("");
+                rel + String.fromCharCode(0) + sha(source(rel)) + String.fromCharCode(10)).join("");
               if (sha(Buffer.from(payload, "utf8")) !== r.graph_sha256)
                 throw new Error("source graph identity mismatch: " + pair);
             } else if (r.graph_sha256 !== null) {
