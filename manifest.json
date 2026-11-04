@@ -4,17 +4,20 @@
   "policy": {
     "canonical_source": "identical .ores bytes are supplied to each backend",
     "target_backends": [
-      "java",
       "llvm",
+      "java",
       "wasm",
       "dotnet",
-      "cranelift",
-      "js"
+      "forge",
+      "cranelift"
     ],
     "required_parity": true,
     "unsupported_is_pass": false,
     "infrastructure_failure_is_pass": false,
-    "negative_tests_require_diagnostic_classification": true
+    "negative_tests_require_diagnostic_classification": true,
+    "optional_backends": [
+      "js"
+    ]
   },
   "backend_snapshot": {
     "captured_on": "2026-10-25",
@@ -42,6 +45,12 @@
       "repo": "ores-truffle-oreslang/oreslang-source.js",
       "tree": "fce498c3984870f03e4b0a07e844f6907a1918ad",
       "role": "ESM transpiler; scalar/program-v2 subsets"
+    },
+    "forge": {
+      "repo": "ores-truffle-oreslang/oreslang-source.forge",
+      "tree": "f687891a68fba9b364b4e4144d47a08d1db26323",
+      "captured_on": "2026-10-29",
+      "role": "independent C++20 interpreter/native-assembly bootstrap; not a full compiler"
     },
     "cranelift": {
       "repo": "ores-truffle-oreslang/oreslang-source.cranelift",
@@ -591,70 +600,74 @@
     },
     {
       "id": "32",
-      "name": "glm-top1-highest",
-      "path": "programs/32-glm-top1-highest.ores",
-      "group": "glm-moe",
+      "name": "signed-min-boundary",
+      "path": "programs/32-signed-min-boundary.ores",
+      "group": "scalar",
       "features": [
         "int",
-        "functions",
-        "stable-top1"
+        "checked-i64",
+        "signed-min",
+        "boundary"
       ],
       "expected_kind": "exit",
       "expected_value": 42,
       "expected_diagnostic_category": null,
       "validation_status": "candidate",
-      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "source_basis": "Derived integer boundary/metamorphic oracle (2026-10-29); independently validated compiler execution pending",
       "required_on_all_backends": true
     },
     {
       "id": "33",
-      "name": "glm-top1-stable-tie",
-      "path": "programs/33-glm-top1-stable-tie.ores",
-      "group": "glm-moe",
+      "name": "signed-max-boundary",
+      "path": "programs/33-signed-max-boundary.ores",
+      "group": "scalar",
       "features": [
         "int",
-        "stable-tie",
-        "top1-routing"
+        "checked-i64",
+        "signed-max",
+        "boundary"
       ],
       "expected_kind": "exit",
       "expected_value": 42,
       "expected_diagnostic_category": null,
       "validation_status": "candidate",
-      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "source_basis": "Derived integer boundary/metamorphic oracle (2026-10-29); independently validated compiler execution pending",
       "required_on_all_backends": true
     },
     {
       "id": "34",
-      "name": "glm-negative-score-ranking",
-      "path": "programs/34-glm-negative-score-ranking.ores",
-      "group": "glm-moe",
+      "name": "checked-wide-multiply",
+      "path": "programs/34-checked-wide-multiply.ores",
+      "group": "scalar",
       "features": [
         "int",
-        "signed-ranking",
-        "top1-routing"
+        "checked-i64",
+        "wide-multiply",
+        "exactness"
       ],
       "expected_kind": "exit",
       "expected_value": 42,
       "expected_diagnostic_category": null,
       "validation_status": "candidate",
-      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "source_basis": "Derived integer boundary/metamorphic oracle (2026-10-29); independently validated compiler execution pending",
       "required_on_all_backends": true
     },
     {
       "id": "35",
-      "name": "glm-first-expert-capacity",
-      "path": "programs/35-glm-first-expert-capacity.ores",
-      "group": "glm-moe",
+      "name": "checked-negative-products",
+      "path": "programs/35-checked-negative-products.ores",
+      "group": "scalar",
       "features": [
         "int",
-        "capacity",
-        "admission"
+        "checked-i64",
+        "negative-multiply",
+        "parentheses"
       ],
       "expected_kind": "exit",
       "expected_value": 42,
       "expected_diagnostic_category": null,
       "validation_status": "candidate",
-      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "source_basis": "Derived integer boundary/metamorphic oracle (2026-10-29); independently validated compiler execution pending",
       "required_on_all_backends": true
     },
     {
@@ -927,6 +940,74 @@
       "expected_diagnostic_category": null,
       "validation_status": "candidate",
       "source_basis": "P1.2 fixed-gate scalar mathematical oracle; float parser/type/lowering not yet cross-backend proven",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "52",
+      "name": "glm-top1-highest",
+      "path": "programs/52-glm-top1-highest.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "functions",
+        "stable-top1"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "53",
+      "name": "glm-top1-stable-tie",
+      "path": "programs/53-glm-top1-stable-tie.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "stable-tie",
+        "top1-routing"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "54",
+      "name": "glm-negative-score-ranking",
+      "path": "programs/54-glm-negative-score-ranking.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "signed-ranking",
+        "top1-routing"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "55",
+      "name": "glm-first-expert-capacity",
+      "path": "programs/55-glm-first-expert-capacity.ores",
+      "group": "glm-moe",
+      "features": [
+        "int",
+        "capacity",
+        "admission"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "P1.2 bounded GLM MoE control oracle; shared source, compiler/runtime verification pending",
       "required_on_all_backends": true
     }
   ]

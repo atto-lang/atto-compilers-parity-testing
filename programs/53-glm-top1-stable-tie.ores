@@ -1,4 +1,4 @@
-// 32: GLM/MoE shared-source parity candidate. No backend-specific rewriting.
+// 53: GLM/MoE shared-source parity candidate. No backend-specific rewriting.
 // Return 42 on correct semantic behavior, 1 on mismatch. Compiler-backed evidence pending.
 fnc route(int a, int b): int { if (a >= b) { return 0; } fi return 1; }
-pub fnc main(): int { if (route(9, 2) == 0) { return 42; } fi return 1; }
+pub fnc main(): int { if (route(3, 3) == 0) { return 42; } fi return 1; }

@@ -1,4 +1,4 @@
-// 35: GLM/MoE shared-source parity candidate. No backend-specific rewriting.
+// 55: GLM/MoE shared-source parity candidate. No backend-specific rewriting.
 // Return 42 on correct semantic behavior, 1 on mismatch. Compiler-backed evidence pending.
 fnc admitted(int load, int cap): bool { if (load < 0) { return false; } fi return load < cap; }
 pub fnc main(): int { if (admitted(1, 2)) { return 42; } fi return 1; }
