@@ -76,3 +76,140 @@ That needs a dedicated adapter wrapper or a richer parity-runner pipeline. Do no
 ## Promotion rules
 
 An adapter is executable evidence only when it records the exact compiler/runtime SHA, compiles the unchanged source graph, classifies negative diagnostics, and runs the produced program where the backend claims execution support. Compile-only support, an unsupported feature, a skipped test, or a missing runner is a parity gap rather than a pass.
+
+## Running unchanged real ORM source across all six backends
+
+The opt-in `--orm-root` and `--orm-head` pair uses a separately authorized local
+checkout of `postgres-orm.ores`. No private source is fetched, mirrored, exported
+or rewritten in the parity repository. The exact 40-hex HEAD, Git object IDs,
+staged/unstaged status and bounded source file identities are checked.
+
+Four native Oreslang guest cases compile the *actual* original modules:
+`tests/schema-plans.ores`, `tests/schema-adversarial.ores`,
+`tests/schema-invariants.ores` (all import `src/schema.ores`), and
+`tests/plans.ores` (imports `src/pg.ores`). The runner fingerprints each
+entire admitted two-file graph and demands exact guest stdout, including LF.
+
+Example on an approved machine with a pinned ORM checkout:
+
+```sh
+cargo run --locked --manifest-path tools/parity-runner/Cargo.toml -- \
+  --orm-root /abs/approved/postgres-orm.ores \
+  --orm-head FULL_40_HEX_CHECKED_OUT_COMMIT \
+  --backend llvm --case-id orm-sql-plans \
+  --output orm-llvm-inventory.json
+```
+
+Only after real compiler adapters are configured add `--execute
+--allow-unvalidated`. Source-only inventory reports `not_run`, never parity.
+A successful unvalidated run reports an exploratory match until an independent
+semantic oracle review. The default remains 55 cases × 6 backends = 330
+cells; an opt-in ORM root adds four cases for 59 × 6 = 354 cells, 24 extra
+backend/guest candidates. Real Java, LLVM, Cranelift, WASM and .NET compilers
+must all receive the unchanged original Oreslang bytes.
+
+Known blockers: Cranelift currently implements a narrow scalar JIT, not the
+full ORM nominal/Array/Result/import and actor runtime. Wasm needs complete
+module import support, an admitted guest stdout ABI and pinned Wasm artifact.
+.NET needs whole-program class/constructor lowering plus NativeAOT execution.
+Java and LLVM also need exact-head compiled/running guest receipts.
+All unsupported capabilities are gaps. Full database parity further requires
+portable async database capabilities, parameter/OID codecs, actor-owned
+connections, tenant RLS, cancellation and transactions, TypeSpec/JSON parity,
+and DPM SQL catalog replay. No ORM migration apply authority is granted.
+
+
+### Concrete pinned ORM source candidate (not a compiler pass)
+
+Source ORM commit `89ec3ed01de695d7f7f24602500041f659b294e2`,
+Git tree `60da9563917ca166f00c9a09ef3346196fec378e`.
+The six genuine `.ores` blobs at that exact immutable commit are:
+
+| File | Git blob SHA-1 |
+| --- | --- |
+| `src/schema.ores` | `5cda802a2b257928a8f102ec1fc127eb61f263b6` |
+| `src/pg.ores` | `d9cfe1c1f3cc1ed14ee61cf80e648dd22291d924` |
+| `tests/schema-plans.ores` | `c73e36b0d4622c43fa8506c3100fe33b2213d2c9` |
+| `tests/schema-adversarial.ores` | `0beb839b9908b6c4995e1522bbfa03e6c1e04a99` |
+| `tests/schema-invariants.ores` | `624121a254440116423e220e89c9d7db09b162c0` |
+| `tests/plans.ores` | `58482d494207f657c85f56805c719d409181aedd` |
+
+These are Git blob identities, **not** native execution results. The runner
+independently reads the on-disk bytes and verifies their actual Git object
+identities before trying any compiler. Follow-on ORM changes require another
+exact-head and reviewed graph, not silent replacement of these blobs.
+
+### Source revision update (2026-11-01)
+
+The canonical ORM PR #13 advanced from `89ec3ed01de695d7f7f24602500041f659b294e2`
+to `bcc45900eb43b89c06bf5667f0e917255d50b770` (eight commits). This
+includes `SchemaRiskSummary`, `risk_summary_checked`, more migration
+portability checks and strengthened `.ores` invariants. The old revision is
+**not current** and may only be used when explicitly testing that historical
+source, not when claiming current ORM parity. Configure `--orm-head` to the
+exact immutable revision in the checked-out ORM repo; the runner now records
+both `source-commit` and `source-tree` on all four guest records and
+rejects an ORM path that is not the Git worktree top-level.
+
+Importantly, the check must exercise the *current* complete ORM module:
+`src/schema.ores` and `src/pg.ores` with their original test cases.
+Neither a source-identity receipt nor an inventory cell certifies an executed
+guest. Java/LLVM native execution and the unsupported Wasm/Cranelift/.NET
+frontends remain independent blocking gates.
+
+
+## Real pinned Java and LLVM compile+execute gate
+
+On a trusted machine holding three separately authorized private checkouts,
+with JDK 25 and the real LLVM compiler already built, use:
+
+```sh
+export ORES_JAVA=/abs/jdk25/bin/java
+bash scripts/run-orm-java-llvm.sh /abs/postgres-orm.ores FULL_40_HEX_ORM_HEAD \
+  /abs/oreslang-source.java /abs/oreslang-source.llvm FULL_40_HEX_LLVM_HEAD \
+  /new/private/orm-evidence
+```
+
+The runner checks Java's real `--check` CLI and then runs the exact guest,
+while LLVM's `compile-aot.sh` generates a native binary which is executed.
+No fake compiler, Java check-as-run shortcut, source rewrite, or cross-org
+source transfer is permitted. Provenance records the ORM tree, immutable
+Java/LLVM commits and compiler executable SHA-256. Missing tools or any
+guest failure abort the lane. Results remain exploratory until independently
+reviewed, stepful exact-head compiler-backed evidence is admitted.
+
+These are language-level ORM and SQL planning guests, not real PostgreSQL
+connections, migration execution, RLS or native Wasm/Cranelift/.NET proofs.
+
+## Native artifact source-to-execution hardening (2026-11-01)
+
+For the **original** ORM graph only, LLVM, WASM, and .NET now require the
+compiler stage to actually publish a bounded, nonempty, regular, non-symlink
+binary artifact. The runner records its SHA-256 and rechecks the digest after
+guest execution. WASM run templates **must** include `{artifact_sha256}` so a
+real WASM runtime can independently validate the artifact. LLVM and NativeAOT
+`.NET` run argv must be the emitted `{artifact}` executable directly; a shell
+`echo` wrapper is never admitted as native guest execution. Java/JVM and
+Cranelift JIT use their source-driven interfaces and are not credited for AOT
+artifacts. A positive source check, empty output, symlink, directory or
+missing binary remains an infrastructure failure. These are authored guards;
+not evidence that the compilers implement nominal ORM lowering.
+
+## Revised canonical ORM guest pin — 2026-11-01
+
+Canonical ORM PR #13 now references commit `dfafa6ac9be5c711d5e9b6f7964cff61f0a6a29d` with Git tree
+`afabec14235676d6fb3cbf434a243cc447f24a59`.
+The source remains **exactly the same** `src/schema.ores` and `src/pg.ores`
+for every backend; `tests/schema-invariants.ores` now includes **21 extra
+pure-Oreslang risk/ordering/forged-downgrade assertions**. Its blob is
+`b523d60f0433f3089f4770a90bd3998c97b8d4a5`. Older pins below are
+historical (not an approved current parity receipt). The parity runner
+requires `--orm-head` to equal the checked-out revision, and records the
+actual `source-commit`, `source-tree` and source graph SHA-256.
+
+LLVM/Wasm/.NET native targets also require a post-compile nonempty, bounded,
+regular output artifact, its SHA-256 and stable digest after the guest. Wasm
+must pass `{artifact_sha256}` to the runtime; LLVM/.NET invoke `{artifact}`
+directly. No produced artifact, a symlink, an empty file or a manufactured
+stdout wrapper can substitute for compiler-backed execution. Java and
+Cranelift are source-driven and have separate interpreter/JIT evidence gates.

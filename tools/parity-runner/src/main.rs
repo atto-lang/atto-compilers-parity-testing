@@ -110,6 +110,8 @@ struct Record {
     status: String,
     compile: Option<Invocation>,
     run: Option<Invocation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    artifact_sha256: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -117,6 +119,8 @@ struct Corpus {
     legacy_cases: usize,
     multifile_checks: usize,
     negative_probes: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    external_orm_cases: Option<usize>,
     total_cases: usize,
 }
 
@@ -442,21 +446,32 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
         legacy_cases: legacy.cases.len(),
         multifile_checks: checks_manifest.checks.len(),
         negative_probes,
+        external_orm_cases: None,
         total_cases: cases.len(),
     };
     Ok((cases, corpus))
 }
+
+mod external_orm;
 
 fn expand(
     template: &str,
     source: &Path,
     artifact: &Path,
     workdir: &Path,
+    artifact_sha256: Option<&str>,
 ) -> Result<Vec<String>, String> {
+    if template.contains("{artifact_sha256}") && artifact_sha256.is_none() {
+        return Err("artifact digest requested before verified compiler output".into());
+    }
     let parts = shell_words::split(template).map_err(|e| e.to_string())?;
     Ok(parts
         .into_iter()
         .map(|p| {
+            let p = match artifact_sha256 {
+                Some(digest) => p.replace("{artifact_sha256}", digest),
+                None => p,
+            };
             p.replace("{source}", &source.to_string_lossy())
                 .replace("{artifact}", &artifact.to_string_lossy())
                 .replace("{workdir}", &workdir.to_string_lossy())
@@ -667,6 +682,7 @@ fn evaluate_case(
         status: "not_run".into(),
         compile: None,
         run: None,
+        artifact_sha256: None,
     };
     if !execute {
         return Ok(record);
@@ -683,7 +699,18 @@ fn evaluate_case(
         record.status = "backend_not_configured".into();
         return Ok(record);
     }
+    if !external_orm::adapter_admitted(case, backend,
+        compile_template.as_deref().unwrap_or(""),
+        run_template.as_deref().unwrap_or(""))
+    {
+        record.status = "runtime_infrastructure_failure".into();
+        return Ok(record);
+    }
 
+    if !external_orm::still_bound(case) {
+        record.status = "compile_infrastructure_failure".into();
+        return Ok(record);
+    }
     let workdir = temp_dir(&case.case_id, backend)?;
     let artifact = workdir.join("program");
     let compile_argv = expand(
@@ -691,11 +718,32 @@ fn evaluate_case(
         &case.source,
         &artifact,
         &workdir,
+        None,
     )?;
     let compile = invoke(&compile_argv, &workdir, timeout);
     let compile_status = compile.status.clone();
     let compile_exit = compile.exit_code;
     record.compile = Some(compile);
+    if !external_orm::still_bound(case) {
+        record.status = "compile_infrastructure_failure".into();
+        let _ = fs::remove_dir_all(workdir);
+        return Ok(record);
+    }
+
+    let artifact_pin = if compile_status == "completed" && compile_exit == Some(0)
+        && case.expected_kind == "exit" {
+        match external_orm::compiled_artifact_digest(case, backend, &artifact) {
+            Ok(pin) => pin,
+            Err(_) => {
+                record.status = "runtime_infrastructure_failure".into();
+                let _ = fs::remove_dir_all(workdir);
+                return Ok(record);
+            }
+        }
+    } else {
+        None
+    };
+    record.artifact_sha256 = artifact_pin.clone();
 
     if compile_status != "completed" || compile_exit.is_none() || compile_exit == Some(125) {
         record.status = "compile_infrastructure_failure".into();
@@ -746,19 +794,41 @@ fn evaluate_case(
             &case.source,
             &artifact,
             &workdir,
+            artifact_pin.as_deref(),
         )?;
         let run = invoke(&run_argv, &workdir, timeout);
         let run_status = run.status.clone();
         let run_exit = run.exit_code;
         let stdout_hex = run.stdout_hex.clone();
         record.run = Some(run);
+        if artifact_pin.is_some()
+            && external_orm::compiled_artifact_digest(case, backend, &artifact)
+                != Ok(artifact_pin.clone())
+        {
+            record.status = "runtime_infrastructure_failure".into();
+            let _ = fs::remove_dir_all(workdir);
+            return Ok(record);
+        }
+        if !external_orm::still_bound(case) {
+            record.status = "runtime_infrastructure_failure".into();
+            let _ = fs::remove_dir_all(workdir);
+            return Ok(record);
+        }
         record.status = if run_status != "completed" || run_exit.is_none() || run_exit == Some(125)
         {
             "runtime_infrastructure_failure".into()
         } else if !matches_expected_result(case, backend, run_exit, &stdout_hex) {
             "wrong_result".into()
         } else if let Some(prefix) = &case.expected_stdout_prefix {
-            if !stdout_hex.starts_with(&hex(prefix.as_bytes())) {
+            // External ORM uses an EXACT stdout oracle. A prefix plus fake
+            // success, truncated guest output or extra diagnostics is not a pass.
+            let expected_hex = hex(prefix.as_bytes());
+            let correct = if case.suite == "external-orm-exact-head" {
+                stdout_hex == expected_hex
+            } else {
+                stdout_hex.starts_with(&expected_hex)
+            };
+            if !correct {
                 "wrong_stdout".into()
             } else if case.validation_status == "validated" {
                 "pass".into()
@@ -822,7 +892,27 @@ fn main() -> Result<(), String> {
         .join("../..")
         .canonicalize()
         .map_err(|e| e.to_string())?;
-    let (cases, corpus) = load_cases(&root)?;
+
+    let orm_roots: Vec<_> = args.windows(2).filter(|args| args[0] == "--orm-root")
+        .map(|args| args[1].clone()).collect();
+    let orm_heads: Vec<_> = args.windows(2).filter(|args| args[0] == "--orm-head")
+        .map(|args| args[1].clone()).collect();
+    let root_flags = args.iter().filter(|arg| arg.as_str() == "--orm-root").count();
+    let head_flags = args.iter().filter(|arg| arg.as_str() == "--orm-head").count();
+    if root_flags > 1 || head_flags > 1
+        || orm_roots.len() != root_flags || orm_heads.len() != head_flags
+        || orm_roots.is_empty() != orm_heads.is_empty()
+        || orm_roots.iter().chain(orm_heads.iter()).any(|value| value.starts_with("--"))
+    {
+        return Err("--orm-root and --orm-head are a required unique pair".into());
+    }
+    let (mut cases, mut corpus) = load_cases(&root)?;
+    if let (Some(path), Some(head)) = (orm_roots.first(), orm_heads.first()) {
+        let extra = external_orm::load(Path::new(path), head)?;
+        corpus.external_orm_cases = Some(extra.len());
+        corpus.total_cases += extra.len();
+        cases.extend(extra);
+    }
     let known_ids: BTreeSet<&str> = cases.iter().map(|case| case.case_id.as_str()).collect();
     for id in &case_ids {
         if !known_ids.contains(id.as_str()) {
@@ -1010,6 +1100,58 @@ mod tests {
         assert!(!lowercase_kebab("Actor-System"));
         assert!(!lowercase_kebab("actor_system"));
         assert!(!lowercase_kebab("actor--system"));
+    }
+
+    #[test]
+    fn sha256_expansion_requires_real_compiled_artifact_digest() {
+        let root = std::env::temp_dir();
+        let artifact = root.join("ores-orm-imaginary.wasm");
+        assert!(super::expand(
+            "run --sha256={artifact_sha256}", &artifact, &artifact, &root, None
+        ).is_err());
+        let command = super::expand(
+            "run --sha256={artifact_sha256} --path={artifact}",
+            &artifact, &artifact, &root, Some("012345abcdef")
+        ).unwrap();
+        assert_eq!(command[1], "--sha256=012345abcdef");
+        assert!(command[2].starts_with("--path="));
+    }
+
+    #[test]
+    fn aot_guest_adapter_requires_actual_artifact_but_jit_uses_source() {
+        let case = super::TestCase {
+            suite: "external-orm-exact-head".into(),
+            case_id: "orm-sql-plans".into(),
+            name: "orm-sql-plans".into(),
+            source: std::path::PathBuf::new(),
+            source_sha256: String::new(),
+            graph_sha256: None,
+            graph_files: None,
+            expected_kind: "exit".into(),
+            expected_value: Some(0),
+            expected_diagnostic_category: None,
+            expected_stdout_prefix: None,
+            validation_status: "unvalidated".into(),
+            features: vec!["orm".into()],
+        };
+        for backend in ["llvm", "wasm", "dotnet"] {
+            assert!(super::external_orm::needs_artifact(&case, backend));
+            assert!(super::external_orm::compiled_artifact_digest(
+                &case, backend, &std::env::temp_dir().join("no-real-orm-artifact-1324")
+            ).is_err());
+        }
+        assert!(!super::external_orm::needs_artifact(&case, "java"));
+        assert!(!super::external_orm::needs_artifact(&case, "cranelift"));
+        assert!(!super::external_orm::adapter_admitted(
+            &case, "wasm", "compile {source} {artifact}", "run {artifact}"
+        ));
+        assert!(super::external_orm::adapter_admitted(
+            &case, "wasm", "compile {source} {artifact}",
+            "run {artifact} --sha256={artifact_sha256}"
+        ));
+        assert!(!super::external_orm::adapter_admitted(
+            &case, "llvm", "compile {source}", "run {artifact}"
+        ));
     }
 
     #[test]
