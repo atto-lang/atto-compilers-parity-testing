@@ -8,6 +8,7 @@ fn base(backend: &str) -> Value {
         "net" => ("ores-truffle-oreslang/oreslang-source.net", 1419704375u64),
         "wasm" => ("ores-truffle-oreslang/oreslang-source.wasm", 1419858954u64),
         "forge" => ("ores-truffle-oreslang/oreslang-source.forge", 1419703674u64),
+        "cranelift" => ("ores-truffle-oreslang/oreslang-source.cranelift", 1437273004u64),
         _ => panic!("bad test backend"),
     };
     json!({
@@ -343,4 +344,23 @@ fn guest_report_cannot_self_promote_unvalidated_or_uncompiled_cases() {
             .status
             .success()
     );
+}
+
+#[test]
+fn valid_cranelift_runner_execution_is_distinct_from_forge_and_guest_proof() {
+    let output = run("cranelift-valid", &base("cranelift"));
+    assert!(output.status.success(), "{:?}", String::from_utf8_lossy(&output.stderr));
+    let result: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(result["source_backend"], "cranelift");
+    assert_eq!(result["parity_backend"], "cranelift");
+    assert_eq!(result["claim_tier"], "RUNNER_EXECUTED");
+}
+#[test]
+fn cranelift_identity_cannot_be_spoofed_with_forge_repository_id() {
+    let mut value = base("cranelift");
+    value["repository_id"] = json!(1419703674);
+    assert!(!run("cranelift-forge-id", &value).status.success());
+    value["repository_id"] = json!(1437273004);
+    value["repository"] = json!("ores-truffle-oreslang/oreslang-source.forge");
+    assert!(!run("cranelift-forge-repo", &value).status.success());
 }
