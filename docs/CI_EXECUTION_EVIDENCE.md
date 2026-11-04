@@ -44,7 +44,7 @@ report may claim host tests, native compiler build, or compiled guest execution.
 
 ## Backend identity
 
-The five required source identities are pinned numerically:
+The six required source identities are pinned numerically (Cranelift is independent of Forge):
 
 | Source evidence key | Repository | Repository ID | Parity target |
 | --- | --- | ---: | --- |
@@ -53,6 +53,7 @@ The five required source identities are pinned numerically:
 | `net` | `ores-truffle-oreslang/oreslang-source.net` | 1419704375 | `dotnet` |
 | `wasm` | `ores-truffle-oreslang/oreslang-source.wasm` | 1419858954 | `wasm` |
 | `forge` | `ores-truffle-oreslang/oreslang-source.forge` | 1419703674 | `forge` |
+| `cranelift` | `ores-truffle-oreslang/oreslang-source.cranelift` | 1437273004 | `cranelift` |
 
 The explicit `net` → `dotnet` normalization prevents accidental omission or
 double-counting caused by naming drift.
