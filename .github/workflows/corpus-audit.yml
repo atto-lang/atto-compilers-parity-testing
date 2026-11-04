@@ -45,6 +45,14 @@ jobs:
         run: cargo clippy --manifest-path tools/parity-runner/Cargo.toml --locked --all-targets -- -D warnings
       - name: Build parity runner
         run: cargo build --manifest-path tools/parity-runner/Cargo.toml --locked --bins
+      - name: Validate synthetic exact-run evidence contract (not real CI evidence)
+        run: |
+          cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml --locked --bin evidence-contract -- \
+            evidence/fixtures/synthetic-runner-executed.json
+      - name: Validate historical Java attempt-2 host evidence bundle
+        run: |
+          cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml --locked --bin evidence-contract -- \
+            evidence/java-fast-ci-38338581442-attempt2.json
       - name: Audit 73 x 6 required matrix without making compiler claims
         run: |
           cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml -- --output parity-results.json
@@ -55,6 +63,15 @@ jobs:
           if (d.cases !== 73 || d.records.length !== 438 || d.summary.not_run !== 438) process.exit(1);
           if (JSON.stringify(d.backends) !== JSON.stringify(
             ["llvm","java","wasm","dotnet","forge","cranelift"])) process.exit(1);
+          const signedI64 = d.records.filter(r => ["32","33","34","35"].includes(r.case_id));
+          if (signedI64.length !== 24 ||
+              !signedI64.every(r => r.status === "not_run" && r.validation_status === "candidate" &&
+                  !r.name.startsWith("glm-"))) {
+            throw new Error("canonical signed-i64 identity was overwritten");
+          }
+          const glmRecords = d.records.filter(r => r.name.startsWith("glm-"));
+          if (glmRecords.length !== 120 || new Set(glmRecords.map(r => r.case_id)).size !== 20)
+              throw new Error("missing or duplicated 20 GLM shared-source cases");
           const missingCranelift = d.records.filter(r => r.backend === "cranelift");
           if (missingCranelift.length !== 73 ||
               !missingCranelift.every(r => r.status === "not_run")) process.exit(1);
@@ -75,7 +92,14 @@ jobs:
                 rel.split("/").some(x => x === ".." || x === "")) {
               throw new Error("unsafe source reference: " + rel);
             }
-            if (!lstatSync(rel).isFile()) throw new Error("nonregular or symlinked source: " + rel);
+            const {join} = require("node:path");
+            let ancestor = "";
+            for (const component of rel.split("/")) {
+              ancestor = join(ancestor, component);
+              if (lstatSync(ancestor).isSymbolicLink())
+                throw new Error("symlinked source ancestor: " + ancestor);
+            }
+            if (!lstatSync(rel).isFile()) throw new Error("nonregular source: " + rel);
             return readFileSync(rel);
           };
           const expectedSource = new Map();
