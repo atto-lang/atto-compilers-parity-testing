@@ -217,6 +217,26 @@ fn import_target(line: &str) -> Option<String> {
     Some(rest[..end].to_string())
 }
 
+/// Extensionless imports select exactly one of `name.atto` (canonical) or
+/// legacy `name.ores`, the LLVM compiler's migration rule. Both present is
+/// ambiguous: the fingerprinted graph must not depend on which file wins.
+fn resolve_source_suffix(candidate: PathBuf) -> Result<PathBuf, String> {
+    if candidate.extension().is_some() {
+        return Ok(candidate);
+    }
+    let atto = candidate.with_extension("atto");
+    let ores = candidate.with_extension("ores");
+    match (atto.is_file(), ores.is_file()) {
+        (true, true) => Err(format!(
+            "ambiguous extensionless import: both {} and {} exist",
+            atto.display(),
+            ores.display()
+        )),
+        (true, false) => Ok(atto),
+        _ => Ok(ores),
+    }
+}
+
 fn local_imports(path: &Path, root: &Path) -> Result<Vec<PathBuf>, String> {
     let text = fs::read_to_string(path).map_err(|e| e.to_string())?;
     let mut result = Vec::new();
@@ -224,13 +244,12 @@ fn local_imports(path: &Path, root: &Path) -> Result<Vec<PathBuf>, String> {
         if !target.starts_with('.') {
             continue;
         }
-        let mut candidate = path
+        let candidate = path
             .parent()
             .ok_or_else(|| format!("source has no parent: {}", path.display()))?
             .join(&target);
-        if candidate.extension().is_none() {
-            candidate.set_extension("ores");
-        }
+        let candidate = resolve_source_suffix(candidate)
+            .map_err(|e| format!("{} imports {target}: {e}", path.display()))?;
         let candidate = candidate
             .canonicalize()
             .map_err(|e| format!("{} imports {target}: {e}", path.display()))?;
@@ -910,6 +929,28 @@ mod tests {
             Some("./dep.ores".into())
         );
         assert_eq!(import_target("pub fnc main(): void { return; }"), None);
+    }
+
+    #[test]
+    fn extensionless_imports_prefer_the_single_existing_suffix() {
+        let dir = std::env::temp_dir().join(format!("parity-suffix-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let base = dir.join("dep");
+        // Neither exists: fall back to the legacy name so the caller reports it missing.
+        assert_eq!(super::resolve_source_suffix(base.clone()).unwrap(), dir.join("dep.ores"));
+        std::fs::write(dir.join("dep.atto"), "").unwrap();
+        assert_eq!(super::resolve_source_suffix(base.clone()).unwrap(), dir.join("dep.atto"));
+        std::fs::write(dir.join("dep.ores"), "").unwrap();
+        let ambiguous = super::resolve_source_suffix(base.clone()).unwrap_err();
+        assert!(ambiguous.contains("ambiguous"), "{ambiguous}");
+        std::fs::remove_file(dir.join("dep.atto")).unwrap();
+        assert_eq!(super::resolve_source_suffix(base).unwrap(), dir.join("dep.ores"));
+        // An explicit suffix is never rewritten.
+        assert_eq!(
+            super::resolve_source_suffix(dir.join("x.atto")).unwrap(),
+            dir.join("x.atto")
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

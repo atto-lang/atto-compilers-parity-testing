@@ -2,7 +2,7 @@
 
 The Rust `java-reference` adapter prepares and launches a clean, commit-pinned
 Java reference compiler. It never copies, flattens or rewrites guest source.
-All 49 cases are attempted with `--allow-unvalidated`; matching results remain
+All 54 cases are attempted with `--allow-unvalidated`; matching results remain
 explicitly exploratory. No validation status is promoted automatically.
 
 ## Reproduce on macOS or Linux
@@ -26,7 +26,7 @@ tools/parity-runner/target/release/java-reference execute \
 invocation, and returns the runner's exit code. An exit of 1 with a published
 report means corpus expectations were not all met; inspect every record.
 Other backends are excluded from this reference-only run. The default corpus
-audit still enumerates all five backends (245 records).
+audit still enumerates all five backends (270 records).
 
 Preparation records the compiler commit/tree, JDK/Maven versions, and SHA-256
 pins for the compiler JAR, every runtime-classpath JAR, native carrier library,

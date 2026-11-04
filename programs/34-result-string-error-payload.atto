@@ -1,0 +1,17 @@
+// 34: result-string-error-payload
+// oreslang-http-routing RouterBuilder.route returns Result<bool, String> with a
+// String error message on rejected registrations.
+fnc check(int value): Result<bool, String> {
+  if value < 0; then
+    return Err("negative");
+  fi
+  return Ok(true);
+}
+pub fnc main(): int {
+  val Result<bool, String> bad = check(-1);
+  val Result<bool, String> good = check(1);
+  if bad.is_err() && good.is_ok(); then
+    return 42;
+  fi
+  return 1;
+}

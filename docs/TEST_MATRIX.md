@@ -1,4 +1,4 @@
-# 31-program design
+# 36-program design
 
 This corpus is a feature ladder, not 30 variations of arithmetic.
 
@@ -11,10 +11,13 @@ This corpus is a feature ladder, not 30 variations of arithmetic.
 | 23-27 | cleanup, exceptions, async and channels |
 | 28-30 | actor lifecycle, lexical isolation and critical state |
 | 31 | static select outer-delimiter parity (`{ ... }` vs `over ... end`) |
+| 32-36 | AttoLang (`.atto`) programs reduced from `oreslang-http-routing`: Array element mutation, loop-local class owners, `Result<bool, String>`, inferred class locals, `stdio.println(int)` |
 
 All five backends are targets for every case. A backend that does not implement a case is a **parity gap**, not a skip/pass. The validation_status field records how strongly the source is grounded today; only independently executed and oracle-checked cases should later be promoted to validated.
 
 Cases 27 and 30 intentionally remain candidates because their exact source/runtime contracts still require executable reference validation. They are real stress programs, not placeholders.
+
+Cases 32-36 are canonical `.atto` sources, each a minimal form of a construct the HTTP router uses. They are candidates: Java executes all five, while LLVM currently runs only 34; 32, 33, 35 and 36 are the native gaps that keep the router from compiling natively.
 
 Case 31 is a Java reference-test target. Backends that currently reject static select must report that as a parity gap; an explicit fail-closed diagnostic is better than accidental parsing or fake execution, but it does not count as feature parity.
 
@@ -25,7 +28,7 @@ Positive `main.ores` files each import three unique local files and assert
 their semantic expectations. The Rust runner fingerprints the recursively
 reachable graph and records those files for each backend result.
 
-The 49-case, five-backend audit matrix contains 245 records. A not-run record
+The 54-case, five-backend audit matrix contains 270 records. A not-run record
 is corpus inventory, not compiler/runtime conformance. Ordinary match/switch
 suspension remains distinct from the rejected `nb match` / `nb switch`
 spellings. The modern actor counter uses `handle_state` for mutation.

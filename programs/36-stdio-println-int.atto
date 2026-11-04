@@ -1,0 +1,7 @@
+// 36: stdio-println-int
+// oreslang-http-routing tests print int results directly with stdio.println.
+pub fnc main(): int {
+  val int answer = 42;
+  stdio.println(answer);
+  return answer;
+}

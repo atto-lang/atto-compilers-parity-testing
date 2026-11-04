@@ -12,12 +12,12 @@ fnc add_two(borrow mut Counter c): void {
   return;
 }
 fnc act(borrow mut Counter c): void {
-  defer add_two(rt borrow mut c);
-  defer multiply_ten(rt borrow mut c);
+  defer add_two(rt mut borrow c);
+  defer multiply_ten(rt mut borrow c);
   return;
 }
 pub fnc main(): int {
   let mut Counter c = new Counter();
-  act(rt borrow mut c);
+  act(rt mut borrow c);
   return c.value;
 }

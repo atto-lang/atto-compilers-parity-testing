@@ -1,0 +1,15 @@
+// 33: loop-local-mutable-class-owner
+// oreslang-http-routing: a mutable class owner declared inside a loop body is
+// created, mutated and dropped on every iteration.
+define class Counter as
+  pub let int total = 0;
+end
+pub fnc main(): int {
+  let int sum = 0;
+  for (let int i = 0; i < 3; i = i + 1) {
+    let mut Counter c = new Counter();
+    c.total = i * 7;
+    sum = sum + c.total;
+  }
+  return sum + 21;
+}

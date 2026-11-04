@@ -1,0 +1,15 @@
+// 35: inferred-class-local
+// oreslang-http-routing tests: a class-valued local declared without a type,
+// inferred from the callee's declared return type.
+define class Box as
+  pub let int value = 0;
+end
+fnc make(): Box {
+  let mut Box b = new Box();
+  b.value = 42;
+  return b;
+}
+pub fnc main(): int {
+  val b = make();
+  return b.value;
+}

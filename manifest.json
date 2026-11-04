@@ -378,7 +378,7 @@
       "expected_value": 42,
       "expected_diagnostic_category": null,
       "validation_status": "reference_derived",
-      "source_basis": "LLVM class-mutable-borrow-native fixture using canonical rt borrow mut spelling",
+      "source_basis": "LLVM class-mutable-borrow-native fixture using canonical rt mut borrow spelling",
       "required_on_all_backends": true
     },
     {
@@ -579,6 +579,90 @@
       "expected_diagnostic_category": null,
       "validation_status": "reference_test",
       "source_basis": "Java PR #2079 SelectOverEndSyntaxTest and delimiter-equivalence contract",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "32",
+      "name": "class-array-element-mutation",
+      "path": "programs/32-class-array-element-mutation.atto",
+      "group": "data-ownership",
+      "features": [
+        "class",
+        "array",
+        "mutable-element-alias"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "oreslang-http-routing src/http_routing.atto RouterBuilder.route (BuildNode in-place update)",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "33",
+      "name": "loop-local-mutable-class-owner",
+      "path": "programs/33-loop-local-mutable-class-owner.atto",
+      "group": "data-ownership",
+      "features": [
+        "class",
+        "loop",
+        "owner-drop"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "oreslang-http-routing src/http_routing.atto (mutable class owner in a loop body)",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "34",
+      "name": "result-string-error-payload",
+      "path": "programs/34-result-string-error-payload.atto",
+      "group": "control",
+      "features": [
+        "result",
+        "string",
+        "sum-types"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "oreslang-http-routing RouterBuilder.route -> Result<bool, String>",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "35",
+      "name": "inferred-class-local",
+      "path": "programs/35-inferred-class-local.atto",
+      "group": "data-ownership",
+      "features": [
+        "class",
+        "type-inference",
+        "owning-return"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "oreslang-http-routing tests/router_semantics.atto (untyped class-valued locals)",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "36",
+      "name": "stdio-println-int",
+      "path": "programs/36-stdio-println-int.atto",
+      "group": "effects-async",
+      "features": [
+        "stdio",
+        "int-formatting"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 42,
+      "expected_diagnostic_category": null,
+      "validation_status": "candidate",
+      "source_basis": "oreslang-http-routing tests/router_semantics.atto (stdio.println of int results)",
       "required_on_all_backends": true
     }
   ]

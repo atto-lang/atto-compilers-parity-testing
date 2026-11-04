@@ -1,0 +1,14 @@
+// 32: class-array-element-mutation
+// oreslang-http-routing RouterBuilder.route: bind an Array<Class> element as a
+// mutable local and update it in place; the update is visible through the array.
+define class Node as
+  pub let int child = -1;
+end
+pub fnc main(): int {
+  let mut Array<Node> nodes = new Array<Node>();
+  nodes.add(new Node());
+  let mut Node current = nodes.get(0);
+  current.child = 42;
+  val Node again = nodes.get(0);
+  return again.child;
+}
