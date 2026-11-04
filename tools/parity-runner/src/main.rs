@@ -1105,6 +1105,10 @@ fn validate_cli_args(args: &[String]) -> Result<(), String> {
     Ok(())
 }
 
+fn is_verified_execution_status(status: &str) -> bool {
+    matches!(status, "pass" | "expected_reject")
+}
+
 fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     validate_cli_args(&args)?;
@@ -1208,7 +1212,7 @@ fn main() -> Result<(), String> {
     // explicitly non-executing and may exit zero.
     let hard_fail = execute && (report.records.is_empty()
         || report.records.iter().any(|record| {
-            !matches!(record.status.as_str(), "pass" | "expected_reject")
+            !is_verified_execution_status(&record.status)
         }));
     if hard_fail {
         std::process::exit(1);
@@ -1267,6 +1271,20 @@ mod tests {
             classify_diagnostic(&rules, "java", &invocation).as_deref(),
             Some("integer_range")
         );
+    }
+
+    #[test]
+    fn exploratory_unknown_and_source_only_results_cannot_certify_execution() {
+        assert!(super::is_verified_execution_status("pass"));
+        assert!(super::is_verified_execution_status("expected_reject"));
+        for status in [
+            "not_run", "unvalidated", "exploratory_match_not_parity_pass",
+            "exploratory_expected_reject_not_parity_pass", "intentional_capability_reject",
+            "backend_not_configured", "compile_infrastructure_failure",
+            "runtime_infrastructure_failure", "unknown_future_status",
+        ] {
+            assert!(!super::is_verified_execution_status(status), "{status}");
+        }
     }
 
     #[test]
