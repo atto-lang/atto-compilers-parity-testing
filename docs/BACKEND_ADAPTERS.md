@@ -8,8 +8,8 @@ The parity runner deliberately separates the corpus from backend-specific launch
 | LLVM native | `scripts/compile-aot.sh source.ores output` using built `oreslang-llvmc` + Clang | Execute emitted native binary | Native scalar/module support is the strongest direct compile/run adapter; unsupported features must reject |
 | WASM | `scripts/compile-ores.mjs --compiler=... --source=... --output=...` using a pinned LLVM compiler | `scripts/run-guest.mjs --wasm=... --sha256=...` | Current bridge explicitly supports standalone scalar source and says relative module graphs need a future pinned module-graph gate |
 | .NET Native AOT | `oresnet check`; `oresnet compile source.ores --out .../OresGenerated.dll` | Generated CIL must be linked into `Ores.Net.NativeHost` with `dotnet publish`, then the native host executes | Requires an adapter wrapper for compile → host publish → run; current scalar compiler does not establish whole-program import parity |
-| Cranelift experimental JIT | `cargo run --locked -- ir source.ores` verifies only the scalar grammar | `cargo run --locked -- run source.ores [args]` compiles and executes an in-process scalar native JIT | No reviewed separate compile/run artifact adapter yet; modules, classes, arrays, `Result`, and full proxy runtime are unsupported |
-| JavaScript transpiler | `node bin/oreslang-jsc.mjs --check source.ores`; compile with `--out=/absolute/output.mjs` | Import generated ESM and call exported `main()` | Scalar programs are executable; actors/async/import-graph support must fail closed when unsupported |
+| Forge (required) | `oresforge ir source.ores` checks the currently admitted scalar subset (and interprets it for overflow validation) | `oresforge run source.ores` returns **stdout number and process exit 0**, so a reviewed conversion adapter is required; `emit-asm` supports only narrow native subsets | Independent C++20 bootstrap; no general multi-file Oreslang compile/run adapter or complete native proof |
+| JavaScript transpiler (optional) | `node bin/oreslang-jsc.mjs --check source.ores`; compile with `--out=/absolute/output.mjs` | Import generated ESM and call exported `main()` | Scalar programs are executable; actors/async/import-graph support must fail closed when unsupported |
 
 ## Runner templates
 
@@ -34,7 +34,7 @@ tools/parity-runner/target/release/java-reference execute /abs/java-bundle.json 
 ```
 
 This runs the JVM reference with `--mode=aot` (guest JIT disabled), not a Native Image executable.
-Its results are exploratory, never six-backend parity proof.
+Its results are exploratory, never five-backend parity proof.
 
 ### LLVM native
 
@@ -47,11 +47,13 @@ export ORES_PARITY_LLVM_RUN='{artifact}'
 
 The compile script fails closed if the source subset is unsupported and never falls back to an interpreter.
 
-### Cranelift native JIT gap
+### Forge compiler: mandatory target, adapter pending
 
-Cranelift is a **sixth** explicit parity target, not a stand-in for LLVM. Its current scalar-only frontend cannot compile the unchanged proxy `src/load_balancer.ores` and `tests/load_balancer_contract.ores`. `ir` is not an independently published executable-artifact step; `run` combines compilation and native execution. A trusted adapter must preserve separate compile/result evidence, pin the exact compiler binary, reject unsupported features, and never interpret a scalar JIT smoke as complete proxy parity. Track the shared language and native execution gap at https://github.com/ores-truffle-oreslang/oreslang-compilers-parity-testing/issues/26.
+Forge is an independent compiler/backend and **must not** be represented by JS or LLVM evidence. The current C++20 bootstrap supports checked signed-i64 arithmetic, but its normal `run` command prints the interpreted value and exits 0. This is not the process-exit contract used by the legacy parity corpus. A reviewed Forge adapter must validate the compiler binary SHA and compilation profile, preserve genuine negative diagnostic output, and translate only a successfully executed, exact integer result into the legacy exit oracle. It must distinguish interpreter evidence from real emitted native code, refuse unsupported/multi-file graphs, and fail closed. No such adapter or native five-backend execution proof is claimed by this change.
 
-### JavaScript
+Forge's current compiler provides specific diagnostic needles for out-of-range i64 literals, duplicate functions and call arity. These are indexed in `diagnostics.json`; no generic `expected integer` error is accepted as `unknown_identifier`, and unsupported-feature diagnostics remain gaps. The current `15-arity-reject` fixture also uses type-first parameters, which Forge's name-first scalar bootstrap does not admit. A different earlier syntax error must not be misclassified as an arity pass.
+
+### JavaScript (optional)
 
 The JS CLI publishes executable ESM atomically. A run adapter must import that module and call exported `main()`; simply invoking the generated module is not enough because it exports `main` rather than automatically calling it.
 
@@ -81,3 +83,10 @@ That needs a dedicated adapter wrapper or a richer parity-runner pipeline. Do no
 ## Promotion rules
 
 An adapter is executable evidence only when it records the exact compiler/runtime SHA, compiles the unchanged source graph, classifies negative diagnostics, and runs the produced program where the backend claims execution support. Compile-only support, an unsupported feature, a skipped test, or a missing runner is a parity gap rather than a pass.
+
+Cranelift is also a required independent target, alongside LLVM, Java, Wasm, .NET and Forge; JavaScript remains optional. The 53-case default audit now yields 318 non-executed cells. Cranelift uses ORES_PARITY_CRANELIFT_COMPILE and ORES_PARITY_CRANELIFT_RUN. Its scalar JIT has no reviewed separate artifact adapter for this corpus; unavailable or unsupported source remains a gap, never a pass.
+
+### Cranelift native JIT gap
+
+Cranelift is a **sixth** explicit parity target, not a stand-in for LLVM. Its current scalar-only frontend cannot compile the unchanged proxy `src/load_balancer.ores` and `tests/load_balancer_contract.ores`. `ir` is not an independently published executable-artifact step; `run` combines compilation and native execution. A trusted adapter must preserve separate compile/result evidence, pin the exact compiler binary, reject unsupported features, and never interpret a scalar JIT smoke as complete proxy parity. Track the shared language and native execution gap at https://github.com/ores-truffle-oreslang/oreslang-compilers-parity-testing/issues/26.
+
