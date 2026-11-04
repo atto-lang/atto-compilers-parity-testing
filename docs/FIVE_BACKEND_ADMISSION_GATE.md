@@ -95,3 +95,17 @@ executed compiler proofs. The Cranelift CLI test now references the two copied
 files at compile time and invokes the actual native JIT when a runner executes
 the integration test. Require source/revision/toolchain SHA and diagnostics,
 plus independent exact-head guest receipts, before promotion.
+
+## Six-compiler reconciliation (2026-11-03)
+
+The historical five-compiler sections above precede the merged mainline
+Forge contract. The current **required** six compiler targets are Java/Graal,
+LLVM, WASM, .NET NativeAOT, Forge, and Cranelift; JavaScript is a separate
+optional seventh adapter. The signed-i64 mainline cases own IDs 32–35,
+while four colliding GLM cases moved to IDs 52–55. The current inventory is
+55 legacy sources + 16 whole-program checks + 2 negative probes = 73 cases,
+438 required backend/case records, and 73 optional JS records. GLM accounts
+for 20 × 6 = 120 **required native guest execution outcomes**. No inventory
+record is compiler execution evidence. Maintain exact source and compiler
+SHA provenance, stable semantic oracles, and the independent repository-ID
+checks in `evidence-contract` before any promotion.
