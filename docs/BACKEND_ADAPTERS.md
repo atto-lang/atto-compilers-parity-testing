@@ -117,4 +117,8 @@ An adapter is executable evidence only when it records the exact compiler/runtim
 
 ### Cranelift explicit fail-closed admission
 
-The runner now includes `cranelift` as a sixth independent backend with `ORES_PARITY_CRANELIFT_COMPILE` and `ORES_PARITY_CRANELIFT_RUN`. The user-facing five native/managed backends are Java, LLVM, WASM, Cranelift and .NET; existing JS coverage remains. An absent adapter is `backend_not_configured` in all 69 current cases, and exit 125 is `compile_infrastructure_failure`; neither grants parity. The scalar-only Cranelift JIT currently cannot claim ODB1 WAL/actor integration.
+The runner now includes `cranelift` as a sixth **required compiler** backend alongside the independent `forge` compiler, with `ORES_PARITY_CRANELIFT_COMPILE` and `ORES_PARITY_CRANELIFT_RUN`. The six required compiler backends are Java, LLVM, WASM, .NET, Forge, and Cranelift. JavaScript is an optional seventh adapter selected only explicitly. An absent adapter is `backend_not_configured` in all 73 current cases, and exit 125 is `compile_infrastructure_failure`; neither grants parity. The scalar-only Cranelift JIT currently cannot claim ODB1 WAL/actor integration.
+
+### Forge remains mandatory
+
+`forge` is not an alias for `cranelift`. Do not satisfy Forge's proof with a Cranelift, LLVM or interpreter-only result. Use independently pinned compiler/runtime artifacts, and classify currently unsupported source as a parity gap (not `pass`). The default inventory enumerates 73 cases on each of the six required compilers (438 `not_run` cells until independently executed); JavaScript's optional 73-cell inventory is not in the required matrix.
