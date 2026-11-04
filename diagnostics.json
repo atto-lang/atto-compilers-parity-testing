@@ -1,12 +1,26 @@
 {
   "java": {
-    "integer_range": ["integer literal overflows signed 64-bit:"],
-    "type_mismatch": ["return value has type FLOAT but expected INT"],
-    "arity": ["call arity mismatch"],
-    "unknown_identifier": ["unknown name 'missing'"],
-    "duplicate_symbol": ["module/top-level overload identity is name + arity only"],
-    "actor_lexical_isolation": ["cannot implicitly access file/module callable"],
-    "unsupported_nb_prefix": ["'nb' must prefix readch, writech, select, or cb writech"]
+    "integer_range": [
+      "integer literal overflows signed 64-bit:"
+    ],
+    "type_mismatch": [
+      "return value has type FLOAT but expected INT"
+    ],
+    "arity": [
+      "call arity mismatch"
+    ],
+    "unknown_identifier": [
+      "unknown name 'missing'"
+    ],
+    "duplicate_symbol": [
+      "module/top-level overload identity is name + arity only"
+    ],
+    "actor_lexical_isolation": [
+      "cannot implicitly access file/module callable"
+    ],
+    "unsupported_nb_prefix": [
+      "'nb' must prefix readch, writech, select, or cb writech"
+    ]
   },
   "js": {
     "integer_range": [
@@ -42,6 +56,22 @@
   "dotnet": {
     "unsupported_select": [
       "static select requires checked channel/future arbitration"
+    ]
+  },
+  "forge": {
+    "integer_range": [
+      "invalid i64"
+    ],
+    "arity": [
+      "function arity mismatch:"
+    ],
+    "duplicate_symbol": [
+      "duplicate function at byte"
+    ],
+    "unsupported_feature": [
+      "source imports require verified module graph lowering",
+      "class/actor methods require typed native lowering",
+      "runtime ownership operation requires typed lowering in Forge"
     ]
   }
 }

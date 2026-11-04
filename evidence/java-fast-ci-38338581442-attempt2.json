@@ -1,0 +1,62 @@
+{
+  "schema": "oreslang-parity-execution-evidence-v1",
+  "claim_tier": "HOST_TESTS_EXECUTED",
+  "backend": "java",
+  "repository": "ores-truffle-oreslang/oreslang-source.java",
+  "repository_id": 1400792274,
+  "run_id": 38338581442,
+  "run_attempt": 2,
+  "workflow_id": 372706264,
+  "workflow_path": ".github/workflows/fast-ci.yml",
+  "workflow_run_path": ".github/workflows/fast-ci.yml",
+  "event": "pull_request",
+  "head_commit": "a458279b7a419b3c5ecf50be4f06844f4faf3fd5",
+  "head_tree": "f5bff562aa2555ad2dfabb9e106635aa4f4b8e2a",
+  "workflow_blob_sha": "4d562c7b49d75a997d849aba7fd2ffa3b24441db",
+  "verified_jobs": 1,
+  "successful_non_housekeeping_steps": 4,
+  "jobs": [
+    {
+      "job_id": 115354362474,
+      "job_name": "test",
+      "runner_id": 1000133153,
+      "runner_name": "GitHub Actions 1000133153",
+      "conclusion": "success",
+      "started_at": "2026-10-13T14:38:20Z",
+      "completed_at": "2026-10-13T14:42:09Z",
+      "meaningful_steps": [
+        {
+          "name": "Run actions/checkout@v4",
+          "category": "setup_contract_policy_source_free_canary",
+          "conclusion": "success",
+          "started_at": "2026-10-13T14:38:22Z",
+          "completed_at": "2026-10-13T14:38:23Z"
+        },
+        {
+          "name": "Set up GraalVM",
+          "category": "setup_contract_policy_source_free_canary",
+          "conclusion": "success",
+          "started_at": "2026-10-13T14:38:23Z",
+          "completed_at": "2026-10-13T14:38:45Z"
+        },
+        {
+          "name": "Verify compiler/runtime tests",
+          "category": "host_compiler_tests",
+          "conclusion": "success",
+          "started_at": "2026-10-13T14:38:45Z",
+          "completed_at": "2026-10-13T14:39:47Z"
+        },
+        {
+          "name": "Run examples",
+          "category": "indeterminate",
+          "conclusion": "success",
+          "started_at": "2026-10-13T14:39:47Z",
+          "completed_at": "2026-10-13T14:42:05Z"
+        }
+      ]
+    }
+  ],
+  "artifacts_verified": true,
+  "artifacts": [],
+  "statement": "GITHUB_RUN_EXECUTION_VERIFIED_NOT_GUEST_PARITY_CERTIFIED"
+}

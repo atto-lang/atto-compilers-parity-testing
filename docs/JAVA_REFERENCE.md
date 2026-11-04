@@ -2,8 +2,10 @@
 
 The Rust `java-reference` adapter prepares and launches a clean, commit-pinned
 Java reference compiler. It never copies, flattens or rewrites guest source.
-All 49 cases are attempted with `--allow-unvalidated`; matching results remain
-explicitly exploratory. No validation status is promoted automatically.
+The current corpus contains 53 cases. The reference adapter can attempt all of them
+with `--allow-unvalidated`; matching results remain explicitly exploratory.
+No validation status is promoted automatically, and exploratory-only execution
+cannot exit successfully as a parity gate.
 
 ## Reproduce on macOS or Linux
 
@@ -26,7 +28,7 @@ tools/parity-runner/target/release/java-reference execute \
 invocation, and returns the runner's exit code. An exit of 1 with a published
 report means corpus expectations were not all met; inspect every record.
 Other backends are excluded from this reference-only run. The default corpus
-audit still enumerates all five backends (245 records).
+audit still enumerates all five backends (265 inventory records).
 
 Preparation records the compiler commit/tree, JDK/Maven versions, and SHA-256
 pins for the compiler JAR, every runtime-classpath JAR, native carrier library,
@@ -66,11 +68,12 @@ checkouts were preserved. The Java build uses a separate fresh clone.
 
 This refresh does not constitute execution evidence for the four other backends.
 
-## First reference baseline
+## Historical 49-case reference baseline (before cases 32–35)
 
-The pinned compiler produced 23 exploratory matches, eight classified exploratory
-negative matches, and 18 compile failures. The runner exits 1. None of these
-results is promoted to a parity pass. All `.ores` source bytes remain unchanged.
+An earlier pinned compiler run of the 49-case corpus produced 23 exploratory matches, eight classified exploratory
+negative matches, and 18 compile failures. That historical runner exited 1. None of those
+results was promoted to a parity pass. All `.ores` source bytes remained unchanged.
+This baseline is **not** evidence for checked-i64 cases 32–35.
 
 | Compile gap | Cases |
 |---|---|
