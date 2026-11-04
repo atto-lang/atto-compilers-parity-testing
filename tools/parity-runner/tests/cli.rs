@@ -51,7 +51,7 @@ fn required_inventory_includes_forge_but_not_optional_js() {
     std::fs::remove_file(output).unwrap();
     assert_eq!(
         report["backends"],
-        serde_json::json!(["llvm", "java", "wasm", "dotnet", "forge"])
+        serde_json::json!(["llvm", "java", "wasm", "dotnet", "forge", "cranelift"])
     );
     let manifest_path =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../manifest.json");
@@ -60,15 +60,15 @@ fn required_inventory_includes_forge_but_not_optional_js() {
     assert_eq!(report["backends"], manifest["policy"]["target_backends"]);
     assert_eq!(report["corpus"]["legacy_cases"], 35);
     assert_eq!(report["cases"], 53);
-    assert_eq!(report["records"].as_array().unwrap().len(), 265);
-    assert_eq!(report["summary"]["not_run"], 265);
+    assert_eq!(report["records"].as_array().unwrap().len(), 318);
+    assert_eq!(report["summary"]["not_run"], 318);
     let candidates: Vec<_> = report["records"]
         .as_array()
         .unwrap()
         .iter()
         .filter(|r| ["32", "33", "34", "35"].contains(&r["case_id"].as_str().unwrap_or("")))
         .collect();
-    assert_eq!(candidates.len(), 20);
+    assert_eq!(candidates.len(), 24);
     assert!(candidates
         .iter()
         .all(|r| r["validation_status"] == "candidate" && r["status"] == "not_run"));
@@ -131,4 +131,38 @@ fn missing_required_forge_adapter_is_a_hard_failure() {
     assert_eq!(report["backends"], serde_json::json!(["forge"]));
     assert_eq!(report["records"].as_array().unwrap().len(), 53);
     assert_eq!(report["summary"]["backend_not_configured"], 53);
+}
+
+#[test]
+fn cranelift_inventory_and_missing_adapter_fail_closed() {
+    for execute in [false, true] {
+        let output = std::env::temp_dir().join(format!(
+            "ores-cli-{}-cranelift-{execute}.json",
+            std::process::id()
+        ));
+        let mut command = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"));
+        command
+            .args(["--backend", "cranelift", "--output"])
+            .arg(&output);
+        command.env_remove("ORES_PARITY_CRANELIFT_COMPILE");
+        command.env_remove("ORES_PARITY_CRANELIFT_RUN");
+        if execute {
+            command.args(["--execute", "--allow-unvalidated"]);
+        }
+        let status = command.status().unwrap();
+        let report: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+        std::fs::remove_file(output).unwrap();
+        assert_eq!(report["backends"], serde_json::json!(["cranelift"]));
+        assert_eq!(report["records"].as_array().unwrap().len(), 53);
+        if execute {
+            assert!(!status.success());
+            assert_eq!(report["summary"]["backend_not_configured"], 53);
+            assert_eq!(report["executed"], true);
+        } else {
+            assert!(status.success());
+            assert_eq!(report["summary"]["not_run"], 53);
+            assert_eq!(report["executed"], false);
+        }
+    }
 }

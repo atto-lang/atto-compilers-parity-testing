@@ -8,7 +8,8 @@
       "java",
       "wasm",
       "dotnet",
-      "forge"
+      "forge",
+      "cranelift"
     ],
     "required_parity": true,
     "unsupported_is_pass": false,
@@ -50,6 +51,12 @@
       "tree": "f687891a68fba9b364b4e4144d47a08d1db26323",
       "captured_on": "2026-10-29",
       "role": "independent C++20 interpreter/native-assembly bootstrap; not a full compiler"
+    },
+    "cranelift": {
+      "repo": "ores-truffle-oreslang/oreslang-source.cranelift",
+      "tree": "5e1dade48467d6167034d781a8e14a05f53568d0",
+      "captured_on": "2026-11-01",
+      "role": "experimental scalar JIT; proxy modules/classes/arrays/Result unsupported"
     }
   },
   "cases": [

@@ -73,5 +73,6 @@
       "class/actor methods require typed native lowering",
       "runtime ownership operation requires typed lowering in Forge"
     ]
-  }
+  },
+  "cranelift": {}
 }

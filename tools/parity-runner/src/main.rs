@@ -8,14 +8,15 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-// The five oreslang-source.* backends are mandatory. JavaScript is
+// The six oreslang-source.* backends are mandatory. JavaScript is
 // independently selectable for exploratory transpiler coverage.
-const BACKENDS: [(&str, &str); 6] = [
+const BACKENDS: [(&str, &str); 7] = [
     ("llvm", "LLVM"),
     ("java", "JAVA"),
     ("wasm", "WASM"),
     ("dotnet", "DOTNET"),
     ("forge", "FORGE"),
+    ("cranelift", "CRANELIFT"),
     ("js", "JS"),
 ];
 
@@ -773,7 +774,8 @@ fn main() -> Result<(), String> {
                 .filter(|name| BACKENDS.iter().any(|(backend, _)| backend == name))
                 .cloned()
                 .ok_or_else(|| {
-                    "--backend requires llvm, java, wasm, dotnet, forge, or js".to_string()
+                    "--backend requires llvm, java, wasm, dotnet, forge, cranelift, or js"
+                        .to_string()
                 })
         })
         .transpose()?;

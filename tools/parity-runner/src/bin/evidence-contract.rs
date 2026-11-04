@@ -409,7 +409,11 @@ fn validate_report(evidence: &Evidence, parity_backend: &str, path: &str) -> Res
     }
     let report: serde_json::Value =
         serde_json::from_slice(&raw).map_err(|e| format!("invalid parity report JSON: {e}"))?;
-    if report.get("schema_version").and_then(|value| value.as_u64()) != Some(2) {
+    if report
+        .get("schema_version")
+        .and_then(|value| value.as_u64())
+        != Some(2)
+    {
         return Err("compiled guest evidence requires parity report schema v2".into());
     }
     if report.get("executed") != Some(&serde_json::Value::Bool(true)) {

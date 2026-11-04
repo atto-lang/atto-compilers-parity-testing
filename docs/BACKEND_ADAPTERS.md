@@ -83,3 +83,10 @@ That needs a dedicated adapter wrapper or a richer parity-runner pipeline. Do no
 ## Promotion rules
 
 An adapter is executable evidence only when it records the exact compiler/runtime SHA, compiles the unchanged source graph, classifies negative diagnostics, and runs the produced program where the backend claims execution support. Compile-only support, an unsupported feature, a skipped test, or a missing runner is a parity gap rather than a pass.
+
+Cranelift is also a required independent target, alongside LLVM, Java, Wasm, .NET and Forge; JavaScript remains optional. The 53-case default audit now yields 318 non-executed cells. Cranelift uses ORES_PARITY_CRANELIFT_COMPILE and ORES_PARITY_CRANELIFT_RUN. Its scalar JIT has no reviewed separate artifact adapter for this corpus; unavailable or unsupported source remains a gap, never a pass.
+
+### Cranelift native JIT gap
+
+Cranelift is a **sixth** explicit parity target, not a stand-in for LLVM. Its current scalar-only frontend cannot compile the unchanged proxy `src/load_balancer.ores` and `tests/load_balancer_contract.ores`. `ir` is not an independently published executable-artifact step; `run` combines compilation and native execution. A trusted adapter must preserve separate compile/result evidence, pin the exact compiler binary, reject unsupported features, and never interpret a scalar JIT smoke as complete proxy parity. Track the shared language and native execution gap at https://github.com/ores-truffle-oreslang/oreslang-compilers-parity-testing/issues/26.
+

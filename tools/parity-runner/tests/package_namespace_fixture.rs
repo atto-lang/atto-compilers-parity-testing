@@ -6,10 +6,8 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const MANIFEST_SHA256: &str =
-    "5986c589ab92259065f278ae6771e86065aa4f10776bfd1e55dbe31e7003d394";
-const SOURCES_SHA256: &str =
-    "e6e794b0a96d94797f571a8b29ae69f9675bacb6818d9d9862c4213bf79f9d50";
+const MANIFEST_SHA256: &str = "5986c589ab92259065f278ae6771e86065aa4f10776bfd1e55dbe31e7003d394";
+const SOURCES_SHA256: &str = "e6e794b0a96d94797f571a8b29ae69f9675bacb6818d9d9862c4213bf79f9d50";
 
 fn fixture_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/package-namespace-v2")
@@ -56,9 +54,16 @@ fn sources_from_checkout(root: &Path) -> BTreeMap<String, String> {
         let relative = format!("src/unit{}.ores", i);
         let path = checkout.join(&relative);
         let canonical = path.canonicalize().expect("manifest source exists");
-        assert!(canonical.starts_with(&canonical_checkout), "provider escaped package root");
+        assert!(
+            canonical.starts_with(&canonical_checkout),
+            "provider escaped package root"
+        );
         let contents = fs::read_to_string(path).expect("read checkout provider");
-        assert_eq!(contents, source_bytes(i), "unreviewed provider content: {relative}");
+        assert_eq!(
+            contents,
+            source_bytes(i),
+            "unreviewed provider content: {relative}"
+        );
         assert!(sources.insert(relative, contents).is_none());
     }
     // Unlisted sources cannot silently become namespace providers. The fixture
@@ -137,7 +142,9 @@ fn source_tampering_and_package_membership_changes_break_pins() {
     let root = fixture_dir();
     let mut sources = sources_from_checkout(&root);
     assert_eq!(source_pin(&sources), SOURCES_SHA256);
-    let tampered = sources.get_mut("src/unit3.ores").expect("provider is present");
+    let tampered = sources
+        .get_mut("src/unit3.ores")
+        .expect("provider is present");
     tampered.push_str("// modified without pin update\n");
     assert_ne!(source_pin(&sources), SOURCES_SHA256);
 
