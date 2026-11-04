@@ -45,18 +45,18 @@ jobs:
         run: cargo clippy --manifest-path tools/parity-runner/Cargo.toml --locked --all-targets -- -D warnings
       - name: Build parity runner
         run: cargo build --manifest-path tools/parity-runner/Cargo.toml --locked --bins
-      - name: Audit 69 x 6 matrix without making compiler claims
+      - name: Audit 73 x 6 required matrix without making compiler claims
         run: |
           cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml -- --output parity-results.json
           node - <<'NODE'
           const d = require("./parity-results.json");
-          const expected = {legacy_cases:51,multifile_checks:16,negative_probes:2,total_cases:69};
+          const expected = {legacy_cases:55,multifile_checks:16,negative_probes:2,total_cases:73};
           if (JSON.stringify(d.corpus) !== JSON.stringify(expected)) process.exit(1);
-          if (d.cases !== 69 || d.records.length !== 414 || d.summary.not_run !== 414) process.exit(1);
+          if (d.cases !== 73 || d.records.length !== 438 || d.summary.not_run !== 438) process.exit(1);
           if (JSON.stringify(d.backends) !== JSON.stringify(
-            ["llvm","java","wasm","dotnet","cranelift","js"])) process.exit(1);
+            ["llvm","java","wasm","dotnet","forge","cranelift"])) process.exit(1);
           const missingCranelift = d.records.filter(r => r.backend === "cranelift");
-          if (missingCranelift.length !== 69 ||
+          if (missingCranelift.length !== 73 ||
               !missingCranelift.every(r => r.status === "not_run")) process.exit(1);
           const checks = d.records.filter(r => r.suite === "checks");
           const positives = checks.filter(r => typeof r.graph_sha256 === "string");
@@ -64,7 +64,7 @@ jobs:
           if (!positives.every(r => Array.isArray(r.graph_files) && r.graph_files.length >= 4)) process.exit(1);
           if (!checks.every(r => Array.isArray(r.features) && r.features.length > 0)) process.exit(1);
           // Independent manifest-to-record identity and source SHA audit.
-          // Counting 414 rows alone cannot detect a duplicate case displacing
+          // Counting 438 rows alone cannot detect a duplicate case displacing
           // an omitted case, or a report over a different set of source bytes.
           const {createHash} = require("node:crypto");
           const {readFileSync, lstatSync} = require("node:fs");
@@ -86,7 +86,10 @@ jobs:
           };
           const manifest = JSON.parse(readFileSync("manifest.json"));
           if (JSON.stringify(manifest.policy.target_backends) !== JSON.stringify(
-              ["java","llvm","wasm","dotnet","cranelift","js"])) process.exit(1);
+              ["llvm","java","wasm","dotnet","forge","cranelift"])) process.exit(1);
+          if (JSON.stringify(manifest.policy.optional_backends) !== JSON.stringify(["js"]))
+            throw new Error("JavaScript must remain separately selectable, not mandatory");
+          if (manifest.cases.length !== 55) throw new Error("bad legacy inventory length");
           for (const c of manifest.cases) {
             if (c.required_on_all_backends !== true || !c.features.length)
               throw new Error("optional legacy case: " + c.id);
@@ -101,7 +104,7 @@ jobs:
               add("checks", c.name + "/negative-" + (index + 1), negative.path);
             }
           }
-          if (expectedSource.size !== 69 || d.executed !== false || d.schema_version !== 2)
+          if (expectedSource.size !== 73 || d.executed !== false || d.schema_version !== 2)
             throw new Error("wrong static matrix count or execution state");
           const expectedBackends = ["llvm","java","wasm","dotnet","cranelift","js"];
           const observed = new Set();
@@ -131,10 +134,23 @@ jobs:
           }
           if (observed.size !== expectedSource.size * expectedBackends.length)
             throw new Error("missing backend/case pair despite correct record count");
-          if (Object.keys(d.summary).length !== 1 || d.summary.not_run !== 414)
+          if (Object.keys(d.summary).length !== 1 || d.summary.not_run !== 438)
             throw new Error("unexpected result classified as executed");
+          NODE
+      - name: Audit optional JavaScript separately (not a required native pass)
+        run: |
+          cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml -- --backend js --output js-inventory.json
+          node - <<'NODE'
+          const d = require("./js-inventory.json");
+          if (d.executed !== false || d.cases !== 73 ||
+              JSON.stringify(d.backends) !== JSON.stringify(["js"]) ||
+              d.records.length !== 73 || d.summary.not_run !== 73 ||
+              !d.records.every(r => r.backend === "js" && r.status === "not_run"))
+              process.exit(1);
           NODE
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: parity-corpus-audit
-          path: parity-results.json
+          path: |
+            parity-results.json
+            js-inventory.json
