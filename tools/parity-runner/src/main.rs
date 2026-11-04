@@ -8,11 +8,13 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-const BACKENDS: [(&str, &str); 6] = [
+// Six independent compiler backends required; JS transpiler optional.
+const BACKENDS: [(&str, &str); 7] = [
     ("llvm", "LLVM"),
     ("java", "JAVA"),
     ("wasm", "WASM"),
     ("dotnet", "DOTNET"),
+    ("forge", "FORGE"),
     ("cranelift", "CRANELIFT"),
     ("js", "JS"),
 ];
@@ -26,6 +28,7 @@ struct LegacyManifest {
 #[derive(Debug, Deserialize)]
 struct LegacyPolicy {
     target_backends: Vec<String>,
+    optional_backends: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -391,10 +394,17 @@ fn lowercase_kebab(name: &str) -> bool {
 }
 
 fn validate_backend_policy(policy: &LegacyPolicy) -> Result<(), String> {
-    let declared: BTreeSet<_> = policy.target_backends.iter().map(String::as_str).collect();
+    let required: BTreeSet<_> = policy.target_backends.iter().map(String::as_str).collect();
+    let optional: BTreeSet<_> = policy.optional_backends.iter().map(String::as_str).collect();
     let supported: BTreeSet<_> = BACKENDS.iter().map(|(backend, _)| *backend).collect();
-    if declared.len() != policy.target_backends.len() || declared != supported {
-        return Err("manifest target_backends must enumerate each runner backend exactly once".into());
+    if required.len() != policy.target_backends.len()
+        || optional.len() != policy.optional_backends.len()
+        || !required.is_disjoint(&optional)
+        || required.union(&optional).copied().collect::<BTreeSet<_>>() != supported
+        || required != ["llvm", "java", "wasm", "dotnet", "forge", "cranelift"].into_iter().collect()
+        || optional != ["js"].into_iter().collect()
+    {
+        return Err("required backends must be llvm/java/wasm/dotnet/forge/cranelift; js optional".into());
     }
     Ok(())
 }
@@ -1107,7 +1117,7 @@ fn main() -> Result<(), String> {
             args.get(index + 1)
                 .filter(|name| BACKENDS.iter().any(|(backend, _)| backend == name))
                 .cloned()
-                .ok_or_else(|| "--backend requires llvm, java, wasm, dotnet, cranelift, or js".to_string())
+                .ok_or_else(|| "--backend requires llvm, java, wasm, dotnet, forge, cranelift, or js".to_string())
         })
         .transpose()?;
     let output = args
@@ -1138,6 +1148,9 @@ fn main() -> Result<(), String> {
     let mut records = Vec::new();
     for case in &cases {
         for &(backend, env_name) in &BACKENDS {
+            if selected_backend.is_none() && backend == "js" {
+                continue;
+            }
             if selected_backend
                 .as_deref()
                 .is_some_and(|selected| selected != backend)
@@ -1169,9 +1182,10 @@ fn main() -> Result<(), String> {
         backends: BACKENDS
             .iter()
             .filter(|entry| {
-                selected_backend
-                    .as_deref()
-                    .is_none_or(|name| name == entry.0)
+                (selected_backend.is_some() || entry.0 != "js")
+                    && selected_backend
+                        .as_deref()
+                        .is_none_or(|name| name == entry.0)
             })
             .map(|entry| entry.0.to_string())
             .collect(),
@@ -1258,14 +1272,18 @@ mod tests {
     #[test]
     fn manifest_backend_roster_is_exact_and_unique() {
         let mut roster = LegacyPolicy {
-            target_backends: super::BACKENDS.iter().map(|(name, _)| name.to_string()).collect(),
+            target_backends: vec!["llvm", "java", "wasm", "dotnet", "forge", "cranelift"]
+                .into_iter().map(str::to_string).collect(),
+            optional_backends: vec!["js".into()],
         };
         assert!(validate_backend_policy(&roster).is_ok());
         roster.target_backends.pop();
         assert!(validate_backend_policy(&roster).is_err());
         roster.target_backends.push("java".into());
         assert!(validate_backend_policy(&roster).is_err());
+        roster.target_backends.pop();
         roster.target_backends.push("cranelift".into());
+        roster.optional_backends.push("forge".into());
         assert!(validate_backend_policy(&roster).is_err());
     }
 
