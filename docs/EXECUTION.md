@@ -1,6 +1,6 @@
 # Execution and parity gate
 
-The checked-in corpus is fail-closed. The default CI audits 51 legacy programs, 16 positive multi-file checks and 2 negative probes, yielding 69 logical cases and 414 backend/case pairs. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
+The checked-in corpus is fail-closed. The default CI audits 55 legacy programs (including main's four checked-i64 boundary cases), 16 positive multi-file checks and 2 negative probes, yielding **73 logical cases and 438 mandatory backend/case inventory pairs** across Java, LLVM, WASM, .NET, Forge and Cranelift. The 73 optional JavaScript entries are audited separately. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
 
 ## Rust-only tooling
 
@@ -13,17 +13,17 @@ Each backend uses two command templates:
 - `ORES_PARITY_<BACKEND>_COMPILE`
 - `ORES_PARITY_<BACKEND>_RUN`
 
-Tokens: `{source}`, `{artifact}`, `{workdir}`. Templates are split into argv without a shell. Supported backend names are LLVM, JAVA, WASM, DOTNET, CRANELIFT and JS.
+Tokens: `{source}`, `{artifact}`, `{workdir}`. Templates are split into argv without a shell. Supported backend names are LLVM, JAVA, WASM, DOTNET, FORGE, CRANELIFT and optional JS. The default inventory selects the six required compilers only.
 
 Example:
 
 ```sh
 export ORES_PARITY_JS_COMPILE='node /absolute/oreslang-source.js/bin/oreslang-jsc.mjs {source} --out={artifact}.mjs'
 export ORES_PARITY_JS_RUN='node /absolute/run-esm-main.mjs {artifact}.mjs'
-cargo run --manifest-path tools/parity-runner/Cargo.toml -- --execute --allow-unvalidated --output js-exploratory.json
+cargo run --manifest-path tools/parity-runner/Cargo.toml -- --backend js --execute --allow-unvalidated --output js-exploratory.json
 ```
 
-Exploratory matching is **not** a parity pass.
+Exploratory matching is **not** a parity pass. All executed unknown/unsupported/exploratory status values must exit nonzero; only independently validated `pass` or `expected_reject` results satisfy the semantic gate. A no-`--execute` inventory never constitutes guest execution.
 
 ## Promotion gate
 
@@ -109,3 +109,7 @@ The first required matrix has **20 × 5 = 100 backend/case outcomes**;
 legacy JS testing stays a fifth, independent target. Nothing in this PR
 establishes the required 80 executions. Source-only Rust unit tests are
 not cross-backend parity evidence.
+
+## Reconciled six-compiler coverage
+
+The signed-i64 programs from `main` retain IDs 32–35. Only the four overlapping GLM source IDs were moved to 52–55; 20 GLM entries remain required, and no backend may alter the source. Missing Forge or Cranelift adapters must fail closed. The separate evidence validator binds each source repository's immutable numerical ID and does not accept step-free Actions runs. See `CI_EXECUTION_EVIDENCE.md`.
