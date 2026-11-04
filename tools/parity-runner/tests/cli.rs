@@ -24,8 +24,8 @@ fn selected_missing_backend_fails_instead_of_claiming_success() {
     let (status, report) = execute("missing", false);
     assert!(!status.success());
     assert_eq!(report["backends"], serde_json::json!(["java"]));
-    assert_eq!(report["records"].as_array().unwrap().len(), 69);
-    assert_eq!(report["summary"]["backend_not_configured"], 69);
+    assert_eq!(report["records"].as_array().unwrap().len(), 73);
+    assert_eq!(report["summary"]["backend_not_configured"], 73);
 }
 
 #[cfg(unix)]
@@ -33,7 +33,7 @@ fn selected_missing_backend_fails_instead_of_claiming_success() {
 fn adapter_error_is_infrastructure_failure_even_for_negative_probes() {
     let (status, report) = execute("adapter-error", true);
     assert!(!status.success());
-    assert_eq!(report["summary"]["compile_infrastructure_failure"], 69);
+    assert_eq!(report["summary"]["compile_infrastructure_failure"], 73);
 }
 
 #[test]
@@ -49,8 +49,8 @@ fn cranelift_is_not_configured_instead_of_skipped_or_passed() {
     std::fs::remove_file(output).unwrap();
     assert!(!status.success());
     assert_eq!(report["backends"], serde_json::json!(["cranelift"]));
-    assert_eq!(report["records"].as_array().unwrap().len(), 69);
-    assert_eq!(report["summary"]["backend_not_configured"], 69);
+    assert_eq!(report["records"].as_array().unwrap().len(), 73);
+    assert_eq!(report["summary"]["backend_not_configured"], 73);
 }
 
 #[test]
@@ -66,7 +66,7 @@ fn cranelift_compile_exit_125_never_masquerades_as_parity() {
     std::fs::remove_file(output).unwrap();
     assert!(!status.success());
     assert_eq!(report["backends"], serde_json::json!(["cranelift"]));
-    assert_eq!(report["summary"]["compile_infrastructure_failure"], 69);
+    assert_eq!(report["summary"]["compile_infrastructure_failure"], 73);
     assert!(report["summary"].get("pass").is_none());
 }
 
@@ -83,7 +83,7 @@ fn rejected_source_must_leave_no_compiler_artifacts() {
     let report: serde_json::Value = serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
     std::fs::remove_file(output).unwrap();
     assert!(!status.success());
-    assert_eq!(report["records"].as_array().unwrap().len(), 69);
+    assert_eq!(report["records"].as_array().unwrap().len(), 73);
     // All negative compiler cases must be rejected independently of any
     // diagnostic that a malicious adapter might print.
     assert_eq!(report["summary"]["rejected_with_artifacts"], 8);
@@ -201,4 +201,36 @@ fn wasm_artifact_rewrite_after_pinned_guest_invocation_fails_closed() {
         .find(|record| record["case_id"] == "01").unwrap();
     assert_eq!(first["status"], "artifact_integrity_failure");
     assert!(report["summary"].get("pass").is_none());
+}
+
+
+#[test]
+fn default_inventory_requires_forge_and_cranelift_but_not_optional_js() {
+    let output = std::env::temp_dir().join(format!("atto-required-six-{}.json", std::process::id()));
+    let result = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .args(["--output"]).arg(&output).status().unwrap();
+    assert!(result.success(), "static inventory must not need a guest compiler");
+    let report: serde_json::Value = serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+    std::fs::remove_file(output).unwrap();
+    assert_eq!(report["backends"], serde_json::json!(["llvm","java","wasm","dotnet","forge","cranelift"]));
+    assert_eq!(report["corpus"]["legacy_cases"], 55);
+    assert_eq!(report["cases"], 73);
+    assert_eq!(report["records"].as_array().unwrap().len(), 438);
+    assert_eq!(report["summary"]["not_run"], 438);
+    assert_eq!(report["executed"], false);
+    let cases = report["records"].as_array().unwrap();
+    assert!(cases.iter().any(|r| r["case_id"] == "32" && r["name"] == "signed-min-boundary"));
+    assert!(cases.iter().any(|r| r["case_id"] == "52" && r["name"] == "glm-top1-highest"));
+}
+#[test]
+fn optional_js_inventory_is_explicit_and_not_required_by_default() {
+    let output = std::env::temp_dir().join(format!("atto-optional-js-{}.json", std::process::id()));
+    let result = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"))
+        .args(["--backend", "js", "--output"]).arg(&output).status().unwrap();
+    assert!(result.success());
+    let report: serde_json::Value = serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+    std::fs::remove_file(output).unwrap();
+    assert_eq!(report["backends"], serde_json::json!(["js"]));
+    assert_eq!(report["records"].as_array().unwrap().len(), 73);
+    assert_eq!(report["summary"]["not_run"], 73);
 }
