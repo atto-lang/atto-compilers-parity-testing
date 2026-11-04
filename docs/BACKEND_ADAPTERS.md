@@ -8,6 +8,7 @@ The parity runner deliberately separates the corpus from backend-specific launch
 | LLVM native | `scripts/compile-aot.sh source.ores output` using built `oreslang-llvmc` + Clang | Execute emitted native binary | Native scalar/module support is the strongest direct compile/run adapter; unsupported features must reject |
 | WASM | `scripts/compile-ores.mjs --compiler=... --source=... --output=...` using a pinned LLVM compiler | `scripts/run-guest.mjs --wasm=... --sha256=...` | Current bridge explicitly supports standalone scalar source and says relative module graphs need a future pinned module-graph gate |
 | .NET Native AOT | `oresnet check`; `oresnet compile source.ores --out .../OresGenerated.dll` | Generated CIL must be linked into `Ores.Net.NativeHost` with `dotnet publish`, then the native host executes | Requires an adapter wrapper for compile → host publish → run; current scalar compiler does not establish whole-program import parity |
+| Forge | `oresforge ir source.ores` admits a limited scalar profile; failure must classify unsupported syntax | `oresforge run` may interpret and print a scalar to stdout; a reviewed adapter with a true guest-execution boundary is required | No general cross-module or independent whole-program parity proof; mandatory compiler, not an alias |
 | Cranelift JIT | Limited source frontend to CLIF; source-only and scalar support | Reviewed native Cranelift JIT executable when available | OresDB async/actors/multi-file WAL remain unsupported; a missing adapter is a failure, never a pass |
 | JavaScript transpiler | `node bin/oreslang-jsc.mjs --check source.ores`; compile with `--out=/absolute/output.mjs` | Import generated ESM and call exported `main()` | Scalar programs are executable; actors/async/import-graph support must fail closed when unsupported |
 
@@ -43,6 +44,7 @@ After building `oreslang-llvmc`:
 ```sh
 export ORES_PARITY_LLVM_COMPILE='/abs/oreslang-source.llvm/scripts/compile-aot.sh {source} {artifact}'
 export ORES_PARITY_LLVM_RUN='{artifact}'
+```
 
 **O0/O2 differential gate (pending compiler-backed execution):** The
 [LLVM draft #1346](https://github.com/ores-truffle-oreslang/oreslang-source.llvm/pull/1346)
@@ -65,8 +67,6 @@ The shared runner now resolves an extensionless relative import from
 rewriting the source. This tests inventory and source-graph fingerprinting
 only; separate compiler-backed `.atto` acceptance is required on every
 toolchain.
-
-```
 
 The compile script fails closed if the source subset is unsupported and never falls back to an interpreter.
 
