@@ -1,6 +1,6 @@
 # Execution and parity gate
 
-The checked-in corpus is fail-closed. The default CI audits 31 legacy programs, 16 positive multi-file checks and 2 negative probes, yielding 49 logical cases and 245 backend/case pairs. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
+The checked-in corpus is fail-closed. The default CI audits 35 legacy programs (including four unvalidated signed-i64 boundary candidates), 16 positive multi-file checks and 2 negative probes, yielding 53 logical cases and 265 required backend/case pairs across Java, LLVM, WASM, .NET and Forge. JavaScript is an optional sixth target (`--backend js`), not a substitute for Forge. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
 
 ## Rust-only tooling
 
@@ -13,17 +13,21 @@ Each backend uses two command templates:
 - `ORES_PARITY_<BACKEND>_COMPILE`
 - `ORES_PARITY_<BACKEND>_RUN`
 
-Tokens: `{source}`, `{artifact}`, `{workdir}`. Templates are split into argv without a shell. Supported backend names are LLVM, JAVA, WASM, DOTNET and JS.
+Tokens: `{source}`, `{artifact}`, `{workdir}`. Templates are split into argv without a shell. Supported backend names are LLVM, JAVA, WASM, DOTNET, FORGE and optional JS. The default report includes only the five required backends.
 
 Example:
 
 ```sh
 export ORES_PARITY_JS_COMPILE='node /absolute/oreslang-source.js/bin/oreslang-jsc.mjs {source} --out={artifact}.mjs'
 export ORES_PARITY_JS_RUN='node /absolute/run-esm-main.mjs {artifact}.mjs'
-cargo run --manifest-path tools/parity-runner/Cargo.toml -- --execute --allow-unvalidated --output js-exploratory.json
+cargo run --manifest-path tools/parity-runner/Cargo.toml -- --backend js --execute --allow-unvalidated --output js-exploratory.json
 ```
 
-Exploratory matching is **not** a parity pass.
+Exploratory matching is **not** a parity pass. An executed run returns success only
+when **every selected result** is `pass` or `expected_reject` with validated
+semantics; exploratory matches, unknown statuses and infrastructure failures exit
+nonzero, even when a report is successfully written. A no-`--execute` corpus
+inventory may exit successfully, but records only `not_run` cases.
 
 ## Promotion gate
 
@@ -40,6 +44,7 @@ only bounded prefixes. If either stream crosses its budget, the invocation
 records `output_limit_exceeded` with no usable exit status. The case is a
 `compile_infrastructure_failure` or `runtime_infrastructure_failure`,
 **never** `pass`, `expected_reject` or a valid diagnostic classification.
+
 Timeouts and missing runners remain non-passes.
 
 This guards the evidence harness against uncontrolled compiler diagnostics or
@@ -50,7 +55,7 @@ source head constitute executed test evidence.
 
 ## Known debt
 
-The Java reference adapter can now execute the full corpus exploratorily; see
+The pinned Java reference adapter previously attempted the 49-case corpus exploratorily; it has **not** yet run the four new candidates (32–35); see
 `JAVA_REFERENCE.md`. No cases are promoted by adapter execution alone. The first
 pinned reference run exposed corpus/compiler syntax and type-checking gaps;
 these must be resolved against canonical contracts without backend-specific rewrites.
