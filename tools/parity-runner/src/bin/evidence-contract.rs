@@ -132,6 +132,11 @@ fn backend_identity(name: &str) -> Option<(&'static str, u64, &'static str)> {
             1419703674,
             "forge",
         )),
+        "cranelift" => Some((
+            "ores-truffle-oreslang/oreslang-source.cranelift",
+            1437273004,
+            "cranelift",
+        )),
         _ => None,
     }
 }
