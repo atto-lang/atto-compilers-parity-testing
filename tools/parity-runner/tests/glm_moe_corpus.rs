@@ -96,7 +96,7 @@ fn exactly_twenty_glm_programs_are_required_on_all_backends() {
         assert!(!source.contains("import "), "no backend-local imports: {path}");
         assert!(!source.contains("std::") && !source.contains("System."),
             "backend-specific code in {path}");
-        if number >= 49 {
+        if (49..=51).contains(&number) {
             assert!(row["features"].as_array().unwrap().iter()
                 .any(|v| v.as_str() == Some("float")));
             assert!(source.contains("float "), "float frontier must be exercised");
@@ -110,7 +110,7 @@ fn exactly_twenty_glm_programs_are_required_on_all_backends() {
         let row = rows.iter().find(|v| v["id"] == id.to_string()).unwrap();
         assert_eq!(row["group"], "scalar");
         assert!(row["features"].as_array().unwrap().iter()
-            .any(|v| v == "checked-i64"));
+            .any(|v| v.as_str() == Some("checked-i64")));
     }
 }
 
