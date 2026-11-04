@@ -46,13 +46,14 @@ fn manifest() -> Value {
 fn exactly_twenty_glm_programs_are_required_on_all_backends() {
     let manifest = manifest();
     let rows = manifest["cases"].as_array().unwrap();
-    assert_eq!(rows.len(), 51);
+    assert_eq!(rows.len(), 55);
     let backends = manifest["policy"]["target_backends"].as_array().unwrap();
-    assert_eq!(backends.len(), 6, "exactly six distinct backends are required");
-    for backend in ["java", "llvm", "wasm", "dotnet", "cranelift", "js"] {
+    assert_eq!(backends.len(), 6, "six distinct compiler backends are required");
+    for backend in ["java", "llvm", "wasm", "dotnet", "forge", "cranelift"] {
         assert!(backends.iter().any(|item| item.as_str() == Some(backend)));
     }
 
+    assert_eq!(manifest["policy"]["optional_backends"], serde_json::json!(["js"]));
     let mut all_ids = BTreeSet::new();
     let mut all_paths = BTreeSet::new();
     let mut actual_glm_names = BTreeSet::new();
@@ -67,9 +68,18 @@ fn exactly_twenty_glm_programs_are_required_on_all_backends() {
         }
         n_glm += 1;
         let number: usize = id.parse().unwrap();
-        assert!((32..=51).contains(&number), "unknown GLM case: {id}");
+        // The canonical checked-i64 cases own IDs 32–35. Keep the
+        // existing GLM IDs 36–51 and move only the four conflicting
+        // GLM candidates to 52–55. No reviewed source is discarded.
+        let index = if (36..=51).contains(&number) {
+            number - 32
+        } else if (52..=55).contains(&number) {
+            number - 52
+        } else {
+            panic!("unknown GLM case ID: {id}");
+        };
         let name = row["name"].as_str().unwrap();
-        assert_eq!(name, GLM_NAMES[number - 32]);
+        assert_eq!(name, GLM_NAMES[index]);
         assert!(actual_glm_names.insert(name.to_string()));
         assert_eq!(path, format!("programs/{number}-{name}.ores"));
         assert_eq!(row["expected_kind"], "exit");
@@ -96,6 +106,12 @@ fn exactly_twenty_glm_programs_are_required_on_all_backends() {
     }
     assert_eq!(n_glm, 20);
     assert_eq!(actual_glm_names.len(), 20);
+    for id in 32..=35 {
+        let row = rows.iter().find(|v| v["id"] == id.to_string()).unwrap();
+        assert_eq!(row["group"], "scalar");
+        assert!(row["features"].as_array().unwrap().iter()
+            .any(|v| v == "checked-i64"));
+    }
 }
 
 fn route_top1(a: i64, b: i64) -> i64 {
@@ -191,6 +207,8 @@ fn cranelift_is_required_and_cannot_be_silent_optional_fallback() {
     }
     assert_eq!(unique.len(), 6);
     assert!(unique.contains("cranelift"));
+    assert!(unique.contains("forge"));
+    assert!(!unique.contains("js"));
     for case in manifest["cases"].as_array().unwrap().iter().filter(|c| c["group"] == "glm-moe") {
         assert_eq!(case["required_on_all_backends"], true);
         assert_eq!(case["validation_status"], "candidate");
