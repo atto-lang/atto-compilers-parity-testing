@@ -2,9 +2,13 @@
 
 **Status: authored shared-source candidate corpus; no five-toolchain parity proven.**
 
-The branch registers twenty *identical* Oreslang source programs at
-`programs/32-glm-*.ores` through `programs/51-glm-*.ores`.
-Every case is required on Java/Graal, LLVM, WASM, Cranelift and .NET NativeAOT; JS is a separate sixth corpus adapter. Each successful
+The branch registers twenty reviewed GLM/MoE source programs, now with
+IDs 36–51 and 52–55. Four original GLM IDs (32–35) were relocated to
+52–55 to preserve the four independent signed-i64 cases already on `main`.
+The four source bodies remain unchanged apart from ID-banner comments.
+Every case is required on six independent compilers: Java/Graal, LLVM,
+WASM, .NET NativeAOT, Forge, and Cranelift. JS remains an optional seventh
+adapter and must not substitute for Forge or Cranelift. Each successful
 guest returns integer 42; a semantic mismatch returns 1. None is marked
 `validated` before trusted execution.
 
@@ -32,7 +36,7 @@ on the new exact source tree** until genuine guest runs occur.
 
 1. Independent reviewer approves compiler/runtime revision, trusted runner
    admission, the source tree and backend-specific launch commands.
-2. For each of 20 source files, record exact bytes/SHA-256, compiler SHA,
+2. For each of 20 current source files (IDs 36–55, with relocated 52–55), record exact bytes/SHA-256, compiler SHA,
    runtime SHA, compile output, guest termination status and integer result.
 3. LLVM: compile native at O0 and O2, run both resulting binaries, and
    attribute optimization-specific differences correctly.
@@ -42,7 +46,7 @@ on the new exact source tree** until genuine guest runs occur.
    a real NativeAOT host. No interpreter/IR-only substitute is accepted.
 6. Reject absent compiler, unclassified diagnostic, timeout, missing guest,
    wrong return, unsanctioned source rewrite, or CI `steps=null`.
-7. Keep all 100 required five-compiler outcomes pending until separately executed and
+7. Keep all 120 required six-compiler outcomes pending until separately executed and
    reviewed. Exact-head stepful CI is distinct from native guest receipts.
 
 ## What this corpus cannot prove
@@ -82,7 +86,7 @@ only; it does **not** validate Oreslang grammar, emitted LLVM/Wasm/CIL,
 Truffle guest execution, NativeAOT linking, or numerical backends.
 
 The checked manifest contains 51 legacy cases and 16 positive whole-program
-checks plus 2 negative probes: **69 logical cases** and **345 five-backend
+checks plus 2 negative probes: **73 logical cases** and **345 historical five-backend
 cells**. All new 20 GLM manifest rows remain `candidate`, explicitly
 required on the five requested toolchains. The corpus now contains
 17 integer-control and 3 floating-source GLM files.
@@ -132,10 +136,11 @@ Cranelift's source tree snapshot is recorded in `manifest.json` as a
 
 The initial 80 / 345 figures elsewhere on this page describe an **earlier
 four-compiler / five-backend snapshot**, not the current acceptance target.
-The current twenty GLM programs are required on **five independent compilers**:
-20 × 5 = **100 compiler-backed guest outcomes**. The historical JS adapter
-remains a separate sixth target. The full 51 legacy + 16 positive multi-file
-+ 2 negative checks form **69 logical cases × 6 targets = 414 inventory cells**.
+The current twenty GLM programs are required on **six independent compilers**:
+20 × 6 = **120 compiler-backed guest outcomes**. The historical JS adapter
+remains optional and separately selectable. The full 55 legacy + 16 positive
+multi-file + 2 negative checks form **73 logical cases × 6 required compilers
+= 438 inventory cells**. A separate 73-case JS inventory is optional.
 These numbers are **required cells, not verified native passes**.
 
 Source-free runner probes now distinguish upstream admission from code execution:
@@ -185,3 +190,18 @@ gate is needed for the public AttoLang naming transition across all
 compilers; none of the current `.ores` receipts establish `.atto`
 frontend/file-import parity. Do not silently rename or rewrite fixtures
 behind backend adapters.
+
+## Current integration gate — 2026-11-03
+
+Current `main` requires Forge, not merely the Cranelift engine, and added
+four signed-i64 oracle cases at IDs 32–35. The integration branch keeps both
+Forge **and** Cranelift mandatory; no compiler is an alias. The Rust harness,
+source path/ID audit and evidence validator must pass for exactly 73 logical
+cases, six required backends and 438 static `not_run` entries; JavaScript
+has 73 separately selected optional entries. That static matrix is **not**
+proof of compiled AttoLang guest execution. For historical snapshots above,
+all previous `69/414` and `80/100` totals refer to older branches only.
+
+Until runner admission and reviewed source-to-compiler pinning are restored,
+real Java/Graal, LLVM O0/O2, Wasmtime, .NET NativeAOT, Forge and Cranelift
+guest results remain unverified.
