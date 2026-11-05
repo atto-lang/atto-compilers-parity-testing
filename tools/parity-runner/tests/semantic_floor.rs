@@ -10,20 +10,40 @@ fn semantic_floor_is_staged_and_matches_required_six_backends() {
     assert_eq!(contract["contract_id"], "attolang-semantic-floor-v1");
     assert_eq!(contract["status"], "DRAFT_TARGET_NOT_VERIFIED");
     assert_eq!(contract["source_policy"]["canonical_extension"], ".atto");
-    assert_eq!(contract["source_policy"]["legacy_admission"], "versioned_migration_only");
-    assert_eq!(contract["existing_corpus_policy"], "additive_candidate_lane_not_in_legacy_53_case_pass_matrix");
+    assert_eq!(
+        contract["source_policy"]["legacy_admission"],
+        "versioned_migration_only"
+    );
+    assert_eq!(
+        contract["existing_corpus_policy"],
+        "additive_candidate_lane_not_in_legacy_53_case_pass_matrix"
+    );
     assert_eq!(contract["evidence_policy"]["baseline"], "NOT_EXECUTED");
-    assert_eq!(contract["evidence_policy"]["eligible_parity_tier"], "ORES_GUEST_EXECUTED");
+    assert_eq!(
+        contract["evidence_policy"]["eligible_parity_tier"],
+        "ORES_GUEST_EXECUTED"
+    );
+
     let corpus: serde_json::Value = serde_json::from_slice(
         &fs::read(root.join("manifest.json")).expect("legacy corpus manifest"),
-    ).expect("valid legacy manifest");
-    assert_eq!(contract["required_backends"], corpus["policy"]["target_backends"]);
+    )
+    .expect("valid legacy manifest");
+    assert_eq!(
+        contract["required_backends"],
+        corpus["policy"]["target_backends"]
+    );
     let backends = contract["required_backends"].as_array().unwrap();
     assert_eq!(backends.len(), 6);
     for backend in backends {
         let id = backend.as_str().unwrap();
-        assert!(contract["backend_repositories"][id].as_str().unwrap().starts_with("ores-truffle-oreslang/oreslang-source."));
+        assert!(
+            contract["backend_repositories"][id]
+                .as_str()
+                .unwrap()
+                .starts_with("ores-truffle-oreslang/oreslang-source.")
+        );
     }
+
     let features = contract["features"].as_array().unwrap();
     assert_eq!(features.len(), 9);
     let mut feature_ids = HashSet::new();
@@ -34,6 +54,7 @@ fn semantic_floor_is_staged_and_matches_required_six_backends() {
     }
     assert!(feature_ids.contains("canonical-core-std-identity"));
     assert!(feature_ids.contains("critical-suspends-effect-separation"));
+
     let fixtures = contract["fixtures"].as_array().unwrap();
     assert_eq!(fixtures.len(), 4);
     let mut fixture_ids = HashSet::new();
@@ -44,6 +65,7 @@ fn semantic_floor_is_staged_and_matches_required_six_backends() {
         let rel = fixture["path"].as_str().unwrap();
         assert!(rel.starts_with("contracts/attolang-semantic-floor-v1/fixtures/"));
         assert!(rel.ends_with(".atto") && !rel.contains("..") && !rel.contains('\\'));
+
         let source = fs::read_to_string(root.join(rel)).expect("canonical source exists");
         assert!(source.contains("fnc") && source.ends_with('\n'));
         match fixture["kind"].as_str().unwrap() {
@@ -53,7 +75,12 @@ fn semantic_floor_is_staged_and_matches_required_six_backends() {
             }
             "compile_reject" => {
                 assert!(fixture["expected_exit"].is_null());
-                assert!(!fixture["expected_diagnostic_category"].as_str().unwrap().is_empty());
+                assert!(
+                    !fixture["expected_diagnostic_category"]
+                        .as_str()
+                        .unwrap()
+                        .is_empty()
+                );
             }
             kind => panic!("invalid candidate kind: {kind}"),
         }
