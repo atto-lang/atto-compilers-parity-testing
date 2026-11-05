@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {inspectCorpusReport as inspect} from '../tools/corpus-report-admission.mjs';
 const digest='f'.repeat(64);
-function base(){return {schema_version:3,executed:false,cases:2,
+function base(){return {schema_version:2,executed:false,cases:2,
   backends:['java','llvm'],
   records:['java','llvm'].flatMap(backend=>['01','02'].map(case_id=>({
    suite:'legacy',case_id,backend,source_sha256:digest,status:'not_run',
