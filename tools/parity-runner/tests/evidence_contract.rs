@@ -310,6 +310,52 @@ fn impossible_utc_calendar_instants_cannot_prove_execution() {
 }
 
 #[test]
+fn run_and_workflow_identity_must_not_use_zero_or_path_traversal() {
+    for field in ["run_id", "run_attempt", "workflow_id"] {
+        let mut evidence = base("java");
+        evidence[field] = json!(0);
+        assert!(
+            !run(&format!("zero-{field}"), &evidence).status.success(),
+            "accepted zero {field}"
+        );
+    }
+    for (name, path) in [
+        ("traversal", ".github/workflows/ci.yml@refs/heads/../main"),
+        ("alias", ".github/workflows/../ci.yml"),
+        ("double-slash", ".github//workflows/ci.yml"),
+    ] {
+        let mut evidence = base("java");
+        if name == "traversal" {
+            evidence["workflow_run_path"] = json!(path);
+        } else {
+            evidence["workflow_path"] = json!(path);
+        }
+        assert!(!run(name, &evidence).status.success());
+    }
+}
+
+#[test]
+fn failed_or_duplicated_executed_step_is_not_a_successful_runner_receipt() {
+    let mut failure = base("java");
+    failure["jobs"][0]["meaningful_steps"][0]["conclusion"] = json!("failure");
+    assert!(!run("failed-step", &failure).status.success());
+
+    let mut duplicate = base("java");
+    let step = duplicate["jobs"][0]["meaningful_steps"][0].clone();
+    duplicate["jobs"][0]["meaningful_steps"]
+        .as_array_mut()
+        .unwrap()
+        .push(step);
+    duplicate["successful_non_housekeeping_steps"] = json!(2);
+    assert!(!run("duplicate-step", &duplicate).status.success());
+
+    let mut missing = base("java");
+    missing["jobs"][0]["meaningful_steps"] = json!([]);
+    missing["successful_non_housekeeping_steps"] = json!(0);
+    assert!(!run("zero-executed-steps", &missing).status.success());
+}
+
+#[test]
 fn guest_report_cannot_self_promote_unvalidated_or_uncompiled_cases() {
     let evidence = guest_bundle();
     let mut report = guest_report();
