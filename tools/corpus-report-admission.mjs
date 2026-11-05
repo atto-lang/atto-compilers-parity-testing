@@ -5,7 +5,7 @@ const fail=why=>{throw Error('NATIVE_CORPUS_UNVERIFIED: '+why);};
 const backends=new Set(['llvm','java','wasm','dotnet','js','cranelift']);
 const digest=/^[a-f0-9]{64}$/;
 export function inspectCorpusReport(report){
- if(!report||report.schema_version!==3||typeof report.executed!=='boolean'||
+ if(!report||report.schema_version!==2||typeof report.executed!=='boolean'||
     !Number.isSafeInteger(report.cases)||report.cases<=0||
     !Array.isArray(report.backends)||report.backends.length===0||
     !Array.isArray(report.records)||!report.summary||typeof report.summary!=='object')
