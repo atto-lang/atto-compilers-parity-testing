@@ -10,6 +10,8 @@ Every positive multi-file entry point imports exactly three local source files, 
 
 See `docs/TEST_MATRIX.md`, `docs/EXECUTION.md`, `docs/BACKEND_ADAPTERS.md`, `docs/CI_EXECUTION_EVIDENCE.md`, `manifest.json`, `checks/manifest.json`, and `checks/README.md`.
 
+AttoLang specification alignment is tracked separately in [docs/SPEC_ALIGNMENT.md](docs/SPEC_ALIGNMENT.md) and [the source-only registry](contracts/spec-alignment-v1.json). New language sources should use `.atto`; the existing `.ores` corpus is retained unchanged as a versioned legacy compatibility baseline. Registry links are not execution receipts and do not alter the 53 × 6 inventory.
+
 CI execution evidence is tiered separately from corpus status. Source-side exact-run
 verification begins at `RUNNER_EXECUTED`; compiler/guest tiers require stronger
 artifact/provenance evidence, and `ORES_GUEST_EXECUTED` must also bind to the
