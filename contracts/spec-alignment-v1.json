@@ -5,7 +5,7 @@
   "specification": {
     "repository": "ores-truffle-oreslang/oreslang-language-specs.md",
     "edition": "0.1",
-    "reviewed_commit": "2965a39e216f29020ca267c2fc0512ffafed590f",
+    "reviewed_commit": "ceb292287005d7b6d335e27816a3afa9109f64f6",
     "catalogue_path": "spec/conformance.md",
     "traceability_path": "spec/parity-traceability.md"
   },
