@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "id": "package-namespace-v2-10-providers",
+  "classification": "synthetic-fixture",
+  "provider_count": 10,
+  "namespaces": {
+    "billing": 4,
+    "identity": 3,
+    "telemetry": 3
+  },
+  "manifest_sha256": "5986c589ab92259065f278ae6771e86065aa4f10776bfd1e55dbe31e7003d394",
+  "sources_sha256": "e6e794b0a96d94797f571a8b29ae69f9675bacb6818d9d9862c4213bf79f9d50",
+  "positive_expected_stdout_lines": [
+    "0",
+    "1",
+    "2",
+    "3"
+  ],
+  "expected_backend_status": {
+    "java": "positive-pending-execution",
+    "llvm": "functional-parity-pending",
+    "dotnet": "functional-parity-pending",
+    "js": "fail-closed",
+    "wasm": "fail-closed",
+    "forge": "fail-closed"
+  }
+}

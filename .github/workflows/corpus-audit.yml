@@ -24,21 +24,42 @@ jobs:
         run: cargo test --manifest-path tools/parity-runner/Cargo.toml --locked
       - name: Build parity runner
         run: cargo build --manifest-path tools/parity-runner/Cargo.toml --locked --bins
-      - name: Audit 49 x 5 matrix without making compiler claims
+      - name: Validate synthetic exact-run evidence contract fixture
+        run: |
+          cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml --bin evidence-contract -- \
+            evidence/fixtures/synthetic-runner-executed.json
+      - name: Validate recorded Java attempt-2 host execution bundle
+        run: |
+          cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml --bin evidence-contract -- \
+            evidence/java-fast-ci-38338581442-attempt2.json
+      - name: Audit 53 x 6 required-backend matrix without compiler claims
         run: |
           cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml -- --output parity-results.json
           node - <<'NODE'
           const d = require("./parity-results.json");
-          const expected = {legacy_cases:31,multifile_checks:16,negative_probes:2,total_cases:49};
+          const expected = {legacy_cases:35,multifile_checks:16,negative_probes:2,total_cases:53};
           if (JSON.stringify(d.corpus) !== JSON.stringify(expected)) process.exit(1);
-          if (d.cases !== 49 || d.records.length !== 245 || d.summary.not_run !== 245) process.exit(1);
+          if (d.cases !== 53 || d.records.length !== 318 || d.summary.not_run !== 318) process.exit(1);
+          if (JSON.stringify(d.backends) !== JSON.stringify(["llvm","java","wasm","dotnet","forge","cranelift"])) process.exit(1);
           const checks = d.records.filter(r => r.suite === "checks");
           const positives = checks.filter(r => typeof r.graph_sha256 === "string");
-          if (checks.length !== 90 || positives.length !== 80) process.exit(1);
+          if (checks.length !== 108 || positives.length !== 96) process.exit(1);
           if (!positives.every(r => Array.isArray(r.graph_files) && r.graph_files.length >= 4)) process.exit(1);
           if (!checks.every(r => Array.isArray(r.features) && r.features.length > 0)) process.exit(1);
+          const arithmetic = d.records.filter(r => ["32","33","34","35"].includes(r.case_id));
+          if (arithmetic.length !== 24 || !arithmetic.every(r => r.status === "not_run" && r.validation_status === "candidate")) process.exit(1);
+          NODE
+      - name: Audit optional JavaScript transpiler separately
+        run: |
+          cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml -- --backend js --output parity-js-optional.json
+          node - <<'NODE'
+          const d = require("./parity-js-optional.json");
+          if (JSON.stringify(d.backends) !== JSON.stringify(["js"])) process.exit(1);
+          if (d.cases !== 53 || d.records.length !== 53 || d.summary.not_run !== 53) process.exit(1);
           NODE
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: parity-corpus-audit
-          path: parity-results.json
+          path: |
+            parity-results.json
+            parity-js-optional.json

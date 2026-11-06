@@ -8,11 +8,15 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-const BACKENDS: [(&str, &str); 5] = [
+// The six oreslang-source.* backends are mandatory. JavaScript is
+// independently selectable for exploratory transpiler coverage.
+const BACKENDS: [(&str, &str); 7] = [
     ("llvm", "LLVM"),
     ("java", "JAVA"),
     ("wasm", "WASM"),
     ("dotnet", "DOTNET"),
+    ("forge", "FORGE"),
+    ("cranelift", "CRANELIFT"),
     ("js", "JS"),
 ];
 
@@ -773,6 +777,10 @@ fn evaluate_case(
     Ok(record)
 }
 
+fn is_verified_execution_status(status: &str) -> bool {
+    matches!(status, "pass" | "expected_reject")
+}
+
 fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     let execute = args.iter().any(|arg| arg == "--execute");
@@ -784,7 +792,10 @@ fn main() -> Result<(), String> {
             args.get(index + 1)
                 .filter(|name| BACKENDS.iter().any(|(backend, _)| backend == name))
                 .cloned()
-                .ok_or_else(|| "--backend requires llvm, java, wasm, dotnet, or js".to_string())
+                .ok_or_else(|| {
+                    "--backend requires llvm, java, wasm, dotnet, forge, cranelift, or js"
+                        .to_string()
+                })
         })
         .transpose()?;
     let output = args
@@ -815,6 +826,10 @@ fn main() -> Result<(), String> {
     let mut records = Vec::new();
     for case in &cases {
         for &(backend, env_name) in &BACKENDS {
+            // Omit the optional JS transpiler from default required parity.
+            if selected_backend.is_none() && backend == "js" {
+                continue;
+            }
             if selected_backend
                 .as_deref()
                 .is_some_and(|selected| selected != backend)
@@ -845,9 +860,10 @@ fn main() -> Result<(), String> {
         backends: BACKENDS
             .iter()
             .filter(|entry| {
-                selected_backend
-                    .as_deref()
-                    .is_none_or(|name| name == entry.0)
+                (selected_backend.is_some() || entry.0 != "js")
+                    && selected_backend
+                        .as_deref()
+                        .is_none_or(|name| name == entry.0)
             })
             .map(|entry| entry.0.to_string())
             .collect(),
@@ -864,22 +880,14 @@ fn main() -> Result<(), String> {
         serde_json::to_string(&report.summary).map_err(|e| e.to_string())?
     );
 
-    let hard_fail = report.records.iter().any(|record| {
-        matches!(
-            record.status.as_str(),
-            "compile_failure"
-                | "intentional_capability_reject"
-                | "wrong_diagnostic"
-                | "rejection_unclassified"
-                | "wrong_result"
-                | "wrong_stdout"
-                | "unexpected_compile_success"
-                | "compile_infrastructure_failure"
-                | "runtime_infrastructure_failure"
-                | "backend_not_configured"
-                | "unvalidated"
-        )
-    });
+    // Inventory-only audits are intentionally not execution claims. When
+    // execution is requested, only validated passes may exit successfully.
+    // Unrecognized or exploratory statuses must fail closed.
+    let hard_fail = execute
+        && report
+            .records
+            .iter()
+            .any(|record| !is_verified_execution_status(&record.status));
     if hard_fail {
         std::process::exit(1);
     }
@@ -889,9 +897,29 @@ fn main() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        ascii_lower_hex, classify_diagnostic, hex, import_target, lowercase_kebab, Invocation,
+        ascii_lower_hex, classify_diagnostic, hex, import_target, is_verified_execution_status,
+        lowercase_kebab, Invocation,
     };
     use std::collections::BTreeMap;
+
+    #[test]
+    fn exploratory_and_unrecognized_execution_results_fail_closed() {
+        assert!(is_verified_execution_status("pass"));
+        assert!(is_verified_execution_status("expected_reject"));
+        for status in [
+            "not_run",
+            "unvalidated",
+            "exploratory_match_not_parity_pass",
+            "exploratory_expected_reject_not_parity_pass",
+            "intentional_capability_reject",
+            "backend_not_configured",
+            "compile_infrastructure_failure",
+            "runtime_infrastructure_failure",
+            "unknown_future_status",
+        ] {
+            assert!(!is_verified_execution_status(status), "{status}");
+        }
+    }
 
     #[test]
     fn diagnostic_classification_is_ascii_case_insensitive() {
@@ -1000,10 +1028,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn oversized_compiler_stdout_and_stderr_never_certify_parity() {
-        for command in [
-            "head -c 1048577 /dev/zero",
-            "head -c 1048577 /dev/zero >&2",
-        ] {
+        for command in ["head -c 1048577 /dev/zero", "head -c 1048577 /dev/zero >&2"] {
             let result = super::invoke(
                 &["sh".into(), "-c".into(), command.into()],
                 &std::env::temp_dir(),
