@@ -79,7 +79,7 @@ fn runner_admission_failure_cannot_be_rebranded_as_execution() {
 }
 
 #[test]
-fn housekeeping_only_and zero_step_count_never_prove_execution() {
+fn housekeeping_only_and_zero_step_count_never_prove_execution() {
     let mut housekeeping=base();
     housekeeping["jobs"][0]["meaningful_steps"][0]["name"]=json!("Post checkout");
     assert!(!run(&housekeeping).status.success());
