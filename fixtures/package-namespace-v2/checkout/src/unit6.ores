@@ -1,0 +1,2 @@
+namespace identity;
+pub fnc function6(): int { return 6; }
