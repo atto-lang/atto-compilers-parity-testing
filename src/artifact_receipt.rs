@@ -28,6 +28,9 @@ pub struct GuestReceipt{
 pub struct CheckedGuestArtifact{
     pub archive_sha256:String,
     pub receipt:GuestReceipt,
+    /// True only if the artifact carries the exact bytes of the trusted
+    /// fixture-set.json and its case count agrees with the guest receipt.
+    pub fixture_bytes_verified:bool,
 }
 pub fn sha256_hex(bytes:&[u8])->String{format!("{:x}",Sha256::digest(bytes))}
 fn hex(s:&str,n:usize)->bool{
@@ -63,33 +66,55 @@ pub fn validate_archive(bytes:&[u8],p:&ArtifactPolicy<'_>)->Result<CheckedGuestA
         return Err("actual ZIP SHA-256 does not match trusted GitHub artifact digest".into());
     }
     let mut zip=ZipArchive::new(Cursor::new(bytes)).map_err(|e|e.to_string())?;
-    if zip.len()!=2{return Err("guest ZIP requires exactly two files".into());}
+    if zip.len()!=2 && zip.len()!=3 {
+        return Err("guest ZIP requires receipt, stdout and optional fixture set".into());
+    }
     let mut receipt=None;
     let mut output=None;
+    let mut fixture_set=None;
     let mut seen=BTreeSet::new();
     for i in 0..zip.len(){
         let mut f=zip.by_index(i).map_err(|e|e.to_string())?;
         let name=f.name().to_owned();
         if !seen.insert(name.clone())||f.is_dir()
-           ||name!="guest-receipt.json"&&name!="guest-stdout.bin"{
+           ||name!="guest-receipt.json"&&name!="guest-stdout.bin"&&name!="fixture-set.json"{
             return Err("unexpected or duplicate ZIP path".into());
         }
         if f.encrypted()||!matches!(f.compression(),CompressionMethod::Stored|CompressionMethod::Deflated){
             return Err("encrypted or unsupported ZIP member".into());
         }
-        let bound=if name=="guest-receipt.json"{32768}else{1048576};
+        if let Some(mode)=f.unix_mode() {
+            let kind=mode & 0o170000;
+            if kind!=0 && kind!=0o100000 {
+                return Err("special files and ZIP symlinks are forbidden".into());
+            }
+        }
+        let bound=match name.as_str() {
+            "guest-receipt.json"=>32768,
+            "fixture-set.json"=>4*1024*1024,
+            _=>1048576,
+        };
         if f.size()>bound||f.compressed_size()==0&&f.size()>0
             ||f.compressed_size()>0&&f.size()>f.compressed_size().saturating_mul(500){
             return Err("oversized or suspicious compression ratio".into());
         }
+        let expected_size=f.size();
         let mut buf=Vec::new();
         f.take(bound+1).read_to_end(&mut buf).map_err(|e|e.to_string())?;
-        if buf.len()>bound as usize{return Err("ZIP inflated past cap".into());}
-        if name=="guest-receipt.json"{receipt=Some(buf)}else{output=Some(buf)}
+        if buf.len()>bound as usize || buf.len() as u64!=expected_size {
+            return Err("ZIP inflated past cap or was truncated".into());
+        }
+        match name.as_str() {
+            "guest-receipt.json"=>receipt=Some(buf),
+            "fixture-set.json"=>fixture_set=Some(buf),
+            _=>output=Some(buf),
+        }
     }
     let raw=receipt.ok_or("missing receipt")?;
     let stdout=output.ok_or("missing captured output")?;
-    let r:GuestReceipt=serde_json::from_slice(&raw).map_err(|e|e.to_string())?;
+    // serde_json::from_slice alone would silently accept duplicate property names.
+    let parsed=crate::decode_strict_json(&raw)?;
+    let r:GuestReceipt=serde_json::from_value(parsed).map_err(|e|e.to_string())?;
     if r.version!=1||r.repository!=p.repository||r.source_sha!=p.source_sha
         ||r.tree_sha!=p.tree_sha||r.case_sha256!=p.case_sha256
         ||r.backend!=p.backend||r.feature!=p.feature||r.run_id!=p.run_id
@@ -98,7 +123,20 @@ pub fn validate_archive(bytes:&[u8],p:&ArtifactPolicy<'_>)->Result<CheckedGuestA
         ||r.exit_code!=0||!hex(&r.stdout_sha256,64)||r.stdout_sha256!=sha256_hex(&stdout){
         return Err("guest receipt does not match exact run, tree, nonce or output".into());
     }
-    Ok(CheckedGuestArtifact{archive_sha256:digest,receipt:r})
+    let fixture_bytes_verified=if let Some(fixtures)=fixture_set {
+        if sha256_hex(&fixtures)!=p.case_sha256 {
+            return Err("embedded fixture-set bytes do not match trusted SHA-256".into());
+        }
+        let parsed=crate::decode_strict_json(&fixtures)?;
+        let cases=parsed.as_array().ok_or("fixture-set.json must be a JSON array")?;
+        if cases.is_empty() || cases.len() as u64!=r.executed {
+            return Err("claimed executed cases do not match trusted fixture-set count".into());
+        }
+        true
+    } else { false };
+    Ok(CheckedGuestArtifact{
+        archive_sha256:digest,receipt:r,fixture_bytes_verified,
+    })
 }
 pub trait ProvenanceVerifier{
     fn verify_signed(&self,bytes:&[u8],p:&ArtifactPolicy<'_>)->Result<(),String>;
@@ -177,7 +215,7 @@ impl ProvenanceVerifier for GhProvenance{
             .env("GH_PROMPT_DISABLED","1");
         let out=bounded(command,2*1024*1024);
         let _=std::fs::remove_file(path);
-        let proof:serde_json::Value=serde_json::from_slice(&out?).map_err(|e|e.to_string())?;
+        let proof=crate::decode_strict_json(&out?)?;
         let entries=proof.as_array().ok_or("no signed attestations")?;
         let digest=sha256_hex(bytes);
         let verified=entries.iter().any(|item|{
