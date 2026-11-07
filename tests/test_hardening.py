@@ -21,7 +21,7 @@ def wit_fields(text):
     m = re.search(r"record\s+conformance-evidence\s*\{([^}]*)\}", text)
     if not m:
         raise AssertionError("missing WIT evidence record")
-    return dict((k,v.strip()) for k,v in re.findall(r"(?m)^\s*([a-z-]+):\s*([^,\n]+)",m.group(1)))
+    return dict((k,v.strip()) for k,v in re.findall(r"(?m)^\s*([a-z0-9-]+):\s*([^,\n]+)",m.group(1)))
 
 def tsp_fields(text):
     result = {}
