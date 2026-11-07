@@ -57,10 +57,14 @@ fn rejects_type_confusion_negative_matrix() {
     let invalid=[json!(null),json!(true),json!(false),json!(123),json!(1.5),json!([]),json!({})];
     let mut n=0;
     for field in ["backend","feature_id","source_sha","case_set_sha256","status",
-                  "execution_target","run_url","executed_cases","version"] {
+                  "execution_target","run_url","version"] {
         for replacement in &invalid {
             let mut v=passing();v[field]=replacement.clone();reject(v);n+=1;
         }
+    }
+    for replacement in [json!(null),json!(true),json!(false),json!("1"),json!(1.5),
+                        json!([]),json!({}),json!(0),json!(-1)] {
+        let mut v=passing();v["executed_cases"]=replacement;reject(v);n+=1;
     }
     for replacement in [json!(null),json!(true),json!(false),json!("one"),json!(1.5),json!([]),json!({})] {
         let mut v=passing();v["failed_cases"]=replacement;reject(v);n+=1;
