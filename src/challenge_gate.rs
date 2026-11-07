@@ -185,7 +185,7 @@ impl ChallengeAuthority {
                 return Err("challenge record is not private/unique".into());
             }
         }
-        let mut file=File::open(&path).map_err(|_|"cannot read issued challenge")?;
+        let file=File::open(&path).map_err(|_|"cannot read issued challenge")?;
         #[cfg(unix)]
         {
             use std::os::unix::fs::MetadataExt;

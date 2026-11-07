@@ -108,7 +108,7 @@ fn materialize(nonce:String)->(ArtifactPolicy<'static>,CheckedGuestArtifact){
             barrier.wait();a.consume(&pair.0,&pair.1,TIME+1).is_ok()
         }));
     }
-    assert_eq!(handles.into_iter().filter(|t|t.join().unwrap()).count(),1);
+    assert_eq!(handles.into_iter().map(|t|t.join().unwrap()).filter(|ok|*ok).count(),1);
 }
 #[test] fn unsafe_journals_and_policy_are_rejected(){
     let dir=PrivateDir::new();
