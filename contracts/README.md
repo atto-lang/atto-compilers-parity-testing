@@ -1,0 +1,9 @@
+# Draft v1 cross-backend evidence contract
+
+This protocol is **proposed**, not an assertion that any compiler or runtime implements it. It covers Java/GraalVM, LLVM, Wasm, Forge, and .NET and explicitly keeps statuses **passed**, **failed**, **unsupported**, and **not_executed** distinct. **Not executed is not passed.** A host unit-test pass does not certify a guest-runtime feature.
+
+JSON Schema 2020-12 is normative for JSON report ingress; TypeSpec models status-tagged report variants; WIT is a possible component-world reporting interface. Map snake_case names to WIT kebab-case and not_executed to the WIT not-executed enumerator. WIT does not express conditional required fields, content patterns, or the version literal; validate JSON after decoding WIT values.
+
+An executed status requires a GitHub Actions run URL, exact source SHA, fixture-set SHA-256, target (host vs guest), and actual executed/failed counts. **Schema validation does not independently attest any of these claims**: the acceptance service must query GitHub for run id, conclusion, exact head SHA/tree, job steps, downloaded evidence, artifact provenance, and fixture-set digest. Reject missing runner allocation, skipped steps, pending tests, and stale-head results. Verify that failed_cases is within executed_cases; JSON Schema cannot compare two arbitrary property values. A passing report is not automatically release qualified; independent approval and protected branch rules are separate gates.
+
+Run python -m pip install -r tests/requirements.txt and python -m unittest discover -s tests -v for JSON Schema negative vectors and three-format drift checks. GitHub Actions additionally compiles TypeSpec and parses WIT via wasm-tools, but CI execution must be independently checked at the current commit. This contract does **not** execute or emulate any AttoLang backend.
