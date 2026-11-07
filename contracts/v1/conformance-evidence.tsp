@@ -6,11 +6,11 @@ alias ExecutionTarget = "host" | "guest";
 model EvidenceBase {
   version: 1;
   backend: Backend;
-  @pattern("^[a-z][a-z0-9_.-]{0,127}$")
+  @pattern("^[a-z][a-z0-9_.-]{0,127}(?![\\s\\S])")
   feature_id: string;
-  @pattern("^[a-f0-9]{40}$")
+  @pattern("^[a-f0-9]{40}(?![\\s\\S])")
   source_sha: string;
-  @pattern("^[a-f0-9]{64}$")
+  @pattern("^[a-f0-9]{64}(?![\\s\\S])")
   case_set_sha256: string;
 }
 

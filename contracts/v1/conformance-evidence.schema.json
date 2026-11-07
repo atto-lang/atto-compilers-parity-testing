@@ -18,15 +18,15 @@
     },
     "feature_id": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9_.-]{0,127}$"
+      "pattern": "^[a-z][a-z0-9_.-]{0,127}(?![\\s\\S])"
     },
     "source_sha": {
       "type": "string",
-      "pattern": "^[a-f0-9]{40}$"
+      "pattern": "^[a-f0-9]{40}(?![\\s\\S])"
     },
     "case_set_sha256": {
       "type": "string",
-      "pattern": "^[a-f0-9]{64}$"
+      "pattern": "^[a-f0-9]{64}(?![\\s\\S])"
     },
     "status": {
       "enum": [
@@ -45,7 +45,7 @@
     "run_url": {
       "type": "string",
       "format": "uri",
-      "pattern": "^https://github\\.com/[^/]+/[^/]+/actions/runs/[0-9]+$"
+      "pattern": "^https://github\\.com/[^/]+/[^/]+/actions/runs/[0-9]+(?![\\s\\S])"
     },
     "executed_cases": {
       "type": "integer",
