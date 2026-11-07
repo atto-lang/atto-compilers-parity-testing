@@ -22,6 +22,7 @@ impl GithubReadOnly for GhCli {
         }
         let out = Command::new("gh")
             .arg("api")
+            .arg("--hostname").arg("github.com")
             .arg("-X").arg("GET")
             .arg("-H").arg("Accept: application/vnd.github+json")
             .arg(path)
