@@ -130,3 +130,5 @@ pub mod github_probe;
 pub mod artifact_receipt;
 
 pub mod challenge_gate;
+
+pub mod private_signature;
