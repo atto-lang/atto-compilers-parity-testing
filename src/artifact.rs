@@ -93,6 +93,13 @@ pub fn verify_artifact_zip(
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).map_err(|_| "invalid archive entry")?;
         if !file.is_file() { return Err("artifact archive contains a directory".into()); }
+        // ZIP entries masquerading as regular files may carry Unix symlink modes.
+        if let Some(mode)=file.unix_mode() {
+            let kind=mode & 0o170000;
+            if kind != 0 && kind != 0o100000 {
+                return Err("artifact contains a special file or symlink".into());
+            }
+        }
         let (cap, place): (usize, &mut Option<Vec<u8>>) = match file.name() {
             "guest-receipt.json" => (MAX_RECEIPT_BYTES, &mut receipt_bytes),
             "fixture-set.json" => (MAX_FIXTURE_BYTES, &mut fixtures_bytes),
@@ -116,8 +123,11 @@ pub fn verify_artifact_zip(
         return Err("actual fixture-set bytes do not match trusted SHA-256".into());
     }
     // Fixture-set is itself strict JSON, not a raw opaque digest string.
-    if !decode_strict_json(&fixture_set)?.is_array() {
-        return Err("fixture-set is not a JSON array".into());
+    let fixture_value=decode_strict_json(&fixture_set)?;
+    let fixture_cases=fixture_value.as_array()
+        .ok_or("fixture-set is not a JSON array")?;
+    if fixture_cases.is_empty() {
+        return Err("fixture-set must contain at least one case".into());
     }
     let receipt_bytes = receipt_bytes.ok_or("missing guest-receipt.json")?;
     let receipt_value = decode_strict_json(&receipt_bytes)?;
@@ -132,7 +142,8 @@ pub fn verify_artifact_zip(
         return Err("receipt does not match trusted run, tree, backend or fixtures".into());
     }
     if r.status != "passed" || r.execution_target != "guest" ||
-        r.executed_cases == 0 || r.failed_cases != 0
+        r.executed_cases == 0 || r.failed_cases != 0 ||
+        r.executed_cases != fixture_cases.len() as u64
     {
         return Err("unexecuted, host-only, failed or empty guest receipt".into());
     }

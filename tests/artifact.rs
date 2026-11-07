@@ -87,7 +87,7 @@ fn rejects_receipt_mutations_while_github_digest_is_recalculated(){
         ("case_set_sha256",json!("0".repeat(64))),("status",json!("failed")),
         ("status",json!("not_executed")),("status",json!("unsupported")),
         ("execution_target",json!("host")),("executed_cases",json!(0)),
-        ("failed_cases",json!(1)),
+        ("failed_cases",json!(1)),("executed_cases",json!(2)),
     ] {
         let mut r=receipt(&p);r[field]=bad;
         let zip=build(r.to_string().as_bytes(),br#"[{"case":"ownership"}]"#);
