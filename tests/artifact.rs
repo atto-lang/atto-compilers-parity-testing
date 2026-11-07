@@ -73,8 +73,22 @@ fn rejects_untrusted_archive_member_paths_duplicates_or_missing_files(){
     let zip=archive(&[("guest-receipt.json",r.as_bytes()),
         ("fixture-set.json",br#"[{"case":"ownership"}]"#),
         ("extra.txt",b"extra")]);deny(&zip,&p);
-    let zip=archive(&[("guest-receipt.json",r.as_bytes()),
-        ("guest-receipt.json",r.as_bytes())]);deny(&zip,&p);
+    // ZipWriter rejects duplicate names at construction. Build a valid ZIP
+    // with same-length distinct names, then patch both local + central names
+    // to create the malformed duplicate-entry archive intentionally.
+    let mut zip=archive(&[("guest-receipt.json",r.as_bytes()),
+        ("guest-receip2.json",r.as_bytes())]);
+    let from=b"guest-receip2.json";let to=b"guest-receipt.json";
+    assert_eq!(from.len(),to.len());
+    let mut patched=0;
+    for offset in 0..zip.len()-from.len() {
+        if &zip[offset..offset+from.len()]==from {
+            zip[offset..offset+from.len()].copy_from_slice(to);
+            patched+=1;
+        }
+    }
+    assert_eq!(patched,2); // one local header and one central-directory header
+    deny(&zip,&p);
 }
 #[test]
 fn rejects_receipt_mutations_while_github_digest_is_recalculated(){
