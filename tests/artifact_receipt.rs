@@ -1,5 +1,5 @@
 use atto_evidence_contract_conformance::artifact_receipt::{
-    ArtifactPolicy,ProvenanceVerifier,ReplayFence,validate_archive,validate_signed,sha256_hex,MAX_ARCHIVE_BYTES
+    ArtifactPolicy,ProvenanceVerifier,ReplayFence,DurableReplayFence,validate_archive,validate_signed,sha256_hex,MAX_ARCHIVE_BYTES
 };
 use serde_json::{json,Value};
 use std::io::{Cursor,Write};
@@ -144,4 +144,39 @@ fn binds_optional_fixture_bytes_to_trusted_hash_and_executed_count(){
     let mut wrong_policy=policy(&wrong_digest);
     wrong_policy.case_sha256=&hash;
     assert!(validate_archive(&wrong,&wrong_policy).is_err());
+}
+
+#[test]
+fn durable_replay_journal_survives_separate_verifier_instances(){
+    use std::fs;
+    let nonce=std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+    let root=std::env::temp_dir().join(
+        format!("atto-durable-fence-{}-{nonce}",std::process::id()));
+    fs::create_dir(&root).unwrap();
+    #[cfg(unix)] {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&root,fs::Permissions::from_mode(0o700)).unwrap();
+    }
+    let zip=archive(&receipt(),b"7 cases executed\n");
+    let d=format!("sha256:{}",sha256_hex(&zip));
+    let checked=validate_archive(&zip,&policy(&d)).unwrap();
+    let first=DurableReplayFence::open(&root).unwrap();
+    assert!(first.admit(&checked).is_ok());
+    // A freshly constructed verifier must see the earlier process' marker.
+    let second=DurableReplayFence::open(&root).unwrap();
+    assert!(second.admit(&checked).is_err());
+    let persisted:Vec<_>=fs::read_dir(&root).unwrap().map(Result::unwrap).collect();
+    assert_eq!(persisted.len(),1);
+    #[cfg(unix)] {
+        use std::os::unix::fs::{symlink,PermissionsExt};
+        let private_link=root.with_extension("symlink");
+        symlink(&root,&private_link).unwrap();
+        assert!(DurableReplayFence::open(&private_link).is_err());
+        fs::remove_file(private_link).unwrap();
+        fs::set_permissions(&root,fs::Permissions::from_mode(0o777)).unwrap();
+        assert!(DurableReplayFence::open(&root).is_err());
+        fs::set_permissions(&root,fs::Permissions::from_mode(0o700)).unwrap();
+    }
+    fs::remove_dir_all(root).unwrap();
 }
