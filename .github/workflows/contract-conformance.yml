@@ -24,17 +24,3 @@ jobs:
       - run: cargo install --locked --version 1.262.0 wasm-tools
       - run: wasm-tools component wit contracts/v1 --json > /dev/null
 
-  bootstrap-cargo-lock:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: false
-      - run: rustup toolchain install 1.88.0 --profile minimal
-      - run: cargo +1.88.0 generate-lockfile
-      - name: Export Cargo.lock
-        run: |
-          echo ATTO_LOCK_BEGIN
-          cat Cargo.lock
-          echo ATTO_LOCK_END
