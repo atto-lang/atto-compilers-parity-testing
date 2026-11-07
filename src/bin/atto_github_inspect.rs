@@ -20,30 +20,39 @@ fn policy_file<T: serde::de::DeserializeOwned>(path: &str) -> Result<T,String> {
 fn run() -> Result<Value,String> {
     let args:Vec<_>=env::args().skip(1).collect();
     if args.len()!=1 && !(args.len()==5
-        && args[1]=="--artifact-zip" && args[3]=="--receipt-policy") {
-        return Err("usage: atto_github_inspect GITHUB_POLICY.json [--artifact-zip ARCHIVE.zip --receipt-policy RECEIPT_POLICY.json]".into());
+        && args[1]=="--artifact-zip" && args[3]=="--receipt-policy")
+        && !(args.len()==4 && args[1]=="--download-artifact"
+            && args[2]=="--receipt-policy") {
+        return Err("usage: atto_github_inspect GITHUB_POLICY.json [--artifact-zip ARCHIVE.zip | --download-artifact] --receipt-policy RECEIPT_POLICY.json".into());
     }
     let policy:Expected=policy_file(&args[0])?;
-    let metadata=inspect(&CurlGitHub::from_environment()?,&policy)?;
+    let client=CurlGitHub::from_environment()?;
+    let metadata=inspect(&client,&policy)?;
 
     let mut artifact_bytes_verified=false;
     let mut fixture_bytes_verified=false;
     let mut receipt_claim_consistent=false;
     let mut executed_cases_claim=0;
-    if args.len()==5 {
-        let trusted:TrustedReceiptPolicy=policy_file(&args[4])?;
+    if args.len()>1 {
+        let expected_path=if args.len()==5 {&args[4]} else {&args[3]};
+        let trusted:TrustedReceiptPolicy=policy_file(expected_path)?;
         if trusted.repository!=metadata.repository ||
             trusted.run_id!=metadata.run_id || trusted.job_id!=metadata.job_id ||
             trusted.source_sha!=metadata.head_sha || trusted.tree_sha!=metadata.tree_sha {
             return Err("artifact policy is inconsistent with independently checked GitHub metadata".into());
         }
-        let zip_meta=fs::metadata(&args[2]).map_err(|_|"cannot inspect artifact ZIP")?;
-        if zip_meta.len()==0 || zip_meta.len()>MAX_ARTIFACT_ZIP_BYTES as u64 {
-            return Err("artifact archive missing or exceeds 8 MiB".into());
-        }
-        // ZIP bytes must be acquired separately (read-only). Their digest is
-        // checked against the *independently fetched* GitHub artifact digest.
-        let bytes=fs::read(&args[2]).map_err(|_|"cannot read artifact ZIP")?;
+        // Only a locally supplied ZIP or the exact, authenticated GitHub artifact
+        // endpoint is permitted. Never accept URL arguments from reports.
+        let bytes = if args.len()==5 {
+            let zip_meta=fs::metadata(&args[2])
+                .map_err(|_|"cannot inspect artifact ZIP")?;
+            if zip_meta.len()==0 || zip_meta.len()>MAX_ARTIFACT_ZIP_BYTES as u64 {
+                return Err("artifact archive missing or exceeds 8 MiB".into());
+            }
+            fs::read(&args[2]).map_err(|_|"cannot read artifact ZIP")?
+        } else {
+            client.download_artifact_zip(&metadata.repository,metadata.artifact_id)?
+        };
         let verified=verify_artifact_zip(&bytes,&metadata.artifact_digest_claim,&trusted)?;
         artifact_bytes_verified=verified.artifact_bytes_verified;
         fixture_bytes_verified=verified.fixture_bytes_verified;

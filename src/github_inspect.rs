@@ -3,7 +3,7 @@
 use crate::decode_strict_json;
 use serde::Deserialize;
 use serde_json::Value;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 
 #[derive(Clone, Debug, Deserialize)]
@@ -50,6 +50,48 @@ impl CurlGitHub {
             return Err("malformed GitHub API token".into());
         }
         Ok(Self { token })
+    }
+
+    /// Download the archive from the *specific* authenticated GitHub artifact ID.
+    /// GitHub controls the HTTPS 302 to short-lived object storage. Curl does not
+    /// forward the Authorization header to a different host (no --location-trusted).
+    /// No user-provided URLs, insecure protocols, or unlimited redirects.
+    pub fn download_artifact_zip(&self, repo: &str, artifact_id: u64)
+        -> Result<Vec<u8>, String> {
+        if !good_repo(repo) || artifact_id == 0 {
+            return Err("untrusted GitHub artifact locator".into());
+        }
+        const MAX: usize = crate::artifact::MAX_ARTIFACT_ZIP_BYTES;
+        let url = format!("https://api.github.com/repos/{repo}/actions/artifacts/{artifact_id}/zip");
+        let mut proc=Command::new("curl")
+            .arg("-q")
+            .args(["--silent","--show-error","--fail-with-body",
+                "--location","--max-redirs","2","--max-time","45",
+                "--max-filesize","8388608",
+                "--proto","=https","--proto-redir","=https",
+                "--request","GET",
+                "--header","Accept: application/vnd.github+json",
+                "--header","X-GitHub-Api-Version: 2022-11-28",
+                "--header","User-Agent: atto-evidence-inspect/0.1",
+                "--config","-"])
+            .arg(url)
+            .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null())
+            .spawn().map_err(|_|"could not start artifact downloader")?;
+        let config=format!("header = \"Authorization: Bearer {}\"\n",self.token);
+        proc.stdin.take().ok_or("artifact transport stdin missing")?
+            .write_all(config.as_bytes())
+            .map_err(|_|"could not configure artifact transport")?;
+        let mut bytes=Vec::new();
+        let result=proc.stdout.take().ok_or("artifact transport output missing")?
+            .take(MAX as u64 + 1).read_to_end(&mut bytes);
+        if result.is_err() || bytes.is_empty() || bytes.len()>MAX {
+            let _=proc.kill();
+            let _=proc.wait();
+            return Err("artifact download unavailable, invalid or exceeds 8 MiB".into());
+        }
+        let status=proc.wait().map_err(|_|"artifact transport wait failed")?;
+        if !status.success(){return Err("GitHub artifact download failed".into());}
+        Ok(bytes)
     }
 }
 impl GitHubReader for CurlGitHub {

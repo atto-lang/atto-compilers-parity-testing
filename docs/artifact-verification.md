@@ -54,3 +54,24 @@ with `NOT_CERTIFIED`. A matching archive reports byte/fixture
 verification but STILL returns `guest_execution_verified=false` and
 `NOT_CERTIFIED` because metadata and fixture receipts cannot prove
 that the backend actually executed the tests.
+
+
+## Direct authenticated ZIP download
+
+Once the GitHub metadata verifier has accepted the exact run, job, tree,
+independent review and protected-main checks, the inspector may download
+the **specific artifact ID** directly:
+
+```sh
+GH_TOKEN=... cargo +1.88.0 run --locked --bin atto_github_inspect -- \
+  ./github-policy.json --download-artifact \
+  --receipt-policy ./guest-receipt-policy.json
+```
+
+It begins at the fixed api.github.com origin, uses authenticated GET and
+follows at most two GitHub-issued **HTTPS-only** redirects (not a URL from
+the report). Curl does not use `--location-trusted` so credentials are not
+forwarded to another host. Download size is limited to 8 MiB, and the Rust
+verifier independently rehashes the ZIP bytes against GitHub's reported SHA-256.
+As before, guest execution remains **NOT_CERTIFIED** until independent guest
+runtime evidence is validated.
