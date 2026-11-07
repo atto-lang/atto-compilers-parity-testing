@@ -129,3 +129,5 @@ pub fn decode_strict_json(raw: &[u8]) -> Result<Value, String> {
 }
 
 pub mod github_inspect;
+
+pub mod artifact;
