@@ -1,4 +1,4 @@
-// 37: loop-local-mutable-class-owner
+// 38: loop-local-mutable-class-owner
 // oreslang-http-routing: a mutable class owner declared inside a loop body is
 // created, mutated and dropped on every iteration.
 define class Counter as

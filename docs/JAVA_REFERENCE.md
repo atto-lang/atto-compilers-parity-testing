@@ -2,7 +2,7 @@
 
 The Rust `java-reference` adapter prepares and launches a clean, commit-pinned
 Java reference compiler. It never copies, flattens or rewrites guest source.
-The current corpus contains 58 cases. The reference adapter can attempt all of them
+The current corpus contains 59 cases. The reference adapter can attempt all of them
 with `--allow-unvalidated`; matching results remain explicitly exploratory.
 No validation status is promoted automatically, and exploratory-only execution
 cannot exit successfully as a parity gate.

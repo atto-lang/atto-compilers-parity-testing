@@ -1,4 +1,4 @@
-// 39: inferred-class-local
+// 40: inferred-class-local
 // oreslang-http-routing tests: a class-valued local declared without a type,
 // inferred from the callee's declared return type.
 define class Box as

@@ -1,0 +1,1533 @@
+{
+  "schema_version": 2,
+  "executed": true,
+  "corpus": {
+    "legacy_cases": 31,
+    "multifile_checks": 16,
+    "negative_probes": 2,
+    "total_cases": 49
+  },
+  "cases": 49,
+  "backends": [
+    "llvm"
+  ],
+  "records": [
+    {
+      "suite": "legacy",
+      "case_id": "01",
+      "name": "literal-42",
+      "backend": "llvm",
+      "source_sha256": "1162adddc04c873a8d6f78d256e2d2661414fd881e955cc109b6208e18889871",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "int",
+        "entrypoint"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "4e61746976652065786563757461626c653a202f707269766174652f7661722f666f6c646572732f71722f6c306b6c6630723536367a3171647366676367396a37733030303030676e2f542f6f7265732d7061726974792d33313835372d30312d6c6c766d2f70726f6772616d0a",
+        "stderr_hex": "7761726e696e673a206f766572726964696e6720746865206d6f64756c652074617267657420747269706c6520776974682061726d36342d6170706c652d6d61636f737832362e302e30205b2d576f766572726964652d6d6f64756c655d0a31207761726e696e672067656e6572617465642e0a",
+        "duration_ms": 766,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 261,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "02",
+      "name": "operator-precedence",
+      "backend": "llvm",
+      "source_sha256": "b10e52fd478fc7e7dd5b55b590d378acdb51d28879bb5d36b861e837d1badf3f",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "int",
+        "precedence",
+        "parentheses"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "4e61746976652065786563757461626c653a202f707269766174652f7661722f666f6c646572732f71722f6c306b6c6630723536367a3171647366676367396a37733030303030676e2f542f6f7265732d7061726974792d33313835372d30322d6c6c766d2f70726f6772616d0a",
+        "stderr_hex": "7761726e696e673a206f766572726964696e6720746865206d6f64756c652074617267657420747269706c6520776974682061726d36342d6170706c652d6d61636f737832362e302e30205b2d576f766572726964652d6d6f64756c655d0a31207761726e696e672067656e6572617465642e0a",
+        "duration_ms": 205,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 218,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "03",
+      "name": "unary-arithmetic",
+      "backend": "llvm",
+      "source_sha256": "0bca596ed944138a3b33b3fbdea2671981efcb7e74a2c8e4337821cb11a763f8",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "int",
+        "unary-minus"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "4e61746976652065786563757461626c653a202f707269766174652f7661722f666f6c646572732f71722f6c306b6c6630723536367a3171647366676367396a37733030303030676e2f542f6f7265732d7061726974792d33313835372d30332d6c6c766d2f70726f6772616d0a",
+        "stderr_hex": "7761726e696e673a206f766572726964696e6720746865206d6f64756c652074617267657420747269706c6520776974682061726d36342d6170706c652d6d61636f737832362e302e30205b2d576f766572726964652d6d6f64756c655d0a31207761726e696e672067656e6572617465642e0a",
+        "duration_ms": 232,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 225,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "04",
+      "name": "forward-call",
+      "backend": "llvm",
+      "source_sha256": "18490b62e67e2a0ef7fb2442926612a093e40db63b5f00d2b91aa3fb55085e91",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "functions",
+        "forward-resolution",
+        "calls"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "4e61746976652065786563757461626c653a202f707269766174652f7661722f666f6c646572732f71722f6c306b6c6630723536367a3171647366676367396a37733030303030676e2f542f6f7265732d7061726974792d33313835372d30342d6c6c766d2f70726f6772616d0a",
+        "stderr_hex": "7761726e696e673a206f766572726964696e6720746865206d6f64756c652074617267657420747269706c6520776974682061726d36342d6170706c652d6d61636f737832362e302e30205b2d576f766572726964652d6d6f64756c655d0a31207761726e696e672067656e6572617465642e0a",
+        "duration_ms": 402,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 258,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "05",
+      "name": "module-main",
+      "backend": "llvm",
+      "source_sha256": "1be02710dc0dc51cf56dadbfe7eabca3e7a079e5c6bb297d0ff54db50a637716",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_derived",
+      "features": [
+        "module",
+        "entrypoint"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "4e61746976652065786563757461626c653a202f707269766174652f7661722f666f6c646572732f71722f6c306b6c6630723536367a3171647366676367396a37733030303030676e2f542f6f7265732d7061726974792d33313835372d30352d6c6c766d2f70726f6772616d0a",
+        "stderr_hex": "7761726e696e673a206f766572726964696e6720746865206d6f64756c652074617267657420747269706c6520776974682061726d36342d6170706c652d6d61636f737832362e302e30205b2d576f766572726964652d6d6f64756c655d0a31207761726e696e672067656e6572617465642e0a",
+        "duration_ms": 275,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 402,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "06",
+      "name": "named-arguments",
+      "backend": "llvm",
+      "source_sha256": "cd657526be52ac2e6d5d24f9c3f9a3a92617c29b35efde67ad5d92d95cbf87ca",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "functions",
+        "named-arguments",
+        "argument-reordering"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "4e61746976652065786563757461626c653a202f707269766174652f7661722f666f6c646572732f71722f6c306b6c6630723536367a3171647366676367396a37733030303030676e2f542f6f7265732d7061726974792d33313835372d30362d6c6c766d2f70726f6772616d0a",
+        "stderr_hex": "7761726e696e673a206f766572726964696e6720746865206d6f64756c652074617267657420747269706c6520776974682061726d36342d6170706c652d6d61636f737832362e302e30205b2d576f766572726964652d6d6f64756c655d0a31207761726e696e672067656e6572617465642e0a",
+        "duration_ms": 204,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 483,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "07",
+      "name": "ternary-right-associative",
+      "backend": "llvm",
+      "source_sha256": "131e996b595bc1c3c270819c20d07e637e3adcb747eadead03a039e9ea15646c",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_contract",
+      "features": [
+        "ternary",
+        "right-associativity",
+        "bool"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "4e61746976652065786563757461626c653a202f707269766174652f7661722f666f6c646572732f71722f6c306b6c6630723536367a3171647366676367396a37733030303030676e2f542f6f7265732d7061726974792d33313835372d30372d6c6c766d2f70726f6772616d0a",
+        "stderr_hex": "7761726e696e673a206f766572726964696e6720746865206d6f64756c652074617267657420747269706c6520776974682061726d36342d6170706c652d6d61636f737832362e302e30205b2d576f766572726964652d6d6f64756c655d0a31207761726e696e672067656e6572617465642e0a",
+        "duration_ms": 174,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 221,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "08",
+      "name": "if-statement",
+      "backend": "llvm",
+      "source_sha256": "d1b4335930eedae34fe7c58e5cd30ae5bbf54a20c3ce166f69a3d3952a3e5210",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_derived",
+      "features": [
+        "if",
+        "return"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "4e61746976652065786563757461626c653a202f707269766174652f7661722f666f6c646572732f71722f6c306b6c6630723536367a3171647366676367396a37733030303030676e2f542f6f7265732d7061726974792d33313835372d30382d6c6c766d2f70726f6772616d0a",
+        "stderr_hex": "7761726e696e673a206f766572726964696e6720746865206d6f64756c652074617267657420747269706c6520776974682061726d36342d6170706c652d6d61636f737832362e302e30205b2d576f766572726964652d6d6f64756c655d0a31207761726e696e672067656e6572617465642e0a",
+        "duration_ms": 221,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 203,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "09",
+      "name": "switch-statement",
+      "backend": "llvm",
+      "source_sha256": "cf2d2dabd500c9814a3b3d189e73b7bde46401968aed03c702a7fb7c02ac8a44",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "parser_grounded",
+      "features": [
+        "switch",
+        "case",
+        "default",
+        "slim-arrow"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a20657870656374656420636c617373206669656c642061737369676e6d656e74206f722066756e6374696f6e2063616c6c2073746174656d656e74206174206279746520313735205b66696c653a2030392d7377697463682d73746174656d656e742e6f7265735d0a",
+        "duration_ms": 48,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "10",
+      "name": "do-switch-statement",
+      "backend": "llvm",
+      "source_sha256": "d02af8625f0d773185923c924941be261ef6f006ad8cbda95e41a353a7195839",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "parser_grounded",
+      "features": [
+        "do-switch",
+        "case",
+        "default",
+        "return-scope"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a206d697373696e672066696e616c2072657475726e206174206279746520313831205b66696c653a2031302d646f2d7377697463682d73746174656d656e742e6f7265735d0a",
+        "duration_ms": 42,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "11",
+      "name": "match-value-expression",
+      "backend": "llvm",
+      "source_sha256": "2da8a64224546bee7a6bbc372dfd017f62d23065a172c2dbbe9ce9ed3ab52a50",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_test",
+      "features": [
+        "match",
+        "value-expression",
+        "exhaustiveness"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a20657870656374656420276f6e27206174206279746520313139205b66696c653a2031312d6d617463682d76616c75652d65787072657373696f6e2e6f7265735d0a",
+        "duration_ms": 44,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "12",
+      "name": "do-match-return-scope",
+      "backend": "llvm",
+      "source_sha256": "8171dc3384f352f45fc85ae44ae5da6ee1c08eddcd5cbc355557d9a1cf64fa3b",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_test",
+      "features": [
+        "do-match",
+        "procedural-match",
+        "return-scope"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a20657870656374656420276f6e27206174206279746520313131205b66696c653a2031322d646f2d6d617463682d72657475726e2d73636f70652e6f7265735d0a",
+        "duration_ms": 69,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "13",
+      "name": "overflow-literal-reject",
+      "backend": "llvm",
+      "source_sha256": "f376cb7f675553fba96d6a5bd657ea8295e2b557caeddf11f427736a19b36fdb",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "int",
+        "overflow",
+        "diagnostic"
+      ],
+      "expected_diagnostic_category": "integer_range",
+      "actual_diagnostic_category": "integer_range",
+      "status": "exploratory_expected_reject_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a20696e7465676572206c69746572616c206f766572666c6f7773207369676e65642036342d62697420726573756c74206174206279746520313030205b66696c653a2031332d6f766572666c6f772d6c69746572616c2d72656a6563742e6f7265735d0a",
+        "duration_ms": 71,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "14",
+      "name": "int-division-return-reject",
+      "backend": "llvm",
+      "source_sha256": "af455470a9e411c4a8129b9fa2749472b993c56d3acdad62ea377c402245eeec",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "division",
+        "numeric-typing",
+        "diagnostic"
+      ],
+      "expected_diagnostic_category": "type_mismatch",
+      "actual_diagnostic_category": null,
+      "status": "rejection_unclassified",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a206e617469766520666c6f6174696e67206469766973696f6e20756e737570706f727465643a20696e742f696e74207969656c647320666c6f617420696e204a6176613b204c4c564d20666c6f617420747970696e6720616e64207a65726f2d64697669736f722073656d616e7469637320617265206e6f7420696d706c656d656e746564206174206279746520313639205b66696c653a2031342d696e742d6469766973696f6e2d72657475726e2d72656a6563742e6f7265735d0a",
+        "duration_ms": 109,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "15",
+      "name": "arity-reject",
+      "backend": "llvm",
+      "source_sha256": "45e97ad3f397c7d64755780354657b52c38dd685d8294fad69b37c9f90a05c7f",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "calls",
+        "arity",
+        "diagnostic"
+      ],
+      "expected_diagnostic_category": "arity",
+      "actual_diagnostic_category": "arity",
+      "status": "exploratory_expected_reject_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a20756e6b6e6f776e2066756e6374696f6e206f722077726f6e672063616c6c2061726974792027616464273a2063616c6c206172697479206d69736d61746368206174206279746520313437205b66696c653a2031352d61726974792d72656a6563742e6f7265735d0a",
+        "duration_ms": 44,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "16",
+      "name": "unknown-identifier-reject",
+      "backend": "llvm",
+      "source_sha256": "d97b99bf975e154f75b47dd6014cd6db05dad87dad3b5402ae8120d93ca53cd6",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "name-resolution",
+        "diagnostic"
+      ],
+      "expected_diagnostic_category": "unknown_identifier",
+      "actual_diagnostic_category": "unknown_identifier",
+      "status": "exploratory_expected_reject_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a20756e6b6e6f776e20706172616d6574657220276d697373696e6727206174206279746520313137205b66696c653a2031362d756e6b6e6f776e2d6964656e7469666965722d72656a6563742e6f7265735d0a",
+        "duration_ms": 44,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "17",
+      "name": "duplicate-function-reject",
+      "backend": "llvm",
+      "source_sha256": "24051b8b77b48ed4ad67f2d88998f58f2d9e8481ce8bbc77f3294addeb194e20",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "declarations",
+        "duplicate-symbol",
+        "diagnostic"
+      ],
+      "expected_diagnostic_category": "duplicate_symbol",
+      "actual_diagnostic_category": "duplicate_symbol",
+      "status": "exploratory_expected_reject_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a2066756e6374696f6e202773616d652720616c72656164792068617320617269747920303b20706172616d6574657220616e642072657475726e20747970657320646f206e6f742073656c656374206f7665726c6f616473206174206279746520313430205b66696c653a2031372d6475706c69636174652d66756e6374696f6e2d72656a6563742e6f7265735d0a",
+        "duration_ms": 42,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "18",
+      "name": "inferred-struct",
+      "backend": "llvm",
+      "source_sha256": "758beac5981219005c851256b1199fe7e4ac63df415e00359552662183775879",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_test",
+      "features": [
+        "infer-struct",
+        "field-access",
+        "structural-data"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a207363616c6172206c6f63616c20726571756972657320616e206578706c6963697420273a20696e7427206f7220273a20626f6f6c272074797065206174206279746520313234205b66696c653a2031382d696e6665727265642d7374727563742e6f7265735d0a",
+        "duration_ms": 40,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "19",
+      "name": "tuple-pattern",
+      "backend": "llvm",
+      "source_sha256": "b066871c570916ab6edec9c008f345732d8a42118b3cd6c1d4806c1e7a1be39f",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_test",
+      "features": [
+        "tuple",
+        "pattern-match",
+        "wildcard"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a206e6174697665207475706c65206c69746572616c20756e737570706f727465643a2066697865642070726f64756374206c61796f757420616e64206f776e657273686970206c6f776572696e6720617265206e6f7420696d706c656d656e746564206174206279746520313039205b66696c653a2031392d7475706c652d7061747465726e2e6f7265735d0a",
+        "duration_ms": 91,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "20",
+      "name": "mutable-borrow",
+      "backend": "llvm",
+      "source_sha256": "57c810c8e8c71e06a49f6767d901f30d03502a462d9944c4592cdc3d5ddda7b8",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_derived",
+      "features": [
+        "class",
+        "mutable-borrow",
+        "ownership"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a206c65676163792027727420626f72726f77206d75742076616c756527206973206e6f742061636365707465643b2075736520277274206d757420626f72726f772076616c756527206174206279746520323837205b66696c653a2032302d6d757461626c652d626f72726f772e6f7265735d0a",
+        "duration_ms": 89,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "21",
+      "name": "runtime-ownership-ops",
+      "backend": "llvm",
+      "source_sha256": "66379165ca4e07d038e7bd19c535ea41569776b19a75be5c5fbd25e79f092f77",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_derived",
+      "features": [
+        "rt-copy",
+        "rt-take",
+        "rt-share"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "4e61746976652065786563757461626c653a202f707269766174652f7661722f666f6c646572732f71722f6c306b6c6630723536367a3171647366676367396a37733030303030676e2f542f6f7265732d7061726974792d33313835372d32312d6c6c766d2f70726f6772616d0a",
+        "stderr_hex": "7761726e696e673a206f766572726964696e6720746865206d6f64756c652074617267657420747269706c6520776974682061726d36342d6170706c652d6d61636f737832362e302e30205b2d576f766572726964652d6d6f64756c655d0a31207761726e696e672067656e6572617465642e0a",
+        "duration_ms": 814,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 217,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "22",
+      "name": "closure-capture",
+      "backend": "llvm",
+      "source_sha256": "3de07014f4ba357d6000c7c16dea51e261dadaff681c4f382e51854840645168",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_test",
+      "features": [
+        "lambda",
+        "lexical-closure",
+        "capture"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a20756e737570706f72746564204f7265736c616e6720746f6b656e206174206279746520313135205b66696c653a2032322d636c6f737572652d636170747572652e6f7265735d0a",
+        "duration_ms": 90,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "23",
+      "name": "defer-lifo",
+      "backend": "llvm",
+      "source_sha256": "af995b1f7c30852503bc4680a207839242c5df585aef24a8e9d2c0fd26942b27",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_derived",
+      "features": [
+        "defer",
+        "lifo",
+        "mutable-borrow"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a206c65676163792027727420626f72726f77206d75742076616c756527206973206e6f742061636365707465643b2075736520277274206d757420626f72726f772076616c756527206174206279746520333430205b66696c653a2032332d64656665722d6c69666f2e6f7265735d0a",
+        "duration_ms": 74,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "24",
+      "name": "try-finally-return-snapshot",
+      "backend": "llvm",
+      "source_sha256": "9a080ba3332c5cc4670908e316b7779fcb7a91bca19c73eaf7e0980fec62b79c",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "try",
+        "catch",
+        "finally",
+        "defer",
+        "return-snapshot"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a206c65676163792027727420626f72726f77206d75742076616c756527206973206e6f742061636365707465643b2075736520277274206d757420626f72726f772076616c756527206174206279746520353236205b66696c653a2032342d7472792d66696e616c6c792d72657475726e2d736e617073686f742e6f7265735d0a",
+        "duration_ms": 62,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "25",
+      "name": "async-await",
+      "backend": "llvm",
+      "source_sha256": "d535dbe304281af250eaf31660a6474b58953fbf9690212bd057402c1188a6f9",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_derived",
+      "features": [
+        "async",
+        "await",
+        "future"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": "unsupported_select",
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a206e6174697665206173796e632f6368616e6e656c2f73656c65637420626f756e6461727920756e737570706f727465643a2073757370656e73696f6e2d617761726520626f72726f7720636865636b696e6720616e642063616e63656c6c6174696f6e2f6163746f72206c6f776572696e67207265717569726564206174206279746520313439205b66696c653a2032352d6173796e632d61776169742e6f7265735d0a",
+        "duration_ms": 42,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "26",
+      "name": "channel-select",
+      "backend": "llvm",
+      "source_sha256": "70cb98f747e9c27f16cf6388bb110864dd9c550fa1fb0dc5f6cf47d31bfb8f8f",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_derived",
+      "features": [
+        "channel",
+        "writech",
+        "readch",
+        "do-select"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a20657870656374656420273a27206174206279746520313130205b66696c653a2032362d6368616e6e656c2d73656c6563742e6f7265735d0a",
+        "duration_ms": 46,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "27",
+      "name": "bounded-channel-backpressure",
+      "backend": "llvm",
+      "source_sha256": "1eea5ddcb123c6841e6e5f528f8e317faad322b62b313d0d05361b461cd65dea",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "candidate",
+      "features": [
+        "channel",
+        "bounded-capacity",
+        "async",
+        "backpressure"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a206578706563746564206e6f6e2d6b6579776f7264206964656e746966696572206174206279746520313330205b66696c653a2032372d626f756e6465642d6368616e6e656c2d6261636b70726573737572652e6f7265735d0a",
+        "duration_ms": 44,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "28",
+      "name": "actor-lifecycle",
+      "backend": "llvm",
+      "source_sha256": "4444d504f550e0a3909e681d4a3b93a9076dd1f509c8b245f245c7d6ac1cd83c",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_derived",
+      "features": [
+        "actor",
+        "spawn",
+        "get_ready",
+        "send",
+        "outputs",
+        "get_done"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a206163746f72207265717569726573206174206c65617374206f6e65207363616c6172206669656c64206174206279746520313133205b66696c653a2032382d6163746f722d6c6966656379636c652e6f7265735d0a",
+        "duration_ms": 44,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "29",
+      "name": "actor-lexical-isolation-reject",
+      "backend": "llvm",
+      "source_sha256": "65afc3b280255bb8b7cd218745aa64adb5cd5961ff3659fbb788ea269210120f",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_test",
+      "features": [
+        "actor",
+        "lexical-isolation",
+        "diagnostic"
+      ],
+      "expected_diagnostic_category": "actor_lexical_isolation",
+      "actual_diagnostic_category": null,
+      "status": "rejection_unclassified",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a206163746f72207265717569726573206174206c65617374206f6e65207363616c6172206669656c64206174206279746520313430205b66696c653a2032392d6163746f722d6c65786963616c2d69736f6c6174696f6e2d72656a6563742e6f7265735d0a",
+        "duration_ms": 43,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "30",
+      "name": "actor-critical-integrated",
+      "backend": "llvm",
+      "source_sha256": "769b91b5a274e23e906c742a6cfd053a0aa629103945c769a44609c001eb3d90",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "candidate",
+      "features": [
+        "actor",
+        "state",
+        "critical",
+        "handle_state",
+        "single-flight",
+        "get_ready",
+        "get_done"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a206e6174697665207075626c6963206d6f64756c652077726170706572206973206e6f7420737570706f7274656420696e207468652069363420737562736574206174206279746520313333205b66696c653a2033302d6163746f722d637269746963616c2d696e74656772617465642e6f7265735d0a",
+        "duration_ms": 24,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "31",
+      "name": "channel-select-over-end",
+      "backend": "llvm",
+      "source_sha256": "b64d0eb16cbcaf9766ae44143b63c54430e6042b173f381f8bbd287e790b1728",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_test",
+      "features": [
+        "channel",
+        "writech",
+        "readch",
+        "do-select",
+        "over-end"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a20657870656374656420273a27206174206279746520313134205b66696c653a2033312d6368616e6e656c2d73656c6563742d6f7665722d656e642e6f7265735d0a",
+        "duration_ms": 45,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "import-cycles",
+      "name": "import-cycles",
+      "backend": "llvm",
+      "source_sha256": "82fc6abebae949d7730f3737eff52a359d961d686c3a0bb51efa31c504d62f63",
+      "graph_sha256": "148bace463497d253662b8fcffa8101e7dd2b2bae7dc06ea4f852bcffae62141",
+      "graph_files": [
+        "checks/import-cycles/a.ores",
+        "checks/import-cycles/b.ores",
+        "checks/import-cycles/c.ores",
+        "checks/import-cycles/main.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "imports",
+        "import-cycle",
+        "linking"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "4e61746976652065786563757461626c653a202f707269766174652f7661722f666f6c646572732f71722f6c306b6c6630723536367a3171647366676367396a37733030303030676e2f542f6f7265732d7061726974792d33313835372d696d706f72742d6379636c65732d6c6c766d2f70726f6772616d0a",
+        "stderr_hex": "7761726e696e673a206f766572726964696e6720746865206d6f64756c652074617267657420747269706c6520776974682061726d36342d6170706c652d6d61636f737832362e302e30205b2d576f766572726964652d6d6f64756c655d0a31207761726e696e672067656e6572617465642e0a",
+        "duration_ms": 929,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "5041524954595f4f4b7c696d706f72742d6379636c65737c38360a",
+        "stderr_hex": "",
+        "duration_ms": 257,
+        "error": null
+      }
+    },
+    {
+      "suite": "checks",
+      "case_id": "order-of-operations",
+      "name": "order-of-operations",
+      "backend": "llvm",
+      "source_sha256": "2566a1b8f4076fcf0e3c76243470a4baae94264b1b8d6f8fa29024340c775eb7",
+      "graph_sha256": "a3de66b7815f33e18d7f32b595f20202958a0d15d5d94ed9b119af42fdf5d243",
+      "graph_files": [
+        "checks/order-of-operations/associativity.ores",
+        "checks/order-of-operations/grouping.ores",
+        "checks/order-of-operations/main.ores",
+        "checks/order-of-operations/precedence.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "precedence",
+        "associativity",
+        "grouping"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "4e61746976652065786563757461626c653a202f707269766174652f7661722f666f6c646572732f71722f6c306b6c6630723536367a3171647366676367396a37733030303030676e2f542f6f7265732d7061726974792d33313835372d6f726465722d6f662d6f7065726174696f6e732d6c6c766d2f70726f6772616d0a",
+        "stderr_hex": "7761726e696e673a206f766572726964696e6720746865206d6f64756c652074617267657420747269706c6520776974682061726d36342d6170706c652d6d61636f737832362e302e30205b2d576f766572726964652d6d6f64756c655d0a31207761726e696e672067656e6572617465642e0a",
+        "duration_ms": 394,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "5041524954595f4f4b7c6f726465722d6f662d6f7065726174696f6e737c33360a",
+        "stderr_hex": "",
+        "duration_ms": 268,
+        "error": null
+      }
+    },
+    {
+      "suite": "checks",
+      "case_id": "fuzz-seeds",
+      "name": "fuzz-seeds",
+      "backend": "llvm",
+      "source_sha256": "22ee794db39bdf57724b3196729b8af1c10324ec25b5fab76524641f6e9a9899",
+      "graph_sha256": "71166cf3d0b67209fa441bdff14e00b20945b302f9c59360d3813ad7f03f776c",
+      "graph_files": [
+        "checks/fuzz-seeds/generator.ores",
+        "checks/fuzz-seeds/main.ores",
+        "checks/fuzz-seeds/metamorphic.ores",
+        "checks/fuzz-seeds/oracle.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "differential-fuzz",
+        "metamorphic",
+        "determinism"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a202f55736572732f6d616361352f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f2e776f726b74726565732f7061726974792d6c6c766d2f636865636b732f66757a7a2d73656564732f6f7261636c652e6f7265733a20657870656374656420636c617373206669656c642061737369676e6d656e74206f722066756e6374696f6e2063616c6c2073746174656d656e74206174206279746520313738205b66696c653a206d61696e2e6f7265735d0a",
+        "duration_ms": 43,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "mutex-locking",
+      "name": "mutex-locking",
+      "backend": "llvm",
+      "source_sha256": "a6038c49c22769672ace8e7e174ec7433d0e39e324e4d6224e7a0776181a3dca",
+      "graph_sha256": "2640bd1b9aa1d9bbe2fd964b46a68a44ce02fd3a382eca579431150f0cc53176",
+      "graph_files": [
+        "checks/mutex-locking/local.ores",
+        "checks/mutex-locking/main.ores",
+        "checks/mutex-locking/scoped.ores",
+        "checks/mutex-locking/shared.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "mutex",
+        "shared-mutex",
+        "locking"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a202f55736572732f6d616361352f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f2e776f726b74726565732f7061726974792d6c6c766d2f636865636b732f6d757465782d6c6f636b696e672f6c6f63616c2e6f7265733a207363616c6172206c6f63616c20726571756972657320616e206578706c6963697420273a20696e7427206f7220273a20626f6f6c272074797065206174206279746520313037205b66696c653a206d61696e2e6f7265735d0a",
+        "duration_ms": 42,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "task-blocks",
+      "name": "task-blocks",
+      "backend": "llvm",
+      "source_sha256": "9c5d9f9de6da0a9d1657d12e4cff66b397708e1d698c796c04998b21ac0f2f5a",
+      "graph_sha256": "c1e0cd9ad319e8a9a1584a479d85db07eb34228fd550e3e4bf33dd5426fb9f32",
+      "graph_files": [
+        "checks/task-blocks/main.ores",
+        "checks/task-blocks/nb.ores",
+        "checks/task-blocks/nested.ores",
+        "checks/task-blocks/task.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "task",
+        "nb-task",
+        "await"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a206e6174697665206669727374206173796e63204675747572653c696e743e2070726f6475636572207265717569726573206173796e6320666e63206174206279746520373231205b66696c653a206d61696e2e6f7265735d0a",
+        "duration_ms": 40,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "actor-system",
+      "name": "actor-system",
+      "backend": "llvm",
+      "source_sha256": "674d2fe7eca1082b1bec9221cf1da938f50774f34f4b008d04d12a53de8d7890",
+      "graph_sha256": "df6fc2be200eee94b30937c31e505bdb41d6e06dc5136d49b2ddd2557ad7978b",
+      "graph_files": [
+        "checks/actor-system/counter.ores",
+        "checks/actor-system/echo.ores",
+        "checks/actor-system/main.ores",
+        "checks/actor-system/oracle.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "actor",
+        "spawn",
+        "mailbox",
+        "lifecycle"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a20657870656374656420276d6f64756c652720617420627974652037205b66696c653a206d61696e2e6f7265735d0a",
+        "duration_ms": 45,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "do-switch",
+      "name": "do-switch",
+      "backend": "llvm",
+      "source_sha256": "a5528f8c67e1b81f14590b880bc48c8269050d4cd8403d92d61a67298393a1f2",
+      "graph_sha256": "d40ac21d384f5f64cd4a847722e445ad27f765b134effc2ec3b5192842a182cb",
+      "graph_files": [
+        "checks/do-switch/main.ores",
+        "checks/do-switch/nested.ores",
+        "checks/do-switch/plain.ores",
+        "checks/do-switch/procedural.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "switch",
+        "do-switch",
+        "return-scope"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a202f55736572732f6d616361352f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f2e776f726b74726565732f7061726974792d6c6c766d2f636865636b732f646f2d7377697463682f706c61696e2e6f7265733a20657870656374656420636c617373206669656c642061737369676e6d656e74206f722066756e6374696f6e2063616c6c2073746174656d656e74206174206279746520313530205b66696c653a206d61696e2e6f7265735d0a",
+        "duration_ms": 46,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "do-match",
+      "name": "do-match",
+      "backend": "llvm",
+      "source_sha256": "b30d243741abc82e0d1b69e592d226726a3801890d38d20c5c4b55f96f3cd531",
+      "graph_sha256": "2262a4c0c131b226bccb4b6a07968a0b6ad73e5eebe822249813020a2f1d76e7",
+      "graph_files": [
+        "checks/do-match/guarded.ores",
+        "checks/do-match/main.ores",
+        "checks/do-match/plain.ores",
+        "checks/do-match/procedural.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "match",
+        "do-match",
+        "return-scope"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a202f55736572732f6d616361352f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f2e776f726b74726565732f7061726974792d6c6c766d2f636865636b732f646f2d6d617463682f706c61696e2e6f7265733a206e6174697665207363616c61722076616c7565206d6174636820737570706f727473206c69746572616c207061747465726e73206f7220275f272061742062797465203830205b66696c653a206d61696e2e6f7265735d0a",
+        "duration_ms": 42,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "nb-match",
+      "name": "nb-match",
+      "backend": "llvm",
+      "source_sha256": "057cadbc57aff4e2fe44fdf3c67f3247a2b54d52c0d04cb68e1f4835c2ff42d0",
+      "graph_sha256": "3992dd512ff40c7e0ed854f97e17b67dce8d0d03c7dc5d389acda91d463b08ac",
+      "graph_files": [
+        "checks/nb-match/arm.ores",
+        "checks/nb-match/guard.ores",
+        "checks/nb-match/main.ores",
+        "checks/nb-match/subject.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "match",
+        "await",
+        "negative-syntax"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a206e6174697665206669727374206173796e63204675747572653c696e743e2070726f6475636572207265717569726573206173796e6320666e63206174206279746520373334205b66696c653a206d61696e2e6f7265735d0a",
+        "duration_ms": 43,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "nb-match/negative-1",
+      "name": "nb-match-negative-1",
+      "backend": "llvm",
+      "source_sha256": "2f5b2752efc6e48819520bd7db8de7a3347d27014a3c37a0fcf850e760de3760",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "unvalidated",
+      "features": [
+        "match",
+        "await",
+        "negative-syntax",
+        "negative-probe"
+      ],
+      "expected_diagnostic_category": "unsupported_nb_prefix",
+      "actual_diagnostic_category": "unsupported_nb_prefix",
+      "status": "exploratory_expected_reject_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a206e6174697665206e62206d617463682f73776974636820697320696e76616c69643a206e62206170706c69657320746f206368616e6e656c2f73656c656374206f7065726174696f6e732c206e6f742064697370617463682061726d732061742062797465203432205b66696c653a2072656a6563742d6e622d6d617463682e6f7265735d0a",
+        "duration_ms": 41,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "nb-switch",
+      "name": "nb-switch",
+      "backend": "llvm",
+      "source_sha256": "559ed8a4e9ef86f60aa2bf0a51661b46b8164ea41b26c3657172a599d50d2162",
+      "graph_sha256": "6031ae35522124dceffa87a970dd0bc56587965f4fcc5968d95a2760a3da7388",
+      "graph_files": [
+        "checks/nb-switch/arm.ores",
+        "checks/nb-switch/main.ores",
+        "checks/nb-switch/nested.ores",
+        "checks/nb-switch/procedural.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "switch",
+        "await",
+        "negative-syntax"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a206e6174697665206669727374206173796e63204675747572653c696e743e2070726f6475636572207265717569726573206173796e6320666e63206174206279746520373436205b66696c653a206d61696e2e6f7265735d0a",
+        "duration_ms": 41,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "nb-switch/negative-1",
+      "name": "nb-switch-negative-1",
+      "backend": "llvm",
+      "source_sha256": "27e0e2c7cefcbbe9d4fef65c0835e583b17de63ef83265b49a6097261f06f667",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "unvalidated",
+      "features": [
+        "switch",
+        "await",
+        "negative-syntax",
+        "negative-probe"
+      ],
+      "expected_diagnostic_category": "unsupported_nb_prefix",
+      "actual_diagnostic_category": "unsupported_nb_prefix",
+      "status": "exploratory_expected_reject_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a206e6174697665206e62206d617463682f73776974636820697320696e76616c69643a206e62206170706c69657320746f206368616e6e656c2f73656c656374206f7065726174696f6e732c206e6f742064697370617463682061726d732061742062797465203433205b66696c653a2072656a6563742d6e622d7377697463682e6f7265735d0a",
+        "duration_ms": 87,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "named-parameters",
+      "name": "named-parameters",
+      "backend": "llvm",
+      "source_sha256": "936b7316ed436da21bd05edcb63840ef67fc4f074a08a5b00b9219501a67e1bd",
+      "graph_sha256": "f8783e7f261e76f2151aa1d9f8c4abdfe215262210191bc0ce266e3faa75330e",
+      "graph_files": [
+        "checks/named-parameters/main.ores",
+        "checks/named-parameters/mixed.ores",
+        "checks/named-parameters/positional.ores",
+        "checks/named-parameters/reordered.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "named-arguments",
+        "argument-reordering",
+        "mixed-arguments"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "4e61746976652065786563757461626c653a202f707269766174652f7661722f666f6c646572732f71722f6c306b6c6630723536367a3171647366676367396a37733030303030676e2f542f6f7265732d7061726974792d33313835372d6e616d65642d706172616d65746572732d6c6c766d2f70726f6772616d0a",
+        "stderr_hex": "7761726e696e673a206f766572726964696e6720746865206d6f64756c652074617267657420747269706c6520776974682061726d36342d6170706c652d6d61636f737832362e302e30205b2d576f766572726964652d6d6f64756c655d0a31207761726e696e672067656e6572617465642e0a",
+        "duration_ms": 817,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "5041524954595f4f4b7c6e616d65642d706172616d65746572737c3336390a",
+        "stderr_hex": "",
+        "duration_ms": 259,
+        "error": null
+      }
+    },
+    {
+      "suite": "checks",
+      "case_id": "parameter-syntax",
+      "name": "parameter-syntax",
+      "backend": "llvm",
+      "source_sha256": "5a15f8f7fa5ecaf07f53a27a2d0e35eb9ee3b4de31079fe28f222e46c140458e",
+      "graph_sha256": "e2038ef163e6c54a10c599a1c07f977ae0a4d3cb98f63539f74e8bf9d186ff3c",
+      "graph_files": [
+        "checks/parameter-syntax/lambda-order.ores",
+        "checks/parameter-syntax/main.ores",
+        "checks/parameter-syntax/name-first.ores",
+        "checks/parameter-syntax/type-first.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "parameter-order",
+        "lambda-parameters",
+        "type-first",
+        "name-first"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a202f55736572732f6d616361352f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f2e776f726b74726565732f7061726974792d6c6c766d2f636865636b732f706172616d657465722d73796e7461782f6e616d652d66697273742e6f7265733a206578706563746564206e6f6e2d6b6579776f7264206964656e7469666965722061742062797465203238205b66696c653a206d61696e2e6f7265735d0a",
+        "duration_ms": 173,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "optional-parameters",
+      "name": "optional-parameters",
+      "backend": "llvm",
+      "source_sha256": "931a1453dab28880dab9c0d42a4a8eb6917aa8de9b343b71b744227af4851fa4",
+      "graph_sha256": "58c65e7d39967964f689e8b770344d6b3e1767e5f059b6477e66c4a8961ac089",
+      "graph_files": [
+        "checks/optional-parameters/explicit-option.ores",
+        "checks/optional-parameters/main.ores",
+        "checks/optional-parameters/omittable.ores",
+        "checks/optional-parameters/option-type.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "option",
+        "omittable-parameters",
+        "named-arguments"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a202f55736572732f6d616361352f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f2e776f726b74726565732f7061726974792d6c6c766d2f636865636b732f6f7074696f6e616c2d706172616d65746572732f6f7074696f6e2d747970652e6f7265733a206e6174697665206f7074696f6e616c207479706520273f272072657175697265732076657273696f6e6564204f7074696f6e2f64656661756c7420414249206c6f776572696e672061742062797465203331205b66696c653a206d61696e2e6f7265735d0a",
+        "duration_ms": 50,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "anonymous-functions",
+      "name": "anonymous-functions",
+      "backend": "llvm",
+      "source_sha256": "2a549f77d7dc2eb11e1029b1ce1898f8c8dc2b0fc40ede9aa28093c64b12ac0f",
+      "graph_sha256": "4f4944ece24520240c9b84ff2e73752c1202a34db79aad26daa21de8e8b48bec",
+      "graph_files": [
+        "checks/anonymous-functions/capture.ores",
+        "checks/anonymous-functions/main.ores",
+        "checks/anonymous-functions/pipe.ores",
+        "checks/anonymous-functions/typed.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "lambda",
+        "closure",
+        "capture"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a202f55736572732f6d616361352f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f2e776f726b74726565732f7061726974792d6c6c766d2f636865636b732f616e6f6e796d6f75732d66756e6374696f6e732f706970652e6f7265733a20756e737570706f72746564204f7265736c616e6720746f6b656e2061742062797465203530205b66696c653a206d61696e2e6f7265735d0a",
+        "duration_ms": 246,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "recursion",
+      "name": "recursion",
+      "backend": "llvm",
+      "source_sha256": "4c1010157759c4838ebe7a9341e0d0271531e03af73cbcec9ab50ee7640d3dfc",
+      "graph_sha256": "9d5d6af40670164f1a1b81917662102d62b49d80d75f50ed55047660f192d9a4",
+      "graph_files": [
+        "checks/recursion/even.ores",
+        "checks/recursion/factorial.ores",
+        "checks/recursion/fibonacci.ores",
+        "checks/recursion/main.ores",
+        "checks/recursion/odd.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "recursion",
+        "mutual-recursion",
+        "import-cycle"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "4e61746976652065786563757461626c653a202f707269766174652f7661722f666f6c646572732f71722f6c306b6c6630723536367a3171647366676367396a37733030303030676e2f542f6f7265732d7061726974792d33313835372d726563757273696f6e2d6c6c766d2f70726f6772616d0a",
+        "stderr_hex": "7761726e696e673a206f766572726964696e6720746865206d6f64756c652074617267657420747269706c6520776974682061726d36342d6170706c652d6d61636f737832362e302e30205b2d576f766572726964652d6d6f64756c655d0a31207761726e696e672067656e6572617465642e0a",
+        "duration_ms": 2145,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "5041524954595f4f4b7c726563757273696f6e7c3137360a",
+        "stderr_hex": "",
+        "duration_ms": 258,
+        "error": null
+      }
+    },
+    {
+      "suite": "checks",
+      "case_id": "classes-traits-casting",
+      "name": "classes-traits-casting",
+      "backend": "llvm",
+      "source_sha256": "3e5c6f0800ba01d2fb8af347aa691cd54d761b586f3cc771a0d9ea3cbf310b68",
+      "graph_sha256": "35d09099d73e23a6457ac1f7c4c792455f6b7fce674158e664e8e4c5d896d776",
+      "graph_files": [
+        "checks/classes-traits-casting/animals.ores",
+        "checks/classes-traits-casting/interfaces.ores",
+        "checks/classes-traits-casting/main.ores",
+        "checks/classes-traits-casting/traits.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "class",
+        "inheritance",
+        "interface",
+        "trait",
+        "cast"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "6f7265736c616e672d6c6c766d633a20657870656374656420276d6f64756c65272061742062797465203930205b66696c653a206d61696e2e6f7265735d0a",
+        "duration_ms": 116,
+        "error": null
+      },
+      "run": null
+    }
+  ],
+  "summary": {
+    "compile_failure": 28,
+    "exploratory_expected_reject_not_parity_pass": 6,
+    "exploratory_match_not_parity_pass": 13,
+    "rejection_unclassified": 2
+  }
+}

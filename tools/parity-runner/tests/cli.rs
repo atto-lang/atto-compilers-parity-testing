@@ -24,8 +24,8 @@ fn selected_missing_backend_fails_instead_of_claiming_success() {
     let (status, report) = execute("missing", false);
     assert!(!status.success());
     assert_eq!(report["backends"], serde_json::json!(["java"]));
-    assert_eq!(report["records"].as_array().unwrap().len(), 58);
-    assert_eq!(report["summary"]["backend_not_configured"], 58);
+    assert_eq!(report["records"].as_array().unwrap().len(), 59);
+    assert_eq!(report["summary"]["backend_not_configured"], 59);
 }
 
 #[cfg(unix)]
@@ -33,7 +33,7 @@ fn selected_missing_backend_fails_instead_of_claiming_success() {
 fn adapter_error_is_infrastructure_failure_even_for_negative_probes() {
     let (status, report) = execute("adapter-error", true);
     assert!(!status.success());
-    assert_eq!(report["summary"]["compile_infrastructure_failure"], 58);
+    assert_eq!(report["summary"]["compile_infrastructure_failure"], 59);
 }
 
 #[test]
@@ -58,10 +58,10 @@ fn required_inventory_includes_forge_but_not_optional_js() {
     let manifest: serde_json::Value =
         serde_json::from_slice(&std::fs::read(manifest_path).unwrap()).unwrap();
     assert_eq!(report["backends"], manifest["policy"]["target_backends"]);
-    assert_eq!(report["corpus"]["legacy_cases"], 40);
-    assert_eq!(report["cases"], 58);
-    assert_eq!(report["records"].as_array().unwrap().len(), 348);
-    assert_eq!(report["summary"]["not_run"], 348);
+    assert_eq!(report["corpus"]["legacy_cases"], 41);
+    assert_eq!(report["cases"], 59);
+    assert_eq!(report["records"].as_array().unwrap().len(), 354);
+    assert_eq!(report["summary"]["not_run"], 354);
     let candidates: Vec<_> = report["records"]
         .as_array()
         .unwrap()
@@ -87,8 +87,8 @@ fn optional_js_requires_explicit_selection() {
         serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
     std::fs::remove_file(output).unwrap();
     assert_eq!(report["backends"], serde_json::json!(["js"]));
-    assert_eq!(report["records"].as_array().unwrap().len(), 58);
-    assert_eq!(report["summary"]["not_run"], 58);
+    assert_eq!(report["records"].as_array().unwrap().len(), 59);
+    assert_eq!(report["summary"]["not_run"], 59);
 }
 
 #[test]
@@ -129,8 +129,8 @@ fn missing_required_forge_adapter_is_a_hard_failure() {
         serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
     std::fs::remove_file(output).unwrap();
     assert_eq!(report["backends"], serde_json::json!(["forge"]));
-    assert_eq!(report["records"].as_array().unwrap().len(), 58);
-    assert_eq!(report["summary"]["backend_not_configured"], 58);
+    assert_eq!(report["records"].as_array().unwrap().len(), 59);
+    assert_eq!(report["summary"]["backend_not_configured"], 59);
 }
 
 #[test]
@@ -154,14 +154,14 @@ fn cranelift_inventory_and_missing_adapter_fail_closed() {
             serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
         std::fs::remove_file(output).unwrap();
         assert_eq!(report["backends"], serde_json::json!(["cranelift"]));
-        assert_eq!(report["records"].as_array().unwrap().len(), 58);
+        assert_eq!(report["records"].as_array().unwrap().len(), 59);
         if execute {
             assert!(!status.success());
-            assert_eq!(report["summary"]["backend_not_configured"], 58);
+            assert_eq!(report["summary"]["backend_not_configured"], 59);
             assert_eq!(report["executed"], true);
         } else {
             assert!(status.success());
-            assert_eq!(report["summary"]["not_run"], 58);
+            assert_eq!(report["summary"]["not_run"], 59);
             assert_eq!(report["executed"], false);
         }
     }

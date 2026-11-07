@@ -1,4 +1,4 @@
-// 36: class-array-element-mutation
+// 37: class-array-element-mutation
 // oreslang-http-routing RouterBuilder.route: bind an Array<Class> element as a
 // mutable local and update it in place; the update is visible through the array.
 define class Node as

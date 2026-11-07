@@ -671,8 +671,27 @@
     },
     {
       "id": "36",
+      "name": "actor-lifecycle-canonical",
+      "path": "programs/36-actor-lifecycle-canonical.atto",
+      "group": "actors",
+      "features": [
+        "actor",
+        "spawn",
+        "stop",
+        "get_done",
+        "atto"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 43,
+      "expected_diagnostic_category": null,
+      "validation_status": "reference_derived",
+      "source_basis": "Executed identically on Java OresMain (main @ 469eada531) and LLVM compile-aot.sh (main @ c1c6cda889), both exit 43",
+      "required_on_all_backends": true
+    },
+    {
+      "id": "37",
       "name": "class-array-element-mutation",
-      "path": "programs/36-class-array-element-mutation.atto",
+      "path": "programs/37-class-array-element-mutation.atto",
       "group": "data-ownership",
       "features": [
         "class",
@@ -687,9 +706,9 @@
       "required_on_all_backends": true
     },
     {
-      "id": "37",
+      "id": "38",
       "name": "loop-local-mutable-class-owner",
-      "path": "programs/37-loop-local-mutable-class-owner.atto",
+      "path": "programs/38-loop-local-mutable-class-owner.atto",
       "group": "data-ownership",
       "features": [
         "class",
@@ -704,9 +723,9 @@
       "required_on_all_backends": true
     },
     {
-      "id": "38",
+      "id": "39",
       "name": "result-string-error-payload",
-      "path": "programs/38-result-string-error-payload.atto",
+      "path": "programs/39-result-string-error-payload.atto",
       "group": "control",
       "features": [
         "result",
@@ -721,9 +740,9 @@
       "required_on_all_backends": true
     },
     {
-      "id": "39",
+      "id": "40",
       "name": "inferred-class-local",
-      "path": "programs/39-inferred-class-local.atto",
+      "path": "programs/40-inferred-class-local.atto",
       "group": "data-ownership",
       "features": [
         "class",
@@ -738,9 +757,9 @@
       "required_on_all_backends": true
     },
     {
-      "id": "40",
+      "id": "41",
       "name": "stdio-println-int",
-      "path": "programs/40-stdio-println-int.atto",
+      "path": "programs/41-stdio-println-int.atto",
       "group": "effects-async",
       "features": [
         "stdio",

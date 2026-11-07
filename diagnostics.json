@@ -44,6 +44,21 @@
     ]
   },
   "llvm": {
+    "integer_range": [
+      "integer literal overflows signed 64-bit"
+    ],
+    "arity": [
+      "call arity mismatch"
+    ],
+    "unknown_identifier": [
+      "unknown parameter 'missing'"
+    ],
+    "duplicate_symbol": [
+      "parameter and return types do not select overloads"
+    ],
+    "unsupported_nb_prefix": [
+      "nb applies to channel/select operations, not dispatch arms"
+    ],
     "unsupported_select": [
       "native async/channel/select boundary unsupported"
     ]
