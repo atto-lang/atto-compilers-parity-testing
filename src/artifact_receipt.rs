@@ -154,7 +154,11 @@ impl ProvenanceVerifier for GhProvenance{
         for _ in 0..16{
             let path=std::env::temp_dir().join(format!("atto-guest-{}-{}.zip",
                 std::process::id(),NEXT.fetch_add(1,Ordering::Relaxed)));
-            match std::fs::OpenOptions::new().write(true).create_new(true).open(&path){
+            let mut options=std::fs::OpenOptions::new();
+            options.write(true).create_new(true);
+            #[cfg(unix)]
+            {use std::os::unix::fs::OpenOptionsExt; options.mode(0o600);}
+            match options.open(&path){
                 Ok(mut file)=>{
                     if let Err(e)=file.write_all(bytes){let _=std::fs::remove_file(&path);return Err(e.to_string())}
                     tmp=Some(path);break;
