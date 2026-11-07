@@ -95,3 +95,53 @@ fn acceptable(r:&Value,stdout:&[u8])->bool{
     let d=format!("sha256:{}",sha256_hex(&bytes));
     assert!(validate_archive(&bytes,&policy(&d)).is_err());
 }
+
+fn archive_raw(receipt:&[u8],stdout:&[u8],fixture:Option<&[u8]>)->Vec<u8>{
+    let mut w=ZipWriter::new(Cursor::new(Vec::new()));
+    let options=SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
+    w.start_file("guest-receipt.json",options).unwrap();
+    w.write_all(receipt).unwrap();
+    w.start_file("guest-stdout.bin",options).unwrap();
+    w.write_all(stdout).unwrap();
+    if let Some(bytes)=fixture {
+        w.start_file("fixture-set.json",options).unwrap();
+        w.write_all(bytes).unwrap();
+    }
+    w.finish().unwrap().into_inner()
+}
+
+#[test]
+fn rejects_duplicate_guest_receipt_fields_even_if_all_other_data_matches(){
+    let raw=receipt().to_string();
+    let duplicates=format!("{},\"nonce\":\"{}\"}}",
+        raw.trim_end_matches('}'),NONCE);
+    let bytes=archive_raw(duplicates.as_bytes(),b"7 cases executed\n",None);
+    let d=format!("sha256:{}",sha256_hex(&bytes));
+    assert!(validate_archive(&bytes,&policy(&d)).is_err());
+}
+#[test]
+fn binds_optional_fixture_bytes_to_trusted_hash_and_executed_count(){
+    let fixtures=br#"[{"id":1},{"id":2},{"id":3},{"id":4},{"id":5},{"id":6},{"id":7}]"#;
+    let hash=sha256_hex(fixtures);
+    let mut r=receipt();
+    r["case_sha256"]=json!(&hash);
+    let zip=archive_raw(r.to_string().as_bytes(),b"7 cases executed\n",Some(fixtures));
+    let d=format!("sha256:{}",sha256_hex(&zip));
+    let mut p=policy(&d);
+    p.case_sha256=&hash;
+    assert!(validate_archive(&zip,&p).unwrap().fixture_bytes_verified);
+    let legacy=archive(&r,b"7 cases executed\n");
+    let legacy_digest=format!("sha256:{}",sha256_hex(&legacy));
+    let mut old_policy=policy(&legacy_digest);
+    old_policy.case_sha256=&hash;
+    assert!(!validate_archive(&legacy,&old_policy).unwrap().fixture_bytes_verified);
+    let tampered=archive_raw(r.to_string().as_bytes(),
+        b"7 cases executed\n",Some(br#"[{"id":1}]"#));
+    assert!(validate_archive(&tampered,&policy(&format!("sha256:{}",sha256_hex(&tampered)))).is_err());
+    let mut bad=r.clone();bad["executed"]=json!(6);
+    let wrong=archive_raw(bad.to_string().as_bytes(),b"7 cases executed\n",Some(fixtures));
+    let wrong_digest=format!("sha256:{}",sha256_hex(&wrong));
+    let mut wrong_policy=policy(&wrong_digest);
+    wrong_policy.case_sha256=&hash;
+    assert!(validate_archive(&wrong,&wrong_policy).is_err());
+}
