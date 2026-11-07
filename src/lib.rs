@@ -113,3 +113,6 @@ pub fn typespec_fields(tsp: &str) -> BTreeMap<String, BTreeSet<String>> {
     }
     result
 }
+
+// Pure, offline consistency gate. Trusted GitHub observations are external.
+pub mod release_gate;

@@ -35,3 +35,7 @@ or .NET execution. Breaking changes require versioned fixtures and
 cross-backend consumer verification.
 
 All CI, testing and validation scripts remain Rust-first.
+
+## Offline release-evidence consistency gate
+
+`src/release_gate.rs` provides `accept_verified_passing_evidence` and a Rust negative-test matrix. Its `ObservedRun` must be filled **only by a separately authenticated, read-only GitHub/artifact verifier**, never from report JSON. It checks a repository allowlist, canonical run URL, exact source/fixture hashes, status, case counts, guest execution, verified artifact digests, independent review and protected-branch evidence. The test suite uses synthetic observations and **does not implement GitHub API retrieval, prove signatures, execute a backend, or certify any production release**. It is fail-closed while those observations are missing.
