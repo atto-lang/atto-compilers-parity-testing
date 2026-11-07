@@ -1,12 +1,37 @@
-# Draft v1 cross-backend evidence contract
+# Cross-backend conformance-evidence contracts — draft v1
 
-This protocol is **proposed**, not an assertion that any compiler or runtime implements it. It covers Java/GraalVM, LLVM, Wasm, Forge, and .NET and explicitly keeps statuses **passed**, **failed**, **unsupported**, and **not_executed** distinct. **Not executed is not passed.** A host unit-test pass does not certify a guest-runtime feature.
+JSON Schema 2020-12 is normative for JSON report ingress. TypeSpec models
+tagged status variants; WIT offers a proposed component-model reporter.
+These files are not evidence that any compiler or runtime implements the
+contract, and a valid JSON report is never independent proof of an executed test.
 
-JSON Schema 2020-12 is normative for JSON report ingress; TypeSpec models status-tagged report variants; WIT is a possible component-world reporting interface. Map snake_case names to WIT kebab-case and not_executed to the WIT not-executed enumerator. WIT does not express conditional required fields, content patterns, or the version literal; validate JSON after decoding WIT values.
+## Rust-first verification
 
-An executed status requires a GitHub Actions run URL, exact source SHA, fixture-set SHA-256, target (host vs guest), and actual executed/failed counts. **Schema validation does not independently attest any of these claims**: the acceptance service must query GitHub for run id, conclusion, exact head SHA/tree, job steps, downloaded evidence, artifact provenance, and fixture-set digest. Reject missing runner allocation, skipped steps, pending tests, and stale-head results. Verify that failed_cases is within executed_cases; JSON Schema cannot compare two arbitrary property values. A passing report is not automatically release qualified; independent approval and protected branch rules are separate gates.
+Run cargo +1.88.0 test --all-targets for the strict Rust ingress decoder,
+validation, malformed-input and negative-vector tests, status/field projections,
+and cross-field case-count consistency. CI additionally runs the TypeSpec
+compiler and a WIT parser.
 
-Run python -m pip install -r tests/requirements.txt and python -m unittest discover -s tests -v for JSON Schema negative vectors and three-format drift checks. GitHub Actions additionally compiles TypeSpec and parses WIT via wasm-tools, but CI execution must be independently checked at the current commit. This contract does **not** execute or emulate any AttoLang backend.
+The Rust ingress rejects duplicate JSON object keys, nonintegral/nonfinite
+numeric tokens, malformed UTF-8/Unicode, and messages above 1 MiB before
+JSON Schema validation. A separate semantic check rejects failed_cases
+greater than executed_cases. The Rust tests cover valid shape and regression
+cases; they do not contact GitHub, run a guest compiler, or certify a release.
 
-## Strict evidence ingress (draft)
-The reference Python `strict_json.py` decoder rejects duplicate JSON keys, floating/nonfinite values, malformed UTF-8, unpaired surrogates and oversized JSON before validation. All anchored regex properties now reject trailing newlines. `load_conformance_evidence` also rejects `failed_cases > executed_cases`, which JSON Schema itself cannot express. Tests compare TypeSpec and WIT member **types** and exercise mutation cases. These are structural/reference tests, not signed GitHub attestation or guest-runtime verification; never accept a `passed` claim without verifying the actual run, fixture digest, source tree and executed guest steps independently. Major-version and consumer-compatibility gates remain necessary.
+## Evidence acceptance — fail closed
+
+A passed or failed report is only a claim. An actual release or parity
+attestor must independently verify the GitHub run URL's expected trusted
+repository and run ID, latest exact source SHA/tree, resolved workflow status,
+executed job steps, artifact provenance and digest, and fixture-set hash.
+It must reject stale, skipped, pending, forged, or host-only evidence when
+guest conformance is required. Do not use an untrusted report URL as a generic
+network fetch target. Absent or unsupported is never equivalent to passed.
+
+Four distinct statuses must remain intact: passed, failed, unsupported,
+and not_executed. Each backend needs its own verified guest evidence;
+a contract-only CI pass does not prove Java/GraalVM, LLVM, Wasm, Forge,
+or .NET execution. Breaking changes require versioned fixtures and
+cross-backend consumer verification.
+
+All CI, testing and validation scripts remain Rust-first.
