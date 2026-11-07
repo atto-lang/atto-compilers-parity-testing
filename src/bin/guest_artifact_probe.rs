@@ -3,7 +3,7 @@
 //! established runner execution and protected-source governance.
 use atto_evidence_contract_conformance::{
     github_probe::{probe_github_metadata,GhCli,ProbeSpec},
-    artifact_receipt::{ArtifactPolicy,fetch_and_verify,ReplayFence}
+    artifact_receipt::{ArtifactPolicy,fetch_and_verify,DurableReplayFence}
 };
 use serde_json::json;
 fn main(){
@@ -31,8 +31,11 @@ fn main(){
             command:&args[16],nonce:&args[15],signer_workflow:&args[6],
         };
         let signed=fetch_and_verify(&policy)?;
-        let mut replay=ReplayFence::default();
-        replay.admit(&signed)?;
+        // Explicit private local journal is mandatory: accepting the same
+        // receipt in a second process must fail even if its signature is valid.
+        let journal=std::env::var("ATTO_REPLAY_JOURNAL_DIR")
+            .map_err(|_|"ATTO_REPLAY_JOURNAL_DIR must name a private local replay directory")?;
+        DurableReplayFence::open(journal)?.admit(&signed)?;
         Ok(json!({
             "status":"NOT_CERTIFIED",
             "metadata":"CHECKED","actual_archive_bytes":"SHA256_VERIFIED",

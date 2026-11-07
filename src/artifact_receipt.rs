@@ -159,6 +159,52 @@ impl ReplayFence{
         Ok(())
     }
 }
+/// Local, durable and atomic replay-fence for independently verified receipts.
+///
+/// The caller provides a pre-existing *private* directory outside the source
+/// checkout. This is an explicit local audit journal, never a GitHub mutation.
+pub struct DurableReplayFence {
+    root: std::path::PathBuf,
+}
+impl DurableReplayFence {
+    pub fn open(root: impl AsRef<std::path::Path>) -> Result<Self,String> {
+        let dir=root.as_ref();
+        let meta=std::fs::symlink_metadata(dir)
+            .map_err(|_|"durable replay journal directory missing")?;
+        if !meta.is_dir() || meta.file_type().is_symlink() {
+            return Err("replay journal must be a real local directory".into());
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if meta.permissions().mode() & 0o077 != 0 {
+                return Err("replay journal must be owner-private (mode 0700)".into());
+            }
+        }
+        Ok(Self{root:dir.to_path_buf()})
+    }
+    pub fn admit(&self, checked:&CheckedGuestArtifact) -> Result<(),String> {
+        let r=&checked.receipt;
+        let key=format!("{}:{}:{}:{}:{}:{}:{}:{}",r.repository,r.source_sha,
+            r.run_id,r.run_attempt,r.job_id,r.backend,r.feature,r.nonce);
+        let path=self.root.join(format!("{}.seen",sha256_hex(key.as_bytes())));
+        let mut opts=std::fs::OpenOptions::new();
+        opts.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            opts.mode(0o600);
+        }
+        let mut file=opts.open(&path)
+            .map_err(|_|"replayed receipt or replay journal unavailable")?;
+        // Failure after atomic creation is also fail-closed; no rollback.
+        file.write_all(key.as_bytes())
+            .map_err(|_|"cannot persist replay fence")?;
+        file.sync_all().map_err(|_|"cannot sync replay journal")?;
+        Ok(())
+    }
+}
+
 fn bounded(mut command:Command,max:usize)->Result<Vec<u8>,String>{
     let mut child=command.stdin(Stdio::null()).stderr(Stdio::null())
         .stdout(Stdio::piped()).spawn().map_err(|e|e.to_string())?;

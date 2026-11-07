@@ -59,3 +59,29 @@ cargo +1.88.0 run --locked --bin github_metadata_probe -- \
 The new src/artifact_receipt.rs module downloads artifact ZIPs through authenticated, host-pinned GitHub CLI GET calls, hashes the **actual ZIP bytes** using Rust SHA-256, and validates a bounded two-file ZIP containing guest-receipt.json and guest-stdout.bin. It rejects unknown ZIP paths, excessive decompression, mismatched output hashes, stale source/fixture/run/attempt/job, non-guest results, failed cases, missing challenge nonces, and replayed receipts in one audit batch. For signed provenance, GhProvenance requires a cryptographically verified SLSA attestation with repository, source digest and signer-workflow constraints. The production verifier fails closed if GitHub provenance cannot be verified; test-only fake signers cannot prove deployment readiness.
 
 **Still NOT_CERTIFIED:** a signed ZIP containing a receipt does not independently prove that a trusted guest runner executed anything. Backend execution and cross-batch replay protection require a trusted signer/runner and persisted state. Existing source-main protection and independent-review checks remain separate hard gates. No repository mutation is performed by the verifier.
+
+## Canonical verifier consolidation and persistent replay gate
+
+The canonical `github_probe.rs` and `artifact_receipt.rs` are the only
+implementation paths for the new security checks. Strict duplicate-safe
+Rust decoding applies to untrusted GitHub API metadata, SLSA verification
+responses and guest receipts. The probe rejects superseded approvals, missing
+runner identities, wrong artifact head SHAs and empty artifacts.
+
+A separate local replay journal is now **mandatory** for the combined
+`guest_artifact_probe` CLI: set `ATTO_REPLAY_JOURNAL_DIR` to an existing,
+owner-private directory (mode 0700 on Unix) **outside source repositories**.
+An atomic `create_new` receipt marker with mode 0600 prevents acceptance
+of the same source/run/attempt/job/backend/feature/nonce across separate
+process invocations. Missing, unsafe or unwritable journals fail closed.
+This mutates *only* the explicitly configured local journal; it never
+changes GitHub repositories, policies, or source trees.
+
+The optional `fixture-set.json` third ZIP member permits independent
+SHA-256 validation of the actual fixture bytes and enforces exact executed
+case count. Older two-file receipts are still parseable, but report
+`fixture_bytes_verified=false` and must never be treated as certified
+fixture execution. Verified bytes, a valid SLSA attestation and replay
+prevention still **do not prove the guest runtime actually executed**.
+Release status remains `NOT_CERTIFIED` until independently trusted
+runner/guest execution evidence is established.
