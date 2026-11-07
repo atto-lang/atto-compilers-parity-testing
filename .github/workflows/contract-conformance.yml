@@ -15,7 +15,13 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup toolchain install 1.88.0 --profile minimal
-      - run: cargo +1.88.0 test --locked --all-targets --verbose
+      - run: cargo +1.88.0 test --all-targets --verbose
+      - name: Bootstrap and export Rust lockfile
+        if: success()
+        run: |
+          echo ATTO_LOCK_BEGIN
+          cat Cargo.lock
+          echo ATTO_LOCK_END
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'

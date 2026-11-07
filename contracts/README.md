@@ -53,3 +53,9 @@ cargo +1.88.0 run --locked --bin github_metadata_probe -- \
 ```
 
 **Important:** this probe deliberately exits nonzero even when all GitHub metadata checks pass: status remains `NOT_CERTIFIED` until an independent download and hash verification of artifact bytes, authenticated guest execution receipts, and review/protection provenance are implemented. A GitHub artifact's `digest` field alone does not prove its bytes; successful CI is not proof of backend guest execution. No repository mutation is performed by the probe.
+
+## Signed guest ZIP artifact verification (Rust)
+
+The new src/artifact_receipt.rs module downloads artifact ZIPs through authenticated, host-pinned GitHub CLI GET calls, hashes the **actual ZIP bytes** using Rust SHA-256, and validates a bounded two-file ZIP containing guest-receipt.json and guest-stdout.bin. It rejects unknown ZIP paths, excessive decompression, mismatched output hashes, stale source/fixture/run/attempt/job, non-guest results, failed cases, missing challenge nonces, and replayed receipts in one audit batch. For signed provenance, GhProvenance requires a cryptographically verified SLSA attestation with repository, source digest and signer-workflow constraints. The production verifier fails closed if GitHub provenance cannot be verified; test-only fake signers cannot prove deployment readiness.
+
+**Still NOT_CERTIFIED:** a signed ZIP containing a receipt does not independently prove that a trusted guest runner executed anything. Backend execution and cross-batch replay protection require a trusted signer/runner and persisted state. Existing source-main protection and independent-review checks remain separate hard gates. No repository mutation is performed by the verifier.

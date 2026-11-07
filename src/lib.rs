@@ -118,3 +118,5 @@ pub fn typespec_fields(tsp: &str) -> BTreeMap<String, BTreeSet<String>> {
 pub mod release_gate;
 
 pub mod github_probe;
+
+pub mod artifact_receipt;
