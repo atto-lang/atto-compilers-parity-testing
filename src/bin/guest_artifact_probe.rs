@@ -3,7 +3,8 @@
 //! established runner execution and protected-source governance.
 use atto_evidence_contract_conformance::{
     github_probe::{probe_github_metadata,GhCli,ProbeSpec},
-    artifact_receipt::{ArtifactPolicy,fetch_and_verify,DurableReplayFence}
+    artifact_receipt::{ArtifactPolicy,fetch_and_verify,DurableReplayFence},
+    challenge_gate::{ChallengeAuthority,now_unix}
 };
 use serde_json::json;
 fn main(){
@@ -35,12 +36,19 @@ fn main(){
         // receipt in a second process must fail even if its signature is valid.
         let journal=std::env::var("ATTO_REPLAY_JOURNAL_DIR")
             .map_err(|_|"ATTO_REPLAY_JOURNAL_DIR must name a private local replay directory")?;
-        DurableReplayFence::open(journal)?.admit(&signed)?;
+        let replay=DurableReplayFence::open(journal)?;
+        // Independent verifier-issued challenge MUST exist in a separate
+        // verifier-owned ledger; self-generated workflow nonces fail closed.
+        let challenge_dir=std::env::var("ATTO_CHALLENGE_LEDGER_DIR")
+            .map_err(|_|"ATTO_CHALLENGE_LEDGER_DIR must name a trusted private verifier directory")?;
+        ChallengeAuthority::open(challenge_dir)?.consume(&policy,&signed,now_unix()?)?;
+        replay.admit(&signed)?;
         Ok(json!({
             "status":"NOT_CERTIFIED",
             "metadata":"CHECKED","actual_archive_bytes":"SHA256_VERIFIED",
             "signed_provenance":"VERIFIED",
             "guest_receipt":"STRUCTURALLY_VERIFIED_CLAIM",
+            "independent_challenge":"ISSUED_BOUND_AND_CONSUMED",
             "trusted_guest_execution":"NOT_ESTABLISHED",
             "repository":observed.repository,
             "source_sha":observed.source_sha,
