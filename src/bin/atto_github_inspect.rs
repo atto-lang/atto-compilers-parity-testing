@@ -15,7 +15,7 @@ fn policy_file<T: serde::de::DeserializeOwned>(path: &str) -> Result<T,String> {
     }
     let bytes=fs::read(path).map_err(|_|"cannot read trusted policy")?;
     serde_json::from_value(decode_strict_json(&bytes)?)
-        .map_err(|_|"invalid trusted verifier policy")
+        .map_err(|_|"invalid trusted verifier policy".to_string())
 }
 fn run() -> Result<Value,String> {
     let args:Vec<_>=env::args().skip(1).collect();
