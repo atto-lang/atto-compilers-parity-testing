@@ -28,3 +28,29 @@ Use only Rust for parsing, ZIP decompression and hashing. Offline tests include
 real compressed ZIP archives, hash mutations, zip-bomb bounds, archive path
 traversal, duplicate fields and cross-field/identity failures. Do not silently
 treat an artifact metadata digest or a self-authored receipt as sufficient.
+
+
+## Combined read-only metadata + downloaded ZIP verification CLI
+
+The GitHub inspector also accepts two **trusted local inputs**:
+
+```sh
+GH_TOKEN=... cargo +1.88.0 run --locked --bin atto_github_inspect -- \
+  ./github-policy.json --artifact-zip ./downloaded-artifact.zip \
+  --receipt-policy ./guest-receipt-policy.json
+```
+
+The GitHub policy remains the exact pinned source/run/tree/reviewer/job/step/artifact
+policy described above. The guest-receipt policy requires `repository, run_id,
+job_id, source_sha, tree_sha, backend, feature_id, case_set_sha256`
+(the hashes are lowercase/uppercase hex; the string values must match the
+independent GitHub metadata and the actual ZIP contents).
+
+The downloaded ZIP must be obtained separately from the trusted GitHub Actions
+artifact endpoint. The program **does not fetch an arbitrary archive URL**;
+it hashes the provided bytes and compares the digest to the authenticated
+GitHub API claim. A mismatched digest, receipt or fixture hash exits nonzero
+with `NOT_CERTIFIED`. A matching archive reports byte/fixture
+verification but STILL returns `guest_execution_verified=false` and
+`NOT_CERTIFIED` because metadata and fixture receipts cannot prove
+that the backend actually executed the tests.
