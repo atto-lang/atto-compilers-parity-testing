@@ -116,3 +116,16 @@ pub fn typespec_fields(tsp: &str) -> BTreeMap<String, BTreeSet<String>> {
 
 // Pure, offline consistency gate. Trusted GitHub observations are external.
 pub mod release_gate;
+
+
+/// Strict JSON decoding without duplicate members or nonintegral numeric tokens.
+/// Usable for GitHub API responses (which can also be top-level arrays).
+pub fn decode_strict_json(raw: &[u8]) -> Result<Value, String> {
+    if raw.len() > MAX_WIRE_BYTES { return Err("JSON exceeds one MiB".into()); }
+    let mut d = serde_json::Deserializer::from_slice(raw);
+    let value = Unique::deserialize(&mut d).map_err(|e| e.to_string())?.0;
+    d.end().map_err(|e| e.to_string())?;
+    Ok(value)
+}
+
+pub mod github_inspect;
