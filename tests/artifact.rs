@@ -29,7 +29,7 @@ fn archive(entries:&[(&str,&[u8])])->Vec<u8> {
     let mut zip=ZipWriter::new(Cursor::new(Vec::<u8>::new()));
     for (name,bytes) in entries {
         zip.start_file(*name,SimpleFileOptions::default()
-            .compression_method(CompressionMethod::Deflated())).unwrap();
+            .compression_method(CompressionMethod::Deflated)).unwrap();
         zip.write_all(bytes).unwrap();
     }
     zip.finish().unwrap().into_inner()
