@@ -38,3 +38,17 @@ promoted to verified until expected_stdout_exact is present. These goldens
 are derived by manual review of the checked-in sources, not by trusting the
 compiler under test. Their runtime assumptions remain subject to real guest
 verification.
+
+## Source graph mutation fence
+
+The runner now checks the original entry SHA-256 and complete recursively
+reachable import-graph fingerprint at three boundaries: before compiler
+invocation, immediately after compiler invocation, and after guest execution.
+Any drift or newly encountered symlink/non-file changes the case status to
+`source_integrity_failure`, which is always a hard failure. In particular,
+a compiler that mutates a transitive imported module cannot claim a passing
+result based on the earlier pre-execution graph fingerprint. A focused unit
+regression edits both a leaf import and the entry source to establish this
+rejection. This fence is not an immutable source sandbox: a hostile compiler
+could change and restore bytes between sampling boundaries. Future execution
+needs immutable staged source graphs or OS-enforced read-only mounts.
