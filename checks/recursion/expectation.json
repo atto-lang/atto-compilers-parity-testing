@@ -11,5 +11,6 @@
     "import-cycle"
   ],
   "verified": false,
-  "notes": "Direct recursion, branching recursion, and mutually recursive functions across an import cycle."
+  "notes": "Direct recursion, branching recursion, and mutually recursive functions across an import cycle.",
+  "expected_stdout_exact": "PARITY_OK|recursion|176\n"
 }

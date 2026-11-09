@@ -53,6 +53,8 @@ struct Expectation {
     name: String,
     entry: String,
     stable_stdout_prefix: String,
+    #[serde(default)]
+    expected_stdout_exact: Option<String>,
     imported_files: usize,
     maturity: String,
     #[serde(default)]
@@ -83,6 +85,7 @@ struct TestCase {
     expected_value: Option<i32>,
     expected_diagnostic_category: Option<String>,
     expected_stdout_prefix: Option<String>,
+    expected_stdout_exact: Option<String>,
     validation_status: String,
     features: Vec<String>,
 }
@@ -343,6 +346,7 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
             expected_value: case.expected_value,
             expected_diagnostic_category: case.expected_diagnostic_category.clone(),
             expected_stdout_prefix: None,
+            expected_stdout_exact: None,
             validation_status: case.validation_status.clone(),
             features: case.features.clone(),
         });
@@ -376,6 +380,14 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
         // The manifest cannot weaken the stdout oracle.
         if expectation.stable_stdout_prefix != format!("PARITY_OK|{}|", item.name) {
             return Err(format!("invalid canonical stdout prefix: {}", item.name));
+        }
+        if expectation.verified && expectation.expected_stdout_exact.is_none() {
+            return Err(format!("{}: verified check lacks independently reviewed exact stdout", item.name));
+        }
+        if let Some(exact) = expectation.expected_stdout_exact.as_deref() {
+            if !valid_check_stdout(&hex(exact.as_bytes()), &expectation.stable_stdout_prefix) {
+                return Err(format!("{}: invalid exact stdout oracle", item.name));
+            }
         }
 
         let check_dir = root
@@ -424,6 +436,7 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
             expected_value: Some(0),
             expected_diagnostic_category: None,
             expected_stdout_prefix: Some(expectation.stable_stdout_prefix.clone()),
+            expected_stdout_exact: expectation.expected_stdout_exact.clone(),
             validation_status: if expectation.verified {
                 "validated".into()
             } else {
@@ -455,6 +468,7 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
                 expected_value: None,
                 expected_diagnostic_category: negative.expected_diagnostic_category.clone(),
                 expected_stdout_prefix: None,
+                expected_stdout_exact: None,
                 validation_status: "unvalidated".into(),
                 features: negative_features,
             });
@@ -778,7 +792,11 @@ fn evaluate_case(
         } else if run_exit != case.expected_value {
             "wrong_result".into()
         } else if let Some(prefix) = &case.expected_stdout_prefix {
-            if !valid_check_stdout(&stdout_hex, prefix) {
+            if !valid_check_stdout(&stdout_hex, prefix)
+                || case.expected_stdout_exact.as_ref().is_some_and(|expected| {
+                    stdout_hex != hex(expected.as_bytes())
+                })
+            {
                 "wrong_stdout".into()
             } else if case.validation_status == "validated" {
                 "pass".into()

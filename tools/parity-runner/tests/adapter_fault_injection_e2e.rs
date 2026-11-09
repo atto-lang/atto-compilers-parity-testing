@@ -87,7 +87,7 @@ fn canonical_guest_output_is_still_exploratory_without_validation() {
     let (output, report) = run_with_adapters(
         "exploratory",
         r#"sh -c 'exit 0'"#,
-        r#"sh -c 'printf "PARITY_OK|actor-system|42\n"'"#,
+        r#"sh -c 'printf "PARITY_OK|actor-system|15\n"'"#,
     );
     assert!(!output.status.success());
     let actor = case(&report, "actor-system");
@@ -129,11 +129,11 @@ fn two_backend_output_disagreement_is_an_explicit_parity_failure() {
     command.env("ORES_PARITY_LLVM_COMPILE", r#"sh -c 'exit 0'"#);
     command.env(
         "ORES_PARITY_JAVA_RUN",
-        r#"sh -c 'printf "PARITY_OK|actor-system|42\n"'"#,
+        r#"sh -c 'printf "PARITY_OK|parameter-syntax|42\n"'"#,
     );
     command.env(
         "ORES_PARITY_LLVM_RUN",
-        r#"sh -c 'printf "PARITY_OK|actor-system|43\n"'"#,
+        r#"sh -c 'printf "PARITY_OK|parameter-syntax|43\n"'"#,
     );
     let output = command.output().expect("execute two synthetic backend adapters");
     let report: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
@@ -146,11 +146,25 @@ fn two_backend_output_disagreement_is_an_explicit_parity_failure() {
             .as_array()
             .unwrap()
             .iter()
-            .find(|record| record["case_id"] == "actor-system" && record["backend"] == backend)
+            .find(|record| record["case_id"] == "parameter-syntax" && record["backend"] == backend)
             .unwrap();
         assert_eq!(actor["status"], "cross_backend_stdout_mismatch");
         assert_eq!(actor["run"]["exit_code"], 0);
     }
     assert!(report["summary"]["cross_backend_stdout_mismatch"].as_u64().unwrap() >= 2);
+    assert!(report["summary"].get("pass").is_none());
+}
+
+#[test]
+fn plausible_but_wrong_actor_checksum_is_rejected_by_independent_oracle() {
+    let (output, report) = run_with_adapters(
+        "wrong-checksum",
+        r#"sh -c 'exit 0'"#,
+        r#"sh -c 'printf "PARITY_OK|actor-system|42\n"'"#,
+    );
+    assert!(!output.status.success());
+    let actor = case(&report, "actor-system");
+    assert_eq!(actor["run"]["exit_code"], 0);
+    assert_eq!(actor["status"], "wrong_stdout");
     assert!(report["summary"].get("pass").is_none());
 }

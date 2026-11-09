@@ -44,3 +44,14 @@ A compiler/backend only passes when it consumes the same source graph, finishes 
 - Equivalence Modulo Inputs (EMI): https://web.cs.ucdavis.edu/~su/emi-project/
 
 The most useful pattern for Oreslang is a blend: tiny GCC/LLVM-style regression programs, Rust-style run-pass/compile-fail expectations, Csmith/YARPGen differential outputs, and EMI/metamorphic variants that must remain equivalent on fixed inputs.
+
+## Exact stdout oracles
+
+A selected set of reviewable deterministic programs pins
+`expected_stdout_exact` in `expectation.json`. This is not an execution
+receipt. The runner rejects an otherwise correctly formatted `PARITY_OK`
+line if its checksum differs from that reviewed expected value. Marking
+`verified: true` without such an independent oracle is prohibited, but
+adding a golden alone leaves a program unvalidated until actual compiler and
+guest evidence is checked. Other cases still collect exploratory output and
+must not be called passing parity.

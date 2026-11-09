@@ -11,5 +11,6 @@
     "return-scope"
   ],
   "verified": false,
-  "notes": "Plain switch versus accepted do switch procedural prefix."
+  "notes": "Plain switch versus accepted do switch procedural prefix.",
+  "expected_stdout_exact": "PARITY_OK|do-switch|126\n"
 }

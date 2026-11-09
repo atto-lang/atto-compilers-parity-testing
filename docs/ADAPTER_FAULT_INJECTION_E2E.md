@@ -28,3 +28,13 @@ checksums now classify every candidate participant as
 cross_backend_stdout_mismatch, even when each alone looks like a valid
 success line. The cross-backend full-process scenario uses synthetic Java and
 LLVM stand-ins with conflicting checksums and expects a hard failure.
+
+Reviewed deterministic stdout goldens (still NOT_CERTIFIED without compiler/guest
+execution) are pinned for order-of-operations=36, actor-system=15,
+do-switch=126, do-match=126, recursion=176. Any canonical line carrying a
+*different* checksum now reports wrong_stdout. Checks without an independently
+reviewed oracle still permit canonical exploratory output but cannot be
+promoted to verified until expected_stdout_exact is present. These goldens
+are derived by manual review of the checked-in sources, not by trusting the
+compiler under test. Their runtime assumptions remain subject to real guest
+verification.
