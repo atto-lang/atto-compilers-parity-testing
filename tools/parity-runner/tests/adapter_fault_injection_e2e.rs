@@ -110,3 +110,47 @@ fn infrastructure_exit_125_prevents_guest_execution() {
         assert_eq!(record["status"], "compile_infrastructure_failure");
     }
 }
+
+#[test]
+fn two_backend_output_disagreement_is_an_explicit_parity_failure() {
+    let serial = NEXT.fetch_add(1, Ordering::Relaxed);
+    let path = std::env::temp_dir().join(format!(
+        "ores-parity-two-backends-{}-{serial}.json",
+        std::process::id()
+    ));
+    let mut command = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"));
+    command.args(["--execute", "--allow-unvalidated", "--timeout", "2", "--output"]);
+    command.arg(&path);
+    for backend in ["WASM", "DOTNET", "FORGE", "CRANELIFT", "JS"] {
+        command.env_remove(format!("ORES_PARITY_{backend}_COMPILE"));
+        command.env_remove(format!("ORES_PARITY_{backend}_RUN"));
+    }
+    command.env("ORES_PARITY_JAVA_COMPILE", r#"sh -c 'exit 0'"#);
+    command.env("ORES_PARITY_LLVM_COMPILE", r#"sh -c 'exit 0'"#);
+    command.env(
+        "ORES_PARITY_JAVA_RUN",
+        r#"sh -c 'printf "PARITY_OK|actor-system|42\n"'"#,
+    );
+    command.env(
+        "ORES_PARITY_LLVM_RUN",
+        r#"sh -c 'printf "PARITY_OK|actor-system|43\n"'"#,
+    );
+    let output = command.output().expect("execute two synthetic backend adapters");
+    let report: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    fs::remove_file(path).unwrap();
+    assert!(!output.status.success());
+    assert_eq!(report["cases"], 54);
+    assert_eq!(report["records"].as_array().unwrap().len(), 324);
+    for backend in ["java", "llvm"] {
+        let actor = report["records"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|record| record["case_id"] == "actor-system" && record["backend"] == backend)
+            .unwrap();
+        assert_eq!(actor["status"], "cross_backend_stdout_mismatch");
+        assert_eq!(actor["run"]["exit_code"], 0);
+    }
+    assert!(report["summary"]["cross_backend_stdout_mismatch"].as_u64().unwrap() >= 2);
+    assert!(report["summary"].get("pass").is_none());
+}

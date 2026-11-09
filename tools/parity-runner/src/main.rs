@@ -795,6 +795,40 @@ fn evaluate_case(
     Ok(record)
 }
 
+// Multi-file checks require byte-for-byte agreement across executed backends.
+// Matching the same prefix independently is not differential conformance.
+fn enforce_differential_stdout(records: &mut [Record]) {
+    let mut groups: BTreeMap<(String, String), Vec<usize>> = BTreeMap::new();
+    for (index, record) in records.iter().enumerate() {
+        if record.suite == "checks"
+            && matches!(
+                record.status.as_str(),
+                "pass" | "exploratory_match_not_parity_pass"
+            )
+            && record.run.is_some()
+        {
+            groups
+                .entry((record.suite.clone(), record.case_id.clone()))
+                .or_default()
+                .push(index);
+        }
+    }
+    for indices in groups.values() {
+        if indices.len() < 2 {
+            continue;
+        }
+        let expected = &records[indices[0]].run.as_ref().expect("candidate has run").stdout_hex;
+        let mismatch = indices.iter().skip(1).any(|&index| {
+            records[index].run.as_ref().expect("candidate has run").stdout_hex != *expected
+        });
+        if mismatch {
+            for &index in indices {
+                records[index].status = "cross_backend_stdout_mismatch".into();
+            }
+        }
+    }
+}
+
 fn is_verified_execution_status(status: &str) -> bool {
     matches!(status, "pass" | "expected_reject")
 }
@@ -866,6 +900,8 @@ fn main() -> Result<(), String> {
         }
     }
 
+    enforce_differential_stdout(&mut records);
+
     let mut summary = BTreeMap::new();
     for record in &records {
         *summary.entry(record.status.clone()).or_insert(0) += 1;
@@ -916,7 +952,7 @@ fn main() -> Result<(), String> {
 mod tests {
     use super::{
         ascii_lower_hex, classify_diagnostic, hex, import_target, is_verified_execution_status,
-        lowercase_kebab, valid_check_stdout, Invocation,
+        enforce_differential_stdout, lowercase_kebab, valid_check_stdout, Invocation, Record,
     };
     use std::collections::BTreeMap;
 
@@ -1023,6 +1059,44 @@ mod tests {
         let mut invalid_utf8 = b"PARITY_OK|actor-system|42".to_vec();
         invalid_utf8.extend_from_slice(&[0xff, b'\n']);
         assert!(!valid_check_stdout(&hex(&invalid_utf8), prefix));
+    }
+
+    #[test]
+    fn differential_stdout_cannot_certify_disagreeing_checksums() {
+        let make_record = |backend: &str, output: &str| Record {
+            suite: "checks".into(),
+            case_id: "actor-system".into(),
+            name: "actor-system".into(),
+            backend: backend.into(),
+            source_sha256: "a".repeat(64),
+            graph_sha256: Some("b".repeat(64)),
+            graph_files: Some(vec!["checks/actor-system/main.ores".into()]),
+            validation_status: "validated".into(),
+            features: vec!["actor".into()],
+            expected_diagnostic_category: None,
+            actual_diagnostic_category: None,
+            status: "pass".into(),
+            compile: None,
+            run: Some(Invocation {
+                status: "completed".into(),
+                exit_code: Some(0),
+                stdout_hex: hex(output.as_bytes()),
+                stderr_hex: String::new(),
+                duration_ms: 1,
+                error: None,
+            }),
+        };
+        let mut matching = vec![
+            make_record("java", "PARITY_OK|actor-system|42\n"),
+            make_record("llvm", "PARITY_OK|actor-system|42\n"),
+        ];
+        enforce_differential_stdout(&mut matching);
+        assert!(matching.iter().all(|record| record.status == "pass"));
+        matching.push(make_record("wasm", "PARITY_OK|actor-system|43\n"));
+        enforce_differential_stdout(&mut matching);
+        assert!(matching
+            .iter()
+            .all(|record| record.status == "cross_backend_stdout_mismatch"));
     }
 
     #[cfg(unix)]

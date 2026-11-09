@@ -21,3 +21,10 @@ Run with cargo test --manifest-path tools/parity-runner/Cargo.toml --locked.
 These shell stand-ins do NOT execute an AttoLang compiler or certify guest
 parity. Real certification requires an authorized exact-head runner, pinned
 compiler/guest artifacts and a separately verified ORES_GUEST_EXECUTED receipt.
+
+When two or more backends produce canonical output for the same multi-file
+case, the runner also compares their complete stdout byte strings. Different
+checksums now classify every candidate participant as
+cross_backend_stdout_mismatch, even when each alone looks like a valid
+success line. The cross-backend full-process scenario uses synthetic Java and
+LLVM stand-ins with conflicting checksums and expects a hard failure.
