@@ -1,6 +1,6 @@
 # Execution and parity gate
 
-The checked-in corpus is fail-closed. The default CI audits 35 legacy programs (including four unvalidated signed-i64 boundary candidates), 16 positive multi-file checks and 2 negative probes, yielding 53 logical cases and 318 required backend/case pairs across Java, LLVM, WASM, .NET, Forge and Cranelift. JavaScript is an optional seventh target (`--backend js`), not a substitute for Forge. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
+The checked-in corpus is fail-closed. The default CI audits 36 legacy programs (including four unvalidated signed-i64 boundary candidates), 16 positive multi-file checks and 2 negative probes, yielding 54 logical cases and 324 required backend/case pairs across Java, LLVM, WASM, .NET, Forge and Cranelift. JavaScript is an optional seventh target (`--backend js`), not a substitute for Forge. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
 
 ## Rust-only tooling
 
@@ -90,4 +90,4 @@ Case 31 (static select delimiter equivalence) remains a Java-reference target,
 not five-backend execution proof. The `intentional_capability_reject` status
 is a fail-closed gap, never a passing record.
 
-Cranelift is also a required independent target, alongside LLVM, Java, Wasm, .NET and Forge; JavaScript remains optional. The 53-case default audit now yields 318 non-executed cells. Cranelift uses ORES_PARITY_CRANELIFT_COMPILE and ORES_PARITY_CRANELIFT_RUN. Its scalar JIT has no reviewed separate artifact adapter for this corpus; unavailable or unsupported source remains a gap, never a pass.
+Cranelift is also a required independent target, alongside LLVM, Java, Wasm, .NET and Forge; JavaScript remains optional. The 54-case default audit now yields 324 non-executed cells. Cranelift uses ORES_PARITY_CRANELIFT_COMPILE and ORES_PARITY_CRANELIFT_RUN. Its scalar JIT has no reviewed separate artifact adapter for this corpus; unavailable or unsupported source remains a gap, never a pass.

@@ -187,6 +187,39 @@ fn classify_diagnostic(
     None
 }
 
+// The prefix alone is not a success oracle: require one canonical
+// checksum line, excluding trailing errors or duplicate successes.
+fn valid_check_stdout(stdout_hex: &str, prefix: &str) -> bool {
+    let prefix_hex = hex(prefix.as_bytes());
+    let Some(tail) = stdout_hex.strip_prefix(&prefix_hex) else {
+        return false;
+    };
+    // Signed i64 plus LF: at most 21 bytes.
+    if tail.len() < 4 || tail.len() > 42 || tail.len() % 2 != 0 {
+        return false;
+    }
+    let decoded: Option<Vec<u8>> = tail
+        .as_bytes()
+        .chunks_exact(2)
+        .map(|pair| {
+            let pair = std::str::from_utf8(pair).ok()?;
+            u8::from_str_radix(pair, 16).ok()
+        })
+        .collect();
+    let Some(decoded) = decoded else {
+        return false;
+    };
+    let Ok(text) = std::str::from_utf8(&decoded) else {
+        return false;
+    };
+    let Some(checksum) = text.strip_suffix('\n') else {
+        return false;
+    };
+    checksum
+        .parse::<i64>()
+        .is_ok_and(|number| number.to_string() == checksum)
+}
+
 fn sha256_file(path: &Path) -> Result<String, String> {
     let bytes = fs::read(path).map_err(|e| format!("failed to read source for SHA-256: {e}"))?;
     let digest = Sha256::digest(bytes);
@@ -339,6 +372,10 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
         .map_err(|e| format!("{}: {e}", item.expectation))?;
         if expectation.name != item.name {
             return Err(format!("check name mismatch: {}", item.name));
+        }
+        // The manifest cannot weaken the stdout oracle.
+        if expectation.stable_stdout_prefix != format!("PARITY_OK|{}|", item.name) {
+            return Err(format!("invalid canonical stdout prefix: {}", item.name));
         }
 
         let check_dir = root
@@ -741,7 +778,7 @@ fn evaluate_case(
         } else if run_exit != case.expected_value {
             "wrong_result".into()
         } else if let Some(prefix) = &case.expected_stdout_prefix {
-            if !stdout_hex.starts_with(&hex(prefix.as_bytes())) {
+            if !valid_check_stdout(&stdout_hex, prefix) {
                 "wrong_stdout".into()
             } else if case.validation_status == "validated" {
                 "pass".into()
@@ -879,7 +916,7 @@ fn main() -> Result<(), String> {
 mod tests {
     use super::{
         ascii_lower_hex, classify_diagnostic, hex, import_target, is_verified_execution_status,
-        lowercase_kebab, Invocation,
+        lowercase_kebab, valid_check_stdout, Invocation,
     };
     use std::collections::BTreeMap;
 
@@ -952,6 +989,40 @@ mod tests {
     #[test]
     fn hex_encoding_is_stable() {
         assert_eq!(hex(b"PARITY_OK"), "5041524954595f4f4b");
+    }
+
+    #[test]
+    fn multifile_stdout_oracle_requires_one_canonical_checksum_line() {
+        let prefix = "PARITY_OK|actor-system|";
+        for good in [
+            "PARITY_OK|actor-system|0\n",
+            "PARITY_OK|actor-system|42\n",
+            "PARITY_OK|actor-system|-9223372036854775808\n",
+            "PARITY_OK|actor-system|9223372036854775807\n",
+        ] {
+            assert!(valid_check_stdout(&hex(good.as_bytes()), prefix), "{good:?}");
+        }
+        for bad in [
+            "PARITY_OK|actor-system|",
+            "PARITY_OK|actor-system|42",
+            "PARITY_OK|actor-system|42\r\n",
+            "PARITY_OK|actor-system|42\nEXTRA\n",
+            "diagnostic\nPARITY_OK|actor-system|42\n",
+            "PARITY_OK|actor-system|42\nPARITY_OK|actor-system|42\n",
+            "PARITY_OK|actor-system|+42\n",
+            "PARITY_OK|actor-system|042\n",
+            "PARITY_OK|actor-system|-0\n",
+            "PARITY_OK|actor-system|abc\n",
+            "PARITY_OK|actor-system|9223372036854775808\n",
+            "PARITY_OK|other-check|42\n",
+        ] {
+            assert!(!valid_check_stdout(&hex(bad.as_bytes()), prefix), "{bad:?}");
+        }
+        assert!(!valid_check_stdout("0", prefix));
+        assert!(!valid_check_stdout("zz", prefix));
+        let mut invalid_utf8 = b"PARITY_OK|actor-system|42".to_vec();
+        invalid_utf8.extend_from_slice(&[0xff, b'\n']);
+        assert!(!valid_check_stdout(&hex(&invalid_utf8), prefix));
     }
 
     #[cfg(unix)]
