@@ -234,6 +234,39 @@ fn sha256_bytes(bytes: &[u8]) -> Result<String, String> {
     Ok(format!("{digest:x}"))
 }
 
+// Verify both the entry bytes and the entire reachable import closure at
+// execution boundaries. An adapter is untrusted and may rewrite input paths.
+fn case_source_unchanged(case: &TestCase, root: &Path) -> bool {
+    if fs::symlink_metadata(&case.source)
+        .is_err_or(|metadata| !metadata.is_file() || metadata.file_type().is_symlink())
+    {
+        return false;
+    }
+    if sha256_file(&case.source)
+        .ok()
+        .as_deref()
+        != Some(case.source_sha256.as_str())
+    {
+        return false;
+    }
+    if let Some(expected) = &case.graph_sha256 {
+        let current = reachable_graph(&case.source, root)
+            .and_then(|paths| {
+                for path in &paths {
+                    if fs::symlink_metadata(path)
+                        .is_err_or(|meta| !meta.is_file() || meta.file_type().is_symlink())
+                    {
+                        return Err("symlink or non-file in import graph".into());
+                    }
+                }
+                fingerprint_graph(&paths, root)
+            });
+        current.is_ok_and(|digest| digest == *expected)
+    } else {
+        true
+    }
+}
+
 fn safe_file(root: &Path, path_text: &str) -> Result<PathBuf, String> {
     let path = root
         .join(path_text)
@@ -679,6 +712,7 @@ fn temp_dir(case_id: &str, backend: &str) -> Result<PathBuf, String> {
 
 fn evaluate_case(
     case: &TestCase,
+    root: &Path,
     diagnostic_rules: &DiagnosticRules,
     backend: &str,
     env_name: &str,
@@ -703,6 +737,10 @@ fn evaluate_case(
         run: None,
     };
     if !execute {
+        return Ok(record);
+    }
+    if !case_source_unchanged(case, root) {
+        record.status = "source_integrity_failure".into();
         return Ok(record);
     }
     if case.validation_status != "validated" && !allow_unvalidated {
@@ -730,6 +768,11 @@ fn evaluate_case(
     let compile_status = compile.status.clone();
     let compile_exit = compile.exit_code;
     record.compile = Some(compile);
+    if !case_source_unchanged(case, root) {
+        record.status = "source_integrity_failure".into();
+        let _ = fs::remove_dir_all(workdir);
+        return Ok(record);
+    }
 
     if compile_status != "completed" || compile_exit.is_none() || compile_exit == Some(125) {
         record.status = "compile_infrastructure_failure".into();
@@ -808,6 +851,9 @@ fn evaluate_case(
         } else {
             "exploratory_match_not_parity_pass".into()
         };
+    }
+    if !case_source_unchanged(case, root) {
+        record.status = "source_integrity_failure".into();
     }
     let _ = fs::remove_dir_all(workdir);
     Ok(record)
@@ -908,6 +954,7 @@ fn main() -> Result<(), String> {
             }
             records.push(evaluate_case(
                 case,
+                &root,
                 &diagnostic_rules,
                 backend,
                 env_name,
@@ -970,7 +1017,9 @@ fn main() -> Result<(), String> {
 mod tests {
     use super::{
         ascii_lower_hex, classify_diagnostic, hex, import_target, is_verified_execution_status,
-        enforce_differential_stdout, lowercase_kebab, valid_check_stdout, Invocation, Record,
+        case_source_unchanged, enforce_differential_stdout, fingerprint_graph,
+        lowercase_kebab, reachable_graph, sha256_file, valid_check_stdout, Invocation, Record,
+        TestCase,
     };
     use std::collections::BTreeMap;
 
@@ -1115,6 +1164,46 @@ mod tests {
         assert!(matching
             .iter()
             .all(|record| record.status == "cross_backend_stdout_mismatch"));
+    }
+
+    #[test]
+    fn untrusted_compiler_mutation_of_direct_or_transitive_sources_denies_evidence() {
+        let root = std::env::temp_dir().join(format!(
+            "ores-parity-source-mutation-{}", std::process::id()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let entry = root.join("main.ores");
+        let dep = root.join("dep.ores");
+        std::fs::write(&entry, "import fnc value from \"./dep.ores\";\n").unwrap();
+        std::fs::write(&dep, "pub fnc value(): int { return 42; }\n").unwrap();
+        let root = root.canonicalize().unwrap();
+        let graph = reachable_graph(&entry, &root).unwrap();
+        let graph_sha = fingerprint_graph(&graph, &root).unwrap();
+        let source_sha = sha256_file(&entry).unwrap();
+        let make_case = || TestCase {
+            suite: "checks".into(),
+            case_id: "adversarial".into(),
+            name: "adversarial".into(),
+            source: entry.clone(),
+            source_sha256: source_sha.clone(),
+            graph_sha256: Some(graph_sha.clone()),
+            graph_files: Some(vec!["main.ores".into(), "dep.ores".into()]),
+            expected_kind: "exit".into(),
+            expected_value: Some(0),
+            expected_diagnostic_category: None,
+            expected_stdout_prefix: Some("PARITY_OK|adversarial|".into()),
+            expected_stdout_exact: None,
+            validation_status: "unvalidated".into(),
+            features: vec!["import".into()],
+        };
+        assert!(case_source_unchanged(&make_case(), &root));
+        std::fs::write(&dep, "pub fnc value(): int { return 0; }\n").unwrap();
+        assert!(!case_source_unchanged(&make_case(), &root));
+        std::fs::write(&dep, "pub fnc value(): int { return 42; }\n").unwrap();
+        assert!(case_source_unchanged(&make_case(), &root));
+        std::fs::write(&entry, "import fnc value from \"./new-dep.ores\";\n").unwrap();
+        assert!(!case_source_unchanged(&make_case(), &root));
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[cfg(unix)]
