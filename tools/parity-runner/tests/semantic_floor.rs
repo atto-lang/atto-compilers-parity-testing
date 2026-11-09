@@ -36,12 +36,10 @@ fn semantic_floor_is_staged_and_matches_required_six_backends() {
     assert_eq!(backends.len(), 6);
     for backend in backends {
         let id = backend.as_str().unwrap();
-        assert!(
-            contract["backend_repositories"][id]
-                .as_str()
-                .unwrap()
-                .starts_with("ores-truffle-oreslang/oreslang-source.")
-        );
+        assert!(contract["backend_repositories"][id]
+            .as_str()
+            .unwrap()
+            .starts_with("ores-truffle-oreslang/oreslang-source."));
     }
 
     let features = contract["features"].as_array().unwrap();
@@ -75,12 +73,10 @@ fn semantic_floor_is_staged_and_matches_required_six_backends() {
             }
             "compile_reject" => {
                 assert!(fixture["expected_exit"].is_null());
-                assert!(
-                    !fixture["expected_diagnostic_category"]
-                        .as_str()
-                        .unwrap()
-                        .is_empty()
-                );
+                assert!(!fixture["expected_diagnostic_category"]
+                    .as_str()
+                    .unwrap()
+                    .is_empty());
             }
             kind => panic!("invalid candidate kind: {kind}"),
         }

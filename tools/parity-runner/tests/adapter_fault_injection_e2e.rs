@@ -119,7 +119,13 @@ fn two_backend_output_disagreement_is_an_explicit_parity_failure() {
         std::process::id()
     ));
     let mut command = Command::new(env!("CARGO_BIN_EXE_ores-parity-runner"));
-    command.args(["--execute", "--allow-unvalidated", "--timeout", "2", "--output"]);
+    command.args([
+        "--execute",
+        "--allow-unvalidated",
+        "--timeout",
+        "2",
+        "--output",
+    ]);
     command.arg(&path);
     for backend in ["WASM", "DOTNET", "FORGE", "CRANELIFT", "JS"] {
         command.env_remove(format!("ORES_PARITY_{backend}_COMPILE"));
@@ -135,7 +141,9 @@ fn two_backend_output_disagreement_is_an_explicit_parity_failure() {
         "ORES_PARITY_LLVM_RUN",
         r#"sh -c 'printf "PARITY_OK|parameter-syntax|43\n"'"#,
     );
-    let output = command.output().expect("execute two synthetic backend adapters");
+    let output = command
+        .output()
+        .expect("execute two synthetic backend adapters");
     let report: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
     fs::remove_file(path).unwrap();
     assert!(!output.status.success());
@@ -151,7 +159,12 @@ fn two_backend_output_disagreement_is_an_explicit_parity_failure() {
         assert_eq!(actor["status"], "cross_backend_stdout_mismatch");
         assert_eq!(actor["run"]["exit_code"], 0);
     }
-    assert!(report["summary"]["cross_backend_stdout_mismatch"].as_u64().unwrap() >= 2);
+    assert!(
+        report["summary"]["cross_backend_stdout_mismatch"]
+            .as_u64()
+            .unwrap()
+            >= 2
+    );
     assert!(report["summary"].get("pass").is_none());
 }
 

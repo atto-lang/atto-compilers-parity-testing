@@ -1,6 +1,10 @@
 //! Exact source-owned evidence validator CLI test; no guest compiler execution.
 use serde_json::{json, Value};
-use std::{fs, process::{Command, Output}, sync::atomic::{AtomicU64, Ordering}};
+use std::{
+    fs,
+    process::{Command, Output},
+    sync::atomic::{AtomicU64, Ordering},
+};
 static NEXT: AtomicU64 = AtomicU64::new(1);
 
 fn evidence() -> Value {
@@ -44,11 +48,14 @@ fn evidence() -> Value {
 fn validate(receipt: &Value) -> Output {
     let serial = NEXT.fetch_add(1, Ordering::Relaxed);
     let path = std::env::temp_dir().join(format!(
-        "atto-wave22-receipt-{}-{serial}.json", std::process::id()
+        "atto-wave22-receipt-{}-{serial}.json",
+        std::process::id()
     ));
     fs::write(&path, serde_json::to_vec(receipt).unwrap()).unwrap();
     let output = Command::new(env!("CARGO_BIN_EXE_evidence-contract"))
-        .arg(&path).output().expect("run evidence-contract CLI");
+        .arg(&path)
+        .output()
+        .expect("run evidence-contract CLI");
     fs::remove_file(path).unwrap();
     output
 }
@@ -56,7 +63,11 @@ fn validate(receipt: &Value) -> Output {
 #[test]
 fn checked_runner_receipt_cannot_be_automatically_promoted_to_guest_tier() {
     let output = validate(&evidence());
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let report: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(report["valid"], true);
     assert_eq!(report["claim_tier"], "RUNNER_EXECUTED");

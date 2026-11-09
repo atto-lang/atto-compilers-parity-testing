@@ -9,8 +9,7 @@ fn root() -> PathBuf {
 }
 
 fn json(path: &str) -> Value {
-    serde_json::from_slice(&fs::read(root().join(path)).expect("read JSON"))
-        .expect("valid JSON")
+    serde_json::from_slice(&fs::read(root().join(path)).expect("read JSON")).expect("valid JSON")
 }
 
 fn strings(v: &Value) -> Vec<&str> {
@@ -44,7 +43,10 @@ fn spec_alignment_does_not_conflate_backends_or_claim_execution() {
     assert_eq!(a["source_policy"]["identical_source_per_backend"], true);
     assert_eq!(a["claim_policy"]["registry_is_execution_evidence"], false);
     assert_eq!(a["claim_policy"]["registry_is_spec_conformance"], false);
-    assert_eq!(a["claim_policy"]["new_cases_require_independent_oracle_review"], true);
+    assert_eq!(
+        a["claim_policy"]["new_cases_require_independent_oracle_review"],
+        true
+    );
 
     let required = strings(&a["targets"]["required"]);
     assert_eq!(
@@ -52,12 +54,21 @@ fn spec_alignment_does_not_conflate_backends_or_claim_execution() {
         vec!["llvm", "java", "wasm", "dotnet", "forge", "cranelift"]
     );
     assert_eq!(strings(&a["targets"]["optional"]), vec!["js"]);
-    assert_eq!(a["targets"]["required"], manifest["policy"]["target_backends"]);
-    assert_eq!(a["targets"]["optional"], manifest["policy"]["optional_backends"]);
+    assert_eq!(
+        a["targets"]["required"],
+        manifest["policy"]["target_backends"]
+    );
+    assert_eq!(
+        a["targets"]["optional"],
+        manifest["policy"]["optional_backends"]
+    );
     assert_eq!(manifest["policy"]["required_parity"], true);
     assert_eq!(manifest["policy"]["unsupported_is_pass"], false);
     assert_eq!(manifest["policy"]["infrastructure_failure_is_pass"], false);
-    assert_eq!(manifest["policy"]["negative_tests_require_diagnostic_classification"], true);
+    assert_eq!(
+        manifest["policy"]["negative_tests_require_diagnostic_classification"],
+        true
+    );
 }
 
 #[test]
@@ -98,15 +109,19 @@ fn links_reference_existing_cases_without_promotion_to_parity() {
         let spec_id = link["spec_fixture_id"].as_str().expect("spec fixture ID");
         let suite = link["corpus"]["suite"].as_str().expect("suite");
         let id = link["corpus"]["id"].as_str().expect("case ID");
-        assert!(spec_catalogue.contains(spec_id), "unknown spec ID: {spec_id}");
+        assert!(
+            spec_catalogue.contains(spec_id),
+            "unknown spec ID: {spec_id}"
+        );
         assert_eq!(link["relation"], "related_feature_only");
         assert!(
-            link["review_note"]
-                .as_str()
-                .is_some_and(|s| s.len() >= 20),
+            link["review_note"].as_str().is_some_and(|s| s.len() >= 20),
             "every link needs an explicit coverage caveat"
         );
-        assert!(unique.insert((spec_id, suite, id)), "duplicate registry link");
+        assert!(
+            unique.insert((spec_id, suite, id)),
+            "duplicate registry link"
+        );
         match suite {
             "legacy" => assert!(legacy.contains(id), "unknown legacy case: {id}"),
             "checks" => assert!(named.contains(id), "unknown named check: {id}"),

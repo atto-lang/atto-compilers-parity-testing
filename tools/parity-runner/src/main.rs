@@ -242,25 +242,20 @@ fn case_source_unchanged(case: &TestCase, root: &Path) -> bool {
     {
         return false;
     }
-    if sha256_file(&case.source)
-        .ok()
-        .as_deref()
-        != Some(case.source_sha256.as_str())
-    {
+    if sha256_file(&case.source).ok().as_deref() != Some(case.source_sha256.as_str()) {
         return false;
     }
     if let Some(expected) = &case.graph_sha256 {
-        let current = reachable_graph(&case.source, root)
-            .and_then(|paths| {
-                for path in &paths {
-                    if !fs::symlink_metadata(path)
-                        .is_ok_and(|meta| meta.is_file() && !meta.file_type().is_symlink())
-                    {
-                        return Err("symlink or non-file in import graph".into());
-                    }
+        let current = reachable_graph(&case.source, root).and_then(|paths| {
+            for path in &paths {
+                if !fs::symlink_metadata(path)
+                    .is_ok_and(|meta| meta.is_file() && !meta.file_type().is_symlink())
+                {
+                    return Err("symlink or non-file in import graph".into());
                 }
-                fingerprint_graph(&paths, root)
-            });
+            }
+            fingerprint_graph(&paths, root)
+        });
         current.is_ok_and(|digest| digest == *expected)
     } else {
         true
@@ -415,7 +410,10 @@ fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
             return Err(format!("invalid canonical stdout prefix: {}", item.name));
         }
         if expectation.verified && expectation.expected_stdout_exact.is_none() {
-            return Err(format!("{}: verified check lacks independently reviewed exact stdout", item.name));
+            return Err(format!(
+                "{}: verified check lacks independently reviewed exact stdout",
+                item.name
+            ));
         }
         if let Some(exact) = expectation.expected_stdout_exact.as_deref() {
             if !valid_check_stdout(&hex(exact.as_bytes()), &expectation.stable_stdout_prefix) {
@@ -836,9 +834,10 @@ fn evaluate_case(
             "wrong_result".into()
         } else if let Some(prefix) = &case.expected_stdout_prefix {
             if !valid_check_stdout(&stdout_hex, prefix)
-                || case.expected_stdout_exact.as_ref().is_some_and(|expected| {
-                    stdout_hex != hex(expected.as_bytes())
-                })
+                || case
+                    .expected_stdout_exact
+                    .as_ref()
+                    .is_some_and(|expected| stdout_hex != hex(expected.as_bytes()))
             {
                 "wrong_stdout".into()
             } else if case.validation_status == "validated" {
@@ -881,9 +880,18 @@ fn enforce_differential_stdout(records: &mut [Record]) {
         if indices.len() < 2 {
             continue;
         }
-        let expected = &records[indices[0]].run.as_ref().expect("candidate has run").stdout_hex;
+        let expected = &records[indices[0]]
+            .run
+            .as_ref()
+            .expect("candidate has run")
+            .stdout_hex;
         let mismatch = indices.iter().skip(1).any(|&index| {
-            records[index].run.as_ref().expect("candidate has run").stdout_hex != *expected
+            records[index]
+                .run
+                .as_ref()
+                .expect("candidate has run")
+                .stdout_hex
+                != *expected
         });
         if mismatch {
             for &index in indices {
@@ -1016,10 +1024,9 @@ fn main() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        ascii_lower_hex, classify_diagnostic, hex, import_target, is_verified_execution_status,
-        case_source_unchanged, enforce_differential_stdout, fingerprint_graph,
-        lowercase_kebab, reachable_graph, sha256_file, valid_check_stdout, Invocation, Record,
-        TestCase,
+        ascii_lower_hex, case_source_unchanged, classify_diagnostic, enforce_differential_stdout,
+        fingerprint_graph, hex, import_target, is_verified_execution_status, lowercase_kebab,
+        reachable_graph, sha256_file, valid_check_stdout, Invocation, Record, TestCase,
     };
     use std::collections::BTreeMap;
 
@@ -1103,7 +1110,10 @@ mod tests {
             "PARITY_OK|actor-system|-9223372036854775808\n",
             "PARITY_OK|actor-system|9223372036854775807\n",
         ] {
-            assert!(valid_check_stdout(&hex(good.as_bytes()), prefix), "{good:?}");
+            assert!(
+                valid_check_stdout(&hex(good.as_bytes()), prefix),
+                "{good:?}"
+            );
         }
         for bad in [
             "PARITY_OK|actor-system|",
@@ -1169,7 +1179,8 @@ mod tests {
     #[test]
     fn untrusted_compiler_mutation_of_direct_or_transitive_sources_denies_evidence() {
         let root = std::env::temp_dir().join(format!(
-            "ores-parity-source-mutation-{}", std::process::id()
+            "ores-parity-source-mutation-{}",
+            std::process::id()
         ));
         std::fs::create_dir_all(&root).unwrap();
         let root = root.canonicalize().unwrap();
