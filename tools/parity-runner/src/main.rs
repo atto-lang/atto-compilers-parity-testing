@@ -1172,11 +1172,11 @@ mod tests {
             "ores-parity-source-mutation-{}", std::process::id()
         ));
         std::fs::create_dir_all(&root).unwrap();
+        let root = root.canonicalize().unwrap();
         let entry = root.join("main.ores");
         let dep = root.join("dep.ores");
         std::fs::write(&entry, "import fnc value from \"./dep.ores\";\n").unwrap();
         std::fs::write(&dep, "pub fnc value(): int { return 42; }\n").unwrap();
-        let root = root.canonicalize().unwrap();
         let graph = reachable_graph(&entry, &root).unwrap();
         let graph_sha = fingerprint_graph(&graph, &root).unwrap();
         let source_sha = sha256_file(&entry).unwrap();
