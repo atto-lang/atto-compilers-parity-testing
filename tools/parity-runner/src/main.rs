@@ -237,8 +237,8 @@ fn sha256_bytes(bytes: &[u8]) -> Result<String, String> {
 // Verify both the entry bytes and the entire reachable import closure at
 // execution boundaries. An adapter is untrusted and may rewrite input paths.
 fn case_source_unchanged(case: &TestCase, root: &Path) -> bool {
-    if fs::symlink_metadata(&case.source)
-        .is_err_or(|metadata| !metadata.is_file() || metadata.file_type().is_symlink())
+    if !fs::symlink_metadata(&case.source)
+        .is_ok_and(|metadata| metadata.is_file() && !metadata.file_type().is_symlink())
     {
         return false;
     }
@@ -253,8 +253,8 @@ fn case_source_unchanged(case: &TestCase, root: &Path) -> bool {
         let current = reachable_graph(&case.source, root)
             .and_then(|paths| {
                 for path in &paths {
-                    if fs::symlink_metadata(path)
-                        .is_err_or(|meta| !meta.is_file() || meta.file_type().is_symlink())
+                    if !fs::symlink_metadata(path)
+                        .is_ok_and(|meta| meta.is_file() && !meta.file_type().is_symlink())
                     {
                         return Err("symlink or non-file in import graph".into());
                     }
