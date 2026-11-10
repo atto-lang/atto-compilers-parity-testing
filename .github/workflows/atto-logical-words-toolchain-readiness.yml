@@ -1,0 +1,81 @@
+name: AttoLang source-free alternate-org toolchain readiness (NOT GUEST)
+on:
+  push:
+    branches:
+      - ci/atto-logical-words-runner-probe-20261110
+permissions:
+  contents: read
+jobs:
+  toolchain-readiness:
+    name: source-free-gcc-clang-node-cmake-NOT-GUEST
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Record runner and exact probe revision
+        shell: bash
+        env:
+          EXPECTED_REF: refs/heads/ci/atto-logical-words-runner-probe-20261110
+          PROBE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "$EXPECTED_REF"
+          [[ "$PROBE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test -n "$RUNNER_NAME"
+          echo "ATTO_CARRIER_SOURCE_FREE_SHA=$PROBE_SHA"
+          echo "ATTO_CARRIER_RUN=$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT"
+          echo "ATTO_PRIVATE_SOURCE_CHECKOUT=NONE"
+          echo "ATTO_COMPILER_GUEST_EXECUTION=NOT_EXECUTED"
+      - name: Build standalone C++20 smoke with GCC and Clang
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/atto-toolchain"
+          cd "$RUNNER_TEMP/atto-toolchain"
+          cat > smoke.cpp <<'CPP'
+          #include <iostream>
+          int main() {
+              std::cout << "ATTO_SOURCE_FREE_CPP20_TOOLCHAIN_PASS" << '\n';
+              return 0;
+          }
+          CPP
+          for compiler in g++ clang++; do
+            "$compiler" --version | head -n1
+            "$compiler" -std=c++20 -Wall -Wextra -Werror -O2 smoke.cpp -o "smoke-${compiler//+/p}"
+            result="$("./smoke-${compiler//+/p}")"
+            test "$result" = ATTO_SOURCE_FREE_CPP20_TOOLCHAIN_PASS
+            echo "ATTO_CARRIER_COMPILE_EXECUTE_PASS=$compiler"
+          done
+      - name: Execute native Node test-runner smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          cat > "$RUNNER_TEMP/atto-source-free.test.mjs" <<'JS'
+          import test from 'node:test';
+          import assert from 'node:assert/strict';
+          test('source-free carrier can execute Node tests', () => {
+              assert.equal((false && true) || (true !== true) || true, true);
+          });
+          JS
+          node --test "$RUNNER_TEMP/atto-source-free.test.mjs"
+          echo "ATTO_CARRIER_NODE_RUNNER_PASS=1_NOT_GUEST"
+      - name: Execute source-free CMake and CTest smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/atto-cmake"
+          cd "$RUNNER_TEMP/atto-cmake"
+          cat > CMakeLists.txt <<'CMAKE'
+          cmake_minimum_required(VERSION 3.20)
+          project(AttoSourceFreeCarrier LANGUAGES CXX)
+          enable_testing()
+          add_executable(smoke smoke.cpp)
+          add_test(NAME source_free_compiler_driver COMMAND smoke)
+          CMAKE
+          cat > smoke.cpp <<'CPP'
+          int main() { return 0; }
+          CPP
+          cmake -S . -B build -DCMAKE_CXX_STANDARD=20
+          cmake --build build -j2
+          ctest --test-dir build --output-on-failure
+          echo "ATTO_CARRIER_CMAKE_CTEST_PASS=1_NOT_GUEST"
