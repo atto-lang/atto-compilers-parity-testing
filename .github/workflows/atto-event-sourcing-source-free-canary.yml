@@ -97,8 +97,9 @@ jobs:
           assert.throws(verify,/CORRUPT_SNAPSHOT/);scenarios++;
           db.prepare('UPDATE snapshot SET payload_hash=?').run(sha(forged));
           assert.throws(verify,/CORRUPT_SNAPSHOT/);scenarios++;
+          db.prepare('UPDATE snapshot SET payload=?,payload_hash=?').run(original,sha(original));
           db.exec('DELETE FROM operations');
-          assert.throws(verify,/UNVERIFIED_SNAPSHOT|CORRUPT_SNAPSHOT/);scenarios++;
+          assert.throws(verify,/UNVERIFIED_SNAPSHOT/);scenarios++;
           db.close();
           console.log('PASS synthetic independent snapshot integrity: '+scenarios+' scenarios');
           NODE
