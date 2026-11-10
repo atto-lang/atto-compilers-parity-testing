@@ -3,6 +3,11 @@ on:
   push:
     branches:
       - ci/atto-event-sourcing-source-free-canary-20261110
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/atto-event-sourcing-source-free-canary.yml'
 permissions: {}
 jobs:
   sqlite-crash-canary:
