@@ -1,0 +1,62 @@
+name: Source-free event-sourcing runner health (NO source export)
+on:
+  push:
+    branches:
+      - ci/atto-event-sourcing-source-free-canary-20261110
+permissions: {}
+jobs:
+  sqlite-crash-canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Prepare Node 22 (no repo checkout)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Execute independent crash / SQLite canary (no private source)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          node --disable-warning=ExperimentalWarning --input-type=module <<'NODE'
+          // Synthetic runner probe. No source checkout, private code, or cross-org source data.
+          import assert from 'node:assert/strict';
+          import {spawnSync} from 'node:child_process';
+          import {DatabaseSync} from 'node:sqlite';
+          import {mkdtempSync, rmSync} from 'node:fs';
+          import {tmpdir} from 'node:os';
+          import {join} from 'node:path';
+          const childCode = String.raw`
+          import {DatabaseSync} from 'node:sqlite';
+          const db = new DatabaseSync(process.argv[1]);
+          db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; CREATE TABLE IF NOT EXISTS events(op TEXT PRIMARY KEY, amount INTEGER NOT NULL);');
+          db.exec('BEGIN IMMEDIATE');
+          db.prepare('INSERT INTO events(op,amount) VALUES(?,?)').run('deposit-1', 100);
+          if(process.argv[2] === 'after') db.exec('COMMIT');
+          process.kill(process.pid, 'SIGKILL');
+          `;
+          const root=mkdtempSync(join(tmpdir(),'atto-source-free-'));
+          let checks=0;
+          try {
+            for(const phase of ['before','after']) {
+              const path=join(root, phase+'.sqlite');
+              const child=spawnSync(process.execPath,
+                ['--disable-warning=ExperimentalWarning','--input-type=module','-e',childCode,path,phase],
+                {timeout:12000, encoding:'utf8'});
+              assert.equal(child.error,undefined,String(child.error));
+              assert.equal(child.signal,'SIGKILL','exit='+child.status+' err='+child.stderr);
+              const db=new DatabaseSync(path);
+              const read=db.prepare('SELECT op,amount FROM events ORDER BY op').all();
+              assert.equal(read.length,phase==='after'?1:0);
+              if(phase==='after') {
+                assert.equal(read[0].amount,100);
+                db.prepare('INSERT INTO events(op,amount) VALUES(?,?) ON CONFLICT(op) DO NOTHING').run('deposit-1',100);
+                assert.equal(db.prepare('SELECT COUNT(*) AS count FROM events').get().count,1);
+                checks++;
+              }
+              db.close();
+              checks++;
+            }
+            console.log('PASS synthetic SQLite before/after SIGKILL: '+checks+' checks');
+          } finally { rmSync(root,{recursive:true,force:true}); }
+          NODE
