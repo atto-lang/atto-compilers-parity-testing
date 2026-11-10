@@ -65,3 +65,40 @@ jobs:
             console.log('PASS synthetic SQLite before/after SIGKILL: '+checks+' checks');
           } finally { rmSync(root,{recursive:true,force:true}); }
           NODE
+      - name: Execute independent checkpoint-integrity canary (no source checkout)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --disable-warning=ExperimentalWarning --input-type=module <<'NODE'
+          // Independently authored snapshot proof probe, NOT the AttoLang source tree.
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          import {DatabaseSync} from 'node:sqlite';
+          const sha=b=>createHash('sha256').update(b).digest('hex');
+          const db=new DatabaseSync(':memory:');
+          db.exec("CREATE TABLE snapshot(payload BLOB NOT NULL,payload_hash TEXT NOT NULL,op_digest TEXT NOT NULL);"+
+                  "CREATE TABLE operations(digest TEXT NOT NULL,payload_hash TEXT NOT NULL);");
+          const original=Buffer.from('balance=100'),opHash=sha(Buffer.from('trusted durable op'));
+          db.prepare('INSERT INTO snapshot VALUES(?,?,?)').run(original,sha(original),opHash);
+          db.prepare('INSERT INTO operations VALUES(?,?)').run(opHash,sha(original));
+          function verify() {
+            const s=db.prepare('SELECT payload,payload_hash,op_digest FROM snapshot').get();
+            const op=db.prepare('SELECT digest,payload_hash FROM operations').get();
+            assert(s.payload instanceof Uint8Array);
+            assert.equal(sha(Buffer.from(s.payload)),s.payload_hash,'CORRUPT_SNAPSHOT');
+            assert(op,'UNVERIFIED_SNAPSHOT');
+            assert.equal(s.op_digest,op.digest,'UNVERIFIED_SNAPSHOT');
+            assert.equal(s.payload_hash,op.payload_hash,'CORRUPT_SNAPSHOT');
+          }
+          let scenarios=0;
+          verify();scenarios++;
+          const forged=Buffer.from('balance=900');
+          db.prepare('UPDATE snapshot SET payload=?').run(forged);
+          assert.throws(verify,/CORRUPT_SNAPSHOT/);scenarios++;
+          db.prepare('UPDATE snapshot SET payload_hash=?').run(sha(forged));
+          assert.throws(verify,/CORRUPT_SNAPSHOT/);scenarios++;
+          db.exec('DELETE FROM operations');
+          assert.throws(verify,/UNVERIFIED_SNAPSHOT|CORRUPT_SNAPSHOT/);scenarios++;
+          db.close();
+          console.log('PASS synthetic independent snapshot integrity: '+scenarios+' scenarios');
+          NODE
