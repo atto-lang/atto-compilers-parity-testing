@@ -1,0 +1,59 @@
+name: PoC #26 pinned source-only host tests (NOT guest CI)
+on:
+  push:
+    branches:
+      - ci/atto-poc26-exact-fixture-host-check-20261110
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  poc26-host-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact donor head
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Require runner execution and pin donor head/tree
+        env:
+          EXPECTED_DONOR_HEAD: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$EXPECTED_DONOR_HEAD"
+          echo "DONOR_HEAD=$actual DONOR_TREE=$(git rev-parse 'HEAD^{tree}') RUN=$GITHUB_RUN_ID ATTEMPT=$GITHUB_RUN_ATTEMPT"
+      - name: Verify exact imported PoC source blobs and provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          import subprocess
+          manifest = json.loads(Path("ci/poc26-source-manifest.json").read_text())
+          assert manifest["source_commit"] == "271b45d61bb7171a5ae56a539fee3b6b5d64f8cb"
+          assert manifest["source_tree"] == "2f1dd799c3223030b2333319e40e2ace634976b0"
+          assert len(manifest["files"]) == 12
+          for name, expected in manifest["files"].items():
+              path = Path(name)
+              assert path.is_file() and not path.is_symlink(), name
+              payload = path.read_bytes()
+              sha = hashlib.sha1(f"blob {len(payload)}".encode() + bytes([0]) + payload).hexdigest()
+              assert sha == expected, (name, sha, expected)
+          print("MIRROR_EXACT_BLOBS=12/12 SOURCE_HEAD_PINNED; NOT_FULL_TREE_OR_GUEST")
+          PY
+      - name: Adversarial catalog structure self-tests (synthetic fixtures only)
+        run: python3 -m unittest discover -s src/validation -p 'test_check_catalog.py' -v
+      - name: Exact Git subtree verifier self-tests (synthetic Git repositories)
+        run: python3 -m unittest discover -s src/validation -p 'test_verify_source_tree.py' -v
+      - name: Canonical AttoLang scalar fixture Git blob tests (NOT compiler)
+        run: python3 -m unittest discover -s src/validation/atto-tip -p 'test_atto_tip_fixtures.py' -v
+      - name: Pattern syntax hygiene self-tests (NOT parser)
+        run: python3 -m unittest discover -s src/patterns -p 'test_tip_syntax_hygiene.py' -v
+      - name: Evidence scope boundary
+        run: echo 'HOST_ONLY; private donor copied twelve exact byte sources, not full PoC tree; no AttoLang compiler, guest, AOT, or cross-org checkout token.'
