@@ -103,3 +103,40 @@ jobs:
           db.close();
           console.log('PASS synthetic independent snapshot integrity: '+scenarios+' scenarios');
           NODE
+      - name: Execute independent bounded-replay SQL canary (no source checkout)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --disable-warning=ExperimentalWarning --input-type=module <<'NODE'
+          // Independently authored SQLite envelope/admission probe; no source export.
+          import {DatabaseSync} from 'node:sqlite';
+          import assert from 'node:assert/strict';
+          const db=new DatabaseSync(':memory:');
+          db.exec('CREATE TABLE events(tenant TEXT,actor TEXT,slot TEXT,version INTEGER,payload BLOB);');
+          const append=db.prepare('INSERT INTO events VALUES(?,?,?,?,zeroblob(?))');
+          const usage=db.prepare('SELECT COUNT(*) AS n,COALESCE(SUM(length(payload)),0) AS bytes '+
+            'FROM events WHERE tenant=? AND actor=? AND slot=? AND version>?');
+          const fits=(actor,checkpoint,addedEvents,addedBytes)=>{
+            const {n,bytes}=usage.get('t',actor,'ledger',checkpoint);
+            return n<=10000-addedEvents && bytes<=16777216-addedBytes;
+          };
+          let checks=0;
+          db.exec('BEGIN IMMEDIATE');
+          for(let i=1;i<=16;i++)append.run('t','bytes','ledger',i,1048576);
+          db.exec('COMMIT');
+          assert.equal(fits('bytes',0,1,1),false);checks++;
+          assert.equal(fits('bytes',16,1,1),true);checks++;
+          assert.equal(fits('other',0,1,1),true);checks++;
+          db.exec('BEGIN IMMEDIATE');
+          for(let i=1;i<=10000;i++)append.run('t','count','ledger',i,0);
+          db.exec('COMMIT');
+          assert.equal(fits('count',0,1,0),false);checks++;
+          assert.equal(fits('count',10000,1,0),true);checks++;
+          db.exec('BEGIN IMMEDIATE');
+          append.run('t','other','ledger',1,1);
+          assert.equal(fits('other',0,9999,16777215),true);checks++;
+          assert.equal(fits('other',0,10000,1),false);checks++;
+          db.exec('ROLLBACK');
+          db.close();
+          console.log('PASS independently authored SQLite replay-admission canary '+checks+'/7');
+          NODE
