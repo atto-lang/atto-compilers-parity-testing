@@ -29,8 +29,8 @@ jobs:
           from pathlib import Path
           m=json.loads(Path('ci/poc26-source-manifest.json').read_text())
           assert m["source_repository"] == "ores-truffle-oreslang/oreslang-proof-of-concepts"
-          assert m["source_commit"] == "59ba609cecdfef266baab5611fe4ff6e4166c871"
-          assert m["source_tree"] == "cebe17a96f44f48acf83f2e8280ddb2b23ef679b"
+          assert m["source_commit"] == "411b9c9af106120d01a9a610e5134ff1760cc0f0"
+          assert m["source_tree"] == "64588bd18fd9741d0cc1fdbb2b4cfa0d7efaf428"
           assert len(m["files"]) >= 195
           for name,expected in m["files"].items():
               p=Path(name)
