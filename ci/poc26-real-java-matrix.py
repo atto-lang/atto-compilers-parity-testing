@@ -44,7 +44,7 @@ report = {
     "tests": [],
 }
 def execute(name, mode, source):
-    argv = ["java", "-Xmx1024m", "--sun-misc-unsafe-memory-access=allow", "-Dpolyglot.engine.WarnInterpreterOnly=false", "-cp",
+    argv = ["java", "-Xmx1024m", "--sun-misc-unsafe-memory-access=allow", "--enable-native-access=ALL-UNNAMED", "-Dpolyglot.engine.WarnInterpreterOnly=false", "-cp",
             classpath, "dev.oreslang.launcher.OresMain"]
     if mode == "check":
         argv.append("--check")
