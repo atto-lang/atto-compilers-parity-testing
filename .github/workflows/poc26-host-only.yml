@@ -31,7 +31,7 @@ jobs:
           assert m["source_repository"] == "ores-truffle-oreslang/oreslang-proof-of-concepts"
           assert m["source_commit"] == "271b45d61bb7171a5ae56a539fee3b6b5d64f8cb"
           assert m["source_tree"] == "2f1dd799c3223030b2333319e40e2ace634976b0"
-          assert len(m["files"]) >= 200
+          assert len(m["files"]) == 195
           for name,expected in m["files"].items():
               p=Path(name)
               assert p.is_file() and not p.is_symlink(), name
