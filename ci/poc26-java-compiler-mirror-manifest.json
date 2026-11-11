@@ -5,7 +5,7 @@
   "poc_repository": "ores-truffle-oreslang/oreslang-proof-of-concepts",
   "poc_commit": "411b9c9af106120d01a9a610e5134ff1760cc0f0",
   "poc_tree": "64588bd18fd9741d0cc1fdbb2b4cfa0d7efaf428",
-  "scope": "272 pinned Java source, Maven and resource blobs + 3 real pattern/oracle pairs + 3 negative AttoLang sources; partial private test mirror, not a complete checkout",
+  "scope": "277 pinned Java Maven source, resource, native-C and build-script blobs + 3 real pattern/oracle pairs + 3 negative AttoLang sources; partial private test mirror",
   "compiler_blobs": {
     "compiler/pom.xml": "2e566927d4b8e07884ce53b0c463d440201fe54c",
     "compiler/src/main/java/dev/atto/compiler/gpu/GpuSaxpySubsetCompiler.java": "fba0aaf87a73acb94468066f310d7e24dd9129bf",
@@ -278,7 +278,12 @@
     "compiler/stdlib/http_wire.ores": "21169e5c262cd79997637c97d448e05a835e2e44",
     "compiler/stdlib/otp/supervisor.ores": "388da9c39724fa3857f8f7f98719843455111abf",
     "compiler/stdlib/testing.ores": "60d50aa2b00aadb0d738a41fa821a1443465a918",
-    "compiler/stdlib/trace.ores": "f4ff35b10683880e42e3151b34fc140d52704dba"
+    "compiler/stdlib/trace.ores": "f4ff35b10683880e42e3151b34fc140d52704dba",
+    "compiler/scripts/build-native-thread.sh": "13199140863e2a1995ad6cf613ee481e0f90d759",
+    "compiler/src/main/c/oresarena.c": "20beb7e8c09553431951e0296d8e210fe0f130cb",
+    "compiler/src/main/c/oresmailbox.c": "a824833042142f88ceabfef8eb0d86ed62d8dcd8",
+    "compiler/src/main/c/oresmailbox.h": "f78c8478d946b757795011ea1511072161ef0acc",
+    "compiler/src/main/c/oresthread.c": "3c422288127f2376d99c46ee8e0370a93890f29b"
   },
   "poc_blobs": {
     "src/patterns/01-factory-method/example.atto": "3b25ee3c30d8f46d30ce8501fd62387d7157a692",

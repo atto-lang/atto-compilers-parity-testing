@@ -32,7 +32,7 @@ jobs:
           assert m['compiler_tree']=='f16af3c76a2a5e6927d760dc09bc9a13233e4d6d'
           assert m['poc_commit']=='411b9c9af106120d01a9a610e5134ff1760cc0f0'
           assert m['poc_tree']=='64588bd18fd9741d0cc1fdbb2b4cfa0d7efaf428'
-          assert len(m['compiler_blobs'])==272 and len(m['poc_blobs'])==8
+          assert len(m['compiler_blobs'])==277 and len(m['poc_blobs'])==8
           objs={**m['compiler_blobs'], **m['poc_blobs'], m['negative_caret']['path']:m['negative_caret']['sha']}
           for name,expected in objs.items():
               f=Path(name)
