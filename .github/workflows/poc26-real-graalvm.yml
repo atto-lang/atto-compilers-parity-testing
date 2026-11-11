@@ -1,0 +1,68 @@
+name: PoC #26 REAL pinned Java/GraalVM compiler and guest (partial corpus)
+on:
+  push:
+    branches:
+      - ci/poc26-graalvm-guest-20261110
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-java-compiler:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout private same-org exact branch (no persisted token)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Bind exact Java/PoC Git source blobs and source revisions
+        shell: bash
+        env:
+          EXPECTED_DONOR_HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_DONOR_HEAD"
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          m=json.loads(Path('ci/poc26-java-compiler-mirror-manifest.json').read_text())
+          assert m['compiler_commit']=='6d8eb70048eafc9a84c5aebe9c1bb06104f16e76'
+          assert m['compiler_tree']=='f16af3c76a2a5e6927d760dc09bc9a13233e4d6d'
+          assert m['poc_commit']=='411b9c9af106120d01a9a610e5134ff1760cc0f0'
+          assert m['poc_tree']=='64588bd18fd9741d0cc1fdbb2b4cfa0d7efaf428'
+          assert len(m['compiler_blobs'])==272 and len(m['poc_blobs'])==8
+          objs={**m['compiler_blobs'], **m['poc_blobs'], m['negative_caret']['path']:m['negative_caret']['sha']}
+          for name,expected in objs.items():
+              f=Path(name)
+              assert f.is_file() and not f.is_symlink(), name
+              buf=f.read_bytes()
+              assert hashlib.sha1(f'blob {len(buf)}'.encode()+bytes([0])+buf).hexdigest()==expected, name
+          print('COMPILER_MIRROR_EXACT_BLOBS', len(objs), 'REAL_SOURCE_PINNED; NO_CROSS_ORG_CHECKOUT')
+          PY
+          printf 'DONOR_HEAD=%s DONOR_TREE=%s RUN=%s ATTEMPT=%s\n' "$(git rev-parse HEAD)" "$(git rev-parse 'HEAD^{tree}')" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+      - name: Install GraalVM JDK 25 for real compiler and runtime
+        uses: actions/setup-java@v4
+        with:
+          distribution: graalvm
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: compiler/pom.xml
+      - name: Build actual Java Truffle compiler (not a source-free checker)
+        run: mvn -B -ntp -f compiler/pom.xml -Dmaven.test.skip=true -DskipTests package
+      - name: Resolve real JVM dependency classpath
+        run: |
+          mkdir -p compiler/target
+          mvn -B -ntp -f compiler/pom.xml -Dmdep.outputFile="$PWD/compiler/target/classpath.txt" dependency:build-classpath
+          test -s compiler/target/classpath.txt
+          sha256sum compiler/target/oreslang-source-0.1.0-SNAPSHOT.jar
+      - name: Run three actual positive programs and three negative compiler cases
+        run: python3 ci/poc26-real-java-matrix.py
+      - name: Publish machine-readable result on both success and failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: poc26-real-java-matrix
+          path: ci/poc26-real-java-results.json
+          if-no-files-found: ignore
