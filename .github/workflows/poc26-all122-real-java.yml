@@ -1,0 +1,67 @@
+name: PoC26 REAL AttoLang 90 patterns and 32 libraries (compiler/guest, exact head)
+on:
+  push:
+    branches:
+      - ci/poc26-all-122-java-guest-20261110
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  all-122-real-java-guest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout private donor exact head without persistence
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify Git blob identities for all source-exact compiler and 122 program/oracle pairs
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          p=json.loads(Path('ci/poc26-source-manifest.json').read_text())
+          c=json.loads(Path('ci/poc26-java-compiler-mirror-manifest.json').read_text())
+          assert p['source_commit']=='411b9c9af106120d01a9a610e5134ff1760cc0f0'
+          assert c['compiler_commit']=='2b0ca92b32eadeee6f36a59482be905035fce3af'
+          assert c['compiler_tree']=='bf36383b041beb06c5386d13c5c7b37045af8626'
+          assert len(c['compiler_blobs'])==278
+          assert len(p['files'])==264
+          for path,expected in {**p['files'],**c['compiler_blobs']}.items():
+              f=Path(path)
+              assert f.is_file() and not f.is_symlink(),path
+              data=f.read_bytes()
+              assert hashlib.sha1(f'blob {len(data)}'.encode()+bytes([0])+data).hexdigest()==expected,path
+          print('REAL_ALL_122_EXACT_BLOB_ADMISSION',len(p['files'])+len(c['compiler_blobs']))
+          PY
+          printf 'DONOR_HEAD=%s DONOR_TREE=%s RUN=%s ATTEMPT=%s\n' "$(git rev-parse HEAD)" "$(git rev-parse 'HEAD^{tree}')" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+      - name: Install GraalVM JDK25
+        uses: actions/setup-java@v4
+        with:
+          distribution: graalvm
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: compiler/pom.xml
+      - name: Build exact compiler and native carriers
+        run: mvn -B -ntp -f compiler/pom.xml -Dmaven.test.skip=true package
+      - name: Resolve exact compiler classpath
+        run: |
+          mkdir -p compiler/target
+          mvn -B -ntp -f compiler/pom.xml -Dmdep.outputFile="$PWD/compiler/target/classpath.txt" dependency:build-classpath
+          test -s compiler/target/classpath.txt
+          sha256sum compiler/target/oreslang-source-0.1.0-SNAPSHOT.jar
+      - name: Execute all 90 plus 32 real guest contracts, fail closed
+        run: python3 ci/poc26-all122-real-java.py
+      - name: Upload full executed JSON receipt even on failed cases
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: poc26-all122-real-java
+          path: ci/poc26-all122-real-java-results.json
+          if-no-files-found: ignore
