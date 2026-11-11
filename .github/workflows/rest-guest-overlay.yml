@@ -25,7 +25,7 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
           test "$(tr -d '\n' < SOURCE_REF)" = 4b0ff7dd4063df2906dc2fed0f6b6348b69807c6
-          test "$(git rev-parse HEAD:.cache/oreslang-source.java)" = bed52a435ebce6b2100bface266ae1a38a09e566
+          test "$(git rev-parse HEAD:.cache/oreslang-source.java)" = 8ef1558e3e3fb58539f2ecefe207f9601e218c90
           test "$(git rev-parse HEAD:dependencies/otel)" = 60c6f66a680b315742ec9a3cffe7ec031fd85515
           test "$(git rev-parse HEAD:dependencies/spin/dependencies/http-routing)" = 97d55d96901887a60f3cdac60f8af4f14b05e4c7
           test -e .cache/oreslang-source.java/pom.xml
@@ -33,9 +33,11 @@ jobs:
           test -e dependencies/spin/dependencies/http-routing/src/http_routing.ores
           test -e dependencies/otel/src
           echo "GUEST_OVERLAY_HEAD=$EXPECTED_HEAD"
-          echo "SOURCE_DEMO_TREE=4695b47ff94a27abc2d67a620f196b85d4b5b9cf"
+          echo "SOURCE_DEMO_TREE=ba4c75085bd62f9473066efc24fa4365dfde46dd"
           echo "SOURCE_COMPILER_COMMIT=4b0ff7dd4063df2906dc2fed0f6b6348b69807c6"
-          echo "SOURCE_COMPILER_TREE=bed52a435ebce6b2100bface266ae1a38a09e566"
+          echo "SOURCE_COMPILER_BASE_TREE=bed52a435ebce6b2100bface266ae1a38a09e566"
+          echo "COMPILER_PATCH_OVERLAY_TREE=8ef1558e3e3fb58539f2ecefe207f9601e218c90"
+          echo "COMPILER_PATCH_SCOPE=NativeHttp_request_body_error_mapping"
           echo "SPIN_COMMIT=a961e235f4a5ea81cca99df401dd490642af7163"
           echo "SPIN_TREE=03dbf9129b477936c4b230c6082fd5bd66340623"
           echo "HTTP_ROUTING_COMMIT=9d0bc7550d0e799f561d187177b9d841e5a7a8fc"

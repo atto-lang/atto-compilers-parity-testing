@@ -10,7 +10,7 @@ if [[ -z "${ORES_JAVA:-}" && -n "${JAVA_HOME:-}" ]]; then
 fi
 [[ "$(ores_read_exact_source_ref "$root")" == "4b0ff7dd4063df2906dc2fed0f6b6348b69807c6" ]] ||
   { echo 'Unexpected compiler pin' >&2; exit 65; }
-[[ "$(git -C "$root" rev-parse HEAD:.cache/oreslang-source.java)" == "bed52a435ebce6b2100bface266ae1a38a09e566" ]] ||
+[[ "$(git -C "$root" rev-parse HEAD:.cache/oreslang-source.java)" == "8ef1558e3e3fb58539f2ecefe207f9601e218c90" ]] ||
   { echo 'Compiler tree identity mismatch' >&2; exit 65; }
 [[ "$(git -C "$root" rev-parse HEAD:dependencies/spin/dependencies/http-routing)" == "97d55d96901887a60f3cdac60f8af4f14b05e4c7" ]] ||
   { echo 'HTTP routing tree mismatch' >&2; exit 65; }

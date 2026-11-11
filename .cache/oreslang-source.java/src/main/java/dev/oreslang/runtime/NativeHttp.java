@@ -417,7 +417,7 @@ public final class NativeHttp implements AutoCloseable {
                 if (state.bodyRead) throw new IllegalStateException("request body already consumed");
                 state.bodyRead = true;
             }
-            return operation(() -> {
+            return bodyOperation(() -> {
                 byte[] bytes = state.raw.getRequestBody().readNBytes(state.server.bodyLimit + 1);
                 if (bytes.length > state.server.bodyLimit) throw new IllegalArgumentException("body too large");
                 return utf8(bytes);
@@ -431,7 +431,7 @@ public final class NativeHttp implements AutoCloseable {
                 if (state.bodyRead && !state.streamingBody) throw new IllegalStateException("request body already consumed");
                 state.streamingBody = true; state.bodyRead = true;
             }
-            return operation(() -> {
+            return bodyOperation(() -> {
                 byte[] bytes = state.raw.getRequestBody().readNBytes(Math.min(maximum, state.server.bodyLimit - state.bodyBytes + 1));
                 state.bodyBytes += bytes.length;
                 if (state.bodyBytes > state.server.bodyLimit) throw new IllegalArgumentException("body too large");
@@ -489,7 +489,13 @@ public final class NativeHttp implements AutoCloseable {
         public OresFuture<Object> finish() { return operation(() -> { if (!state.committed) throw new IllegalStateException("response not started"); state.finish(); return null; }); }
         public void abort() { synchronized (state) { checkOwner(); } state.abort(500); }
         private boolean noBody(int status) { return state.raw.getRequestMethod().equals("HEAD") || status == 204 || status == 205 || status == 304; }
+        private OresFuture<Object> bodyOperation(Callable<Object> operation) {
+            return operation(operation, true);
+        }
         private OresFuture<Object> operation(Callable<Object> operation) {
+            return operation(operation, false);
+        }
+        private OresFuture<Object> operation(Callable<Object> operation, boolean requestBodyRead) {
             synchronized (state) {
                 checkOwner();
                 if (state.busy) throw new IllegalStateException("await the pending HTTP operation first");
@@ -507,7 +513,15 @@ public final class NativeHttp implements AutoCloseable {
                         result.completeFromRuntime(value);
                     } catch (Throwable failure) {
                         synchronized (state) { state.busy = false; }
-                        state.abort("body too large".equals(failure.getMessage()) ? 413 : 500);
+                        // TEST-ONLY backport of current-main HTTP client error
+                        // classification; original compiler tree remains a
+                        // separate immutable provenance object.
+                        int status = "body too large".equals(failure.getMessage()) ? 413
+                                : requestBodyRead && failure instanceof IOException ? 400
+                                : requestBodyRead && failure instanceof IllegalArgumentException
+                                    && "invalid UTF-8".equals(failure.getMessage())
+                                    && failure.getCause() instanceof CharacterCodingException ? 400 : 500;
+                        state.abort(status);
                         SourceBoundaryTrace.record(failure, "native:http", state.requestId, "I/O");
                         result.failFromRuntime(failure);
                         if (failure instanceof VirtualMachineError fatal) throw fatal;
