@@ -33,7 +33,7 @@ jobs:
           test -e dependencies/spin/dependencies/http-routing/src/http_routing.ores
           test -e dependencies/otel/src
           echo "GUEST_OVERLAY_HEAD=$EXPECTED_HEAD"
-          echo "SOURCE_DEMO_TREE=550f3416443d483a7aa48c6c391bb6213dd16542"
+          echo "SOURCE_DEMO_TREE=0509bd346516fc501aaf8524231c8dcff4aa631c"
           echo "SOURCE_COMPILER_COMMIT=4b0ff7dd4063df2906dc2fed0f6b6348b69807c6"
           echo "SOURCE_COMPILER_TREE=bed52a435ebce6b2100bface266ae1a38a09e566"
           echo "SPIN_COMMIT=a961e235f4a5ea81cca99df401dd490642af7163"
