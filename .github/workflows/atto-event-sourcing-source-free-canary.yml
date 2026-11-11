@@ -274,3 +274,62 @@ jobs:
           JAVA
           "${JAVA_HOME_21_X64}/bin/javac" -Xlint:all -Werror -d "$TEMP_DIR" "$TEMP_DIR/SqliteCanary.java"
           "${JAVA_HOME_21_X64}/bin/java" -ea -cp "$TEMP_DIR:$JDBC:$SLF4J" SqliteCanary "$TEMP_DIR/ledger.sqlite"
+      - name: Verify original-epoch event/snapshot digest witness (source-free)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --disable-warning=ExperimentalWarning --input-type=module <<'NODE'
+          // Synthetic reference-only digest witness: NO private source import or checkout.
+          import {createHash} from 'node:crypto';
+          import {DatabaseSync} from 'node:sqlite';
+          import assert from 'node:assert/strict';
+          const sha=v=>createHash('sha256').update(v).digest('hex');
+          const origin=(e)=>sha(JSON.stringify([
+            e.tenant,e.actor,e.slot,e.opId,e.epoch,e.version-1,
+            e.kind,e.schema,Buffer.from(e.payload).toString('base64')
+          ]));
+          const db=new DatabaseSync(':memory:');
+          db.exec('CREATE TABLE ops(opId TEXT PRIMARY KEY,epoch INTEGER,kind TEXT,version INTEGER,schema INTEGER,digest TEXT,payload_hash TEXT);'+
+            'CREATE TABLE events(opId TEXT,version INTEGER,payload BLOB);'+
+            'CREATE TABLE snapshots(opId TEXT,version INTEGER,payload BLOB);');
+          const base={tenant:'t',actor:'a',slot:'ledger',epoch:1,schema:1};
+          const putOp=db.prepare('INSERT INTO ops VALUES(?,?,?,?,?,?,?)');
+          const putEv=db.prepare('INSERT INTO events VALUES(?,?,?)');
+          const putSnap=db.prepare('INSERT INTO snapshots VALUES(?,?,?)');
+          const getOp=db.prepare('SELECT * FROM ops WHERE opId=?');
+          const event=db.prepare('SELECT payload FROM events WHERE opId=?');
+          const snap=db.prepare('SELECT payload FROM snapshots WHERE opId=?');
+          let cases=0;
+          function verify(opId){
+            const row=getOp.get(opId);
+            assert(row && Number.isSafeInteger(row.epoch) && row.epoch>=1,'UNVERIFIED_ORIGIN_EPOCH');
+            const payload=(row.kind==='event'?event:snap).get(opId)?.payload;
+            assert(payload instanceof Uint8Array,'MISSING_JOURNAL_BYTES');
+            const e={...base,opId,epoch:row.epoch,kind:row.kind,
+              version:row.version,schema:row.schema,payload};
+            assert.equal(sha(payload),row.payload_hash,'PAYLOAD_HASH_MISMATCH');
+            assert.equal(origin(e),row.digest,'ORIGINAL_OPERATION_DIGEST_MISMATCH');
+          }
+          const ev={...base,opId:'evt',kind:'event',version:1,payload:Buffer.from('40')};
+          putOp.run(ev.opId,ev.epoch,ev.kind,ev.version,ev.schema,origin(ev),sha(ev.payload));
+          putEv.run(ev.opId,ev.version,ev.payload);
+          verify('evt');cases++;
+          // Epoch 2 supervisor fencing must not alter the historical digest witness.
+          base.epoch=2;verify('evt');cases++;
+          db.prepare('UPDATE events SET payload=? WHERE opId=?').run(Buffer.from('99'),'evt');
+          db.prepare('UPDATE ops SET payload_hash=? WHERE opId=?').run(sha(Buffer.from('99')),'evt');
+          assert.throws(()=>verify('evt'),/ORIGINAL_OPERATION_DIGEST_MISMATCH/);cases++;
+          const checkpoint={...base,opId:'snap',kind:'snapshot',epoch:2,version:2,payload:Buffer.from('balance=100')};
+          putOp.run(checkpoint.opId,checkpoint.epoch,checkpoint.kind,checkpoint.version,
+           checkpoint.schema,origin(checkpoint),sha(checkpoint.payload));
+          putSnap.run(checkpoint.opId,checkpoint.version,checkpoint.payload);
+          verify('snap');cases++;
+          const corrupt=Buffer.from('balance=900');
+          db.prepare('UPDATE snapshots SET payload=? WHERE opId=?').run(corrupt,'snap');
+          db.prepare('UPDATE ops SET payload_hash=? WHERE opId=?').run(sha(corrupt),'snap');
+          assert.throws(()=>verify('snap'),/ORIGINAL_OPERATION_DIGEST_MISMATCH/);cases++;
+          db.prepare('UPDATE ops SET epoch=NULL WHERE opId=?').run('snap');
+          assert.throws(()=>verify('snap'),/UNVERIFIED_ORIGIN_EPOCH/);cases++;
+          db.close();
+          console.log('PASS independently authored original-operation digest/epoch SQLite proof '+cases+'/6');
+          NODE
