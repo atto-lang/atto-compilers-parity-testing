@@ -76,7 +76,7 @@ jobs:
               raise SystemExit("DENIED: unexpected source-free carrier")
           def fetch(path):
               req = urllib.request.Request(
-                  "https://api.github.com/repos/" + repo + "/" + path,
+                  "https://api.github.com/repos/" + repo + ("/" + path if path else ""),
                   headers={
                       "Authorization": "Bearer " + os.environ["READ_ONLY_GITHUB_TOKEN"],
                       "Accept": "application/vnd.github+json",
