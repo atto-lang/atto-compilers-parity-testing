@@ -1,11 +1,11 @@
 {
   "compiler_repository": "ores-truffle-oreslang/oreslang-source.java",
-  "compiler_commit": "6d8eb70048eafc9a84c5aebe9c1bb06104f16e76",
-  "compiler_tree": "f16af3c76a2a5e6927d760dc09bc9a13233e4d6d",
+  "compiler_commit": "2b0ca92b32eadeee6f36a59482be905035fce3af",
+  "compiler_tree": "bf36383b041beb06c5386d13c5c7b37045af8626",
   "poc_repository": "ores-truffle-oreslang/oreslang-proof-of-concepts",
   "poc_commit": "411b9c9af106120d01a9a610e5134ff1760cc0f0",
   "poc_tree": "64588bd18fd9741d0cc1fdbb2b4cfa0d7efaf428",
-  "scope": "277 pinned Java Maven source, resource, native-C and build-script blobs + 3 real pattern/oracle pairs + 3 negative AttoLang sources; partial private test mirror",
+  "scope": "278 exact-source Java Maven sources and JUnit regression files (including native C build), 3 real PoC patterns and 3 negatives; partial private compiler PR mirror",
   "compiler_blobs": {
     "compiler/pom.xml": "2e566927d4b8e07884ce53b0c463d440201fe54c",
     "compiler/src/main/java/dev/atto/compiler/gpu/GpuSaxpySubsetCompiler.java": "fba0aaf87a73acb94468066f310d7e24dd9129bf",
@@ -53,7 +53,7 @@
     "compiler/src/main/java/dev/oreslang/nodes/OresEvalRootNode.java": "09a2c8cdab38341bf407ead261b4cda03ecd2fc3",
     "compiler/src/main/java/dev/oreslang/nodes/OresInteropRootNode.java": "62ac55ad410d3e07d9494b73b3f658d43de70351",
     "compiler/src/main/java/dev/oreslang/parser/AnnotationRegistry.java": "7fea362081d990fbda4fc26367dce1c1aa038e63",
-    "compiler/src/main/java/dev/oreslang/parser/Lexer.java": "94920ee03b82c07d5bf962bc5b8ed1d555ac593e",
+    "compiler/src/main/java/dev/oreslang/parser/Lexer.java": "3a6958f4993be74c1d606df7b2f6d5c4caf0c0c4",
     "compiler/src/main/java/dev/oreslang/parser/Parser.java": "aa1702df7a933a126ffff2fbc28e640c1a9e7508",
     "compiler/src/main/java/dev/oreslang/parser/TemplateLiterals.java": "d7d62070d18a0b7c70661b9459d745ad7e9c5817",
     "compiler/src/main/java/dev/oreslang/parser/Token.java": "beea19c8dbae112234656d1962b57ee797c1667f",
@@ -283,7 +283,8 @@
     "compiler/src/main/c/oresarena.c": "20beb7e8c09553431951e0296d8e210fe0f130cb",
     "compiler/src/main/c/oresmailbox.c": "a824833042142f88ceabfef8eb0d86ed62d8dcd8",
     "compiler/src/main/c/oresmailbox.h": "f78c8478d946b757795011ea1511072161ef0acc",
-    "compiler/src/main/c/oresthread.c": "3c422288127f2376d99c46ee8e0370a93890f29b"
+    "compiler/src/main/c/oresthread.c": "3c422288127f2376d99c46ee8e0370a93890f29b",
+    "compiler/src/test/java/dev/oreslang/RemovedOperatorAdmissionTest.java": "3361d7f50ac800b87f91ad09328433ee5c1a3b3f"
   },
   "poc_blobs": {
     "src/patterns/01-factory-method/example.atto": "3b25ee3c30d8f46d30ce8501fd62387d7157a692",
