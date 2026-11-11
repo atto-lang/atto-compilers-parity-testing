@@ -1,7 +1,7 @@
 {
   "source_repository": "ores-truffle-oreslang/oreslang-proof-of-concepts",
-  "source_commit": "271b45d61bb7171a5ae56a539fee3b6b5d64f8cb",
-  "source_tree": "2f1dd799c3223030b2333319e40e2ace634976b0",
+  "source_commit": "3c67acbb624568aff9b46205e3a0436379805afc",
+  "source_tree": "6f2d636b427da2713ee806c5870266556888ee2e",
   "scope": "exact-byte partial mirror: 90 pattern examples + 90 stdout oracles + Python/Rust host harnesses + 5 canonical compiler-tip fixtures; not full source tree",
   "files": {
     "src/libraries/check_prototypes.py": "f38eb5d404fc3666b1cbc51b263d5314a31f1091",
@@ -198,6 +198,7 @@
     "src/validation/check_catalog.py": "3f4d503fdc5a4f190aa2a5ab9bf27db281e5a974",
     "src/validation/test_check_catalog.py": "91644228ec1dd907fe1e80ca69d24e9903c5c7d4",
     "src/validation/test_verify_source_tree.py": "13210974b7c00528d22487a5dd82f9762f063303",
-    "src/validation/verify_source_tree.sh": "f2f738d199ee24b30fc0689c387a9d6cca902b45"
+    "src/validation/verify_source_tree.sh": "f2f738d199ee24b30fc0689c387a9d6cca902b45",
+    "tools/catalog-gate/src/lib.rs": "e6d87db54e5e08fbf540cb008bfc7129eb4bddac"
   }
 }
