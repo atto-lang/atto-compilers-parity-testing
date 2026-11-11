@@ -219,3 +219,58 @@ jobs:
           db.close();
           console.log('PASS independent Node SQLite trigger/COMMIT interception hooks 3/3');
           NODE
+      - name: Probe strict JDK 21 / pinned JDBC dependencies without source checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${JAVA_HOME_21_X64:?This runner lacks the pinned JDK21 toolchain}"
+          "${JAVA_HOME_21_X64}/bin/javac" -version
+          mvn -B -q dependency:get -Dartifact=org.xerial:sqlite-jdbc:3.53.4.0
+          mvn -B -q dependency:get -Dartifact=org.slf4j:slf4j-api:2.0.17
+          JDBC="$HOME/.m2/repository/org/xerial/sqlite-jdbc/3.53.4.0/sqlite-jdbc-3.53.4.0.jar"
+          SLF4J="$HOME/.m2/repository/org/slf4j/slf4j-api/2.0.17/slf4j-api-2.0.17.jar"
+          sha256sum "$JDBC" "$SLF4J"
+          TEMP_DIR="$(mktemp -d)"
+          trap 'rm -rf "$TEMP_DIR"' EXIT
+          cat > "$TEMP_DIR/SqliteCanary.java" <<'JAVA'
+          // Independently authored JDK21 JDBC probe; NO private AttoLang code.
+          import java.nio.file.Path;
+          import java.sql.Connection;
+          import java.sql.DriverManager;
+          import java.sql.ResultSet;
+          import java.sql.Statement;
+          
+          public final class SqliteCanary {
+              private SqliteCanary() {}
+              private static void require(boolean okay,String reason) {
+                  if(!okay)throw new AssertionError(reason);
+              }
+              public static void main(String[] args) throws Exception {
+                  Path database=Path.of(args[0]);
+                  try(Connection db=DriverManager.getConnection("jdbc:sqlite:"+database)) {
+                      try(Statement sql=db.createStatement()) {
+                          sql.execute("PRAGMA journal_mode=WAL");
+                          sql.execute("PRAGMA synchronous=FULL");
+                          sql.execute("CREATE TABLE events(version INTEGER PRIMARY KEY,amount INTEGER)");
+                          sql.execute("BEGIN IMMEDIATE");
+                          sql.execute("INSERT INTO events VALUES(1,40)");
+                          sql.execute("INSERT INTO events VALUES(2,60)");
+                          sql.execute("COMMIT");
+                          sql.execute("BEGIN IMMEDIATE");
+                          sql.execute("INSERT INTO events VALUES(3,900)");
+                          sql.execute("ROLLBACK");
+                      }
+                  }
+                  try(Connection db=DriverManager.getConnection("jdbc:sqlite:"+database);
+                      Statement sql=db.createStatement();
+                      ResultSet rows=sql.executeQuery("SELECT COUNT(*),SUM(amount) FROM events")) {
+                      require(rows.next(),"missing WAL rows");
+                      require(rows.getInt(1)==2,"ROLLBACK did not remove third event");
+                      require(rows.getInt(2)==100,"reopened WAL state differs");
+                  }
+                  System.out.println("PASS independent Java21 strict JDBC WAL/FULL commit/rollback 3/3");
+              }
+          }
+          JAVA
+          "${JAVA_HOME_21_X64}/bin/javac" -Xlint:all -Werror -d "$TEMP_DIR" "$TEMP_DIR/SqliteCanary.java"
+          "${JAVA_HOME_21_X64}/bin/java" -ea -cp "$TEMP_DIR:$JDBC:$SLF4J" SqliteCanary "$TEMP_DIR/ledger.sqlite"
