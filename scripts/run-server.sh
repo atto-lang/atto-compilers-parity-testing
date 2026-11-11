@@ -2,18 +2,22 @@
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$root/scripts/lib/guards.sh"
-ores_verify_submodule_contract "$root"
-export ORESLANG_SOURCE_DIR="${ORESLANG_SOURCE_DIR:-$root/.cache/oreslang-source.java}"
+# TEST-ONLY overlay: source dependency repositories were copied as exact trees
+# to this private GitHub repo. Never fetch private submodules with GITHUB_TOKEN.
+export ORESLANG_SOURCE_DIR="$root/.cache/oreslang-source.java"
 if [[ -z "${ORES_JAVA:-}" && -n "${JAVA_HOME:-}" ]]; then
   export ORES_JAVA="$JAVA_HOME/bin/java"
 fi
-if git -C "$root" submodule status --recursive | grep -Eq '^[+-U]'; then
-  echo 'Run scripts/setup.sh to initialize the pinned dependencies.' >&2
-  exit 65
-fi
-expected="$(ores_read_exact_source_ref "$root")"
-[[ "$(git -C "$ORESLANG_SOURCE_DIR" rev-parse HEAD)" == "$expected" ]] || { echo 'Run scripts/setup.sh to install the pinned compiler.' >&2; exit 65; }
-[[ -z "$(git -C "$ORESLANG_SOURCE_DIR" status --porcelain)" ]] || { echo 'Compiler checkout must be clean.' >&2; exit 65; }
+[[ "$(ores_read_exact_source_ref "$root")" == "4b0ff7dd4063df2906dc2fed0f6b6348b69807c6" ]] ||
+  { echo 'Unexpected compiler pin' >&2; exit 65; }
+[[ "$(git -C "$root" rev-parse HEAD:.cache/oreslang-source.java)" == "bed52a435ebce6b2100bface266ae1a38a09e566" ]] ||
+  { echo 'Compiler tree identity mismatch' >&2; exit 65; }
+[[ "$(git -C "$root" rev-parse HEAD:dependencies/spin/dependencies/http-routing)" == "97d55d96901887a60f3cdac60f8af4f14b05e4c7" ]] ||
+  { echo 'HTTP routing tree mismatch' >&2; exit 65; }
+[[ "$(git -C "$root" rev-parse HEAD:dependencies/otel)" == "60c6f66a680b315742ec9a3cffe7ec031fd85515" ]] ||
+  { echo 'OTel tree mismatch' >&2; exit 65; }
+[[ -s "$ORESLANG_SOURCE_DIR/target/classpath.txt" ]] ||
+  { echo 'Pinned Java compiler has not been built' >&2; exit 69; }
 
 port="${PORT:-3000}"
 if [[ ! "$port" =~ ^[0-9]{1,5}$ ]] || (( 10#$port < 1 || 10#$port > 65535 )); then
