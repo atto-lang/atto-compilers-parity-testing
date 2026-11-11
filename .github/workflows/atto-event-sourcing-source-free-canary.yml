@@ -190,3 +190,32 @@ jobs:
           db.close();
           console.log('PASS independent checkpoint-laundering canary '+checks+'/6');
           NODE
+      - name: Validate Node SQLite trigger and COMMIT hooks for crash fixtures (no checkout)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --disable-warning=ExperimentalWarning --input-type=module <<'NODE'
+          // Standalone host API compatibility probe; no AttoLang private-source checkout.
+          import assert from 'node:assert/strict';
+          import {DatabaseSync} from 'node:sqlite';
+          const db=new DatabaseSync(':memory:');
+          let commits=0,triggers=0;
+          const original=db.exec.bind(db);
+          db.exec=(sql)=>{
+            const result=original(sql);
+            if(sql.trim().toUpperCase()==='COMMIT')commits++;
+            return result;
+          };
+          db.function('test_trigger_probe',()=>{triggers++;return 0;});
+          db.exec('CREATE TABLE events(version INTEGER PRIMARY KEY);');
+          db.exec('CREATE TEMP TRIGGER hook_after_event AFTER INSERT ON events '+
+            'BEGIN SELECT test_trigger_probe(); END;');
+          db.exec('BEGIN IMMEDIATE');
+          db.prepare('INSERT INTO events VALUES(?)').run(1);
+          db.exec('COMMIT');
+          assert.equal(triggers,1,'SQLite TEMP trigger did not invoke JS hook');
+          assert.equal(commits,1,'Native DatabaseSync.exec is not overridable');
+          assert.equal(db.prepare('SELECT COUNT(*) AS n FROM events').get().n,1);
+          db.close();
+          console.log('PASS independent Node SQLite trigger/COMMIT interception hooks 3/3');
+          NODE
