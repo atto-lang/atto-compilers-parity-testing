@@ -333,3 +333,50 @@ jobs:
           db.close();
           console.log('PASS independently authored original-operation digest/epoch SQLite proof '+cases+'/6');
           NODE
+      - name: Verify archived legacy receipts across epochs (source-free)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --disable-warning=ExperimentalWarning --input-type=module <<'NODE'
+          // Independent SQLite checkpointed-idempotency probe. NO PRIVATE SOURCE.
+          import {DatabaseSync} from 'node:sqlite';
+          import {createHash} from 'node:crypto';
+          import assert from 'node:assert/strict';
+          const db=new DatabaseSync(':memory:');
+          db.exec("CREATE TABLE ops(op_id TEXT PRIMARY KEY,epoch INTEGER,version INTEGER,kind TEXT,payload BLOB,digest TEXT);"+
+            "CREATE TABLE events(version INTEGER PRIMARY KEY,payload BLOB);"+
+            "CREATE TABLE snapshot(version INTEGER PRIMARY KEY,payload BLOB);");
+          const sha=b=>createHash('sha256').update(b).digest('hex');
+          const digest=(o,epoch)=>sha(Buffer.from(JSON.stringify([o.id,epoch,o.version-1,o.kind,o.bytes.toString('base64')])));
+          const ev={id:'deposit',version:1,kind:'event',bytes:Buffer.from('40')};
+          db.prepare('INSERT INTO ops VALUES(?,?,?,?,?,?)').run(ev.id,1,ev.version,ev.kind,ev.bytes,digest(ev,1));
+          db.prepare('INSERT INTO events VALUES(?,?)').run(1,ev.bytes);
+          const snap={id:'checkpoint',version:2,kind:'snapshot',bytes:Buffer.from('40')};
+          db.prepare('INSERT INTO ops VALUES(?,?,?,?,?,?)').run(snap.id,1,snap.version,snap.kind,snap.bytes,digest(snap,1));
+          db.prepare('INSERT INTO snapshot VALUES(?,?)').run(2,snap.bytes);
+          db.prepare('DELETE FROM events WHERE version<=1').run();
+          let checks=0;
+          const proof=(candidate,currentEpoch)=>{
+            const saved=db.prepare('SELECT * FROM ops WHERE op_id=?').get(candidate.id);
+            assert(saved && saved.epoch>=1 && saved.epoch<=currentEpoch,'EPOCH_INVALID');
+            assert.equal(saved.digest,digest(candidate,saved.epoch),'OP_CONFLICT');
+            const active=db.prepare('SELECT * FROM snapshot ORDER BY version DESC LIMIT 1').get();
+            assert(active && active.version>=candidate.version,'MISSING_CHECKPOINT');
+            const checkpointOp=db.prepare('SELECT * FROM ops WHERE version=? AND kind=?').get(active.version,'snapshot');
+            assert(checkpointOp && checkpointOp.epoch>=1,'INVALID_CHECKPOINT_PROOF');
+            const cp={id:checkpointOp.op_id,version:checkpointOp.version,kind:'snapshot',bytes:Buffer.from(active.payload)};
+            assert.equal(checkpointOp.digest,digest(cp,checkpointOp.epoch),'CORRUPT_CHECKPOINT');
+            return saved.version;
+          };
+          assert.equal(proof(ev,2),1);checks++;
+          assert.equal(proof(snap,2),2);checks++;
+          assert.throws(()=>proof({...ev,bytes:Buffer.from('99')},2),/OP_CONFLICT/);checks++;
+          assert.throws(()=>proof(ev,0),/EPOCH_INVALID/);checks++;
+          db.prepare('UPDATE snapshot SET payload=? WHERE version=2').run(Buffer.from('99'));
+          assert.throws(()=>proof(ev,2),/CORRUPT_CHECKPOINT/);checks++;
+          db.prepare('UPDATE snapshot SET payload=? WHERE version=2').run(snap.bytes);
+          db.prepare('DELETE FROM snapshot WHERE version=2').run();
+          assert.throws(()=>proof(ev,2),/MISSING_CHECKPOINT/);checks++;
+          db.close();
+          console.log('PASS independent compacted legacy epoch2 duplicate proof '+checks+'/6');
+          NODE
