@@ -3,8 +3,8 @@
   "compiler_commit": "2b0ca92b32eadeee6f36a59482be905035fce3af",
   "compiler_tree": "bf36383b041beb06c5386d13c5c7b37045af8626",
   "poc_repository": "ores-truffle-oreslang/oreslang-proof-of-concepts",
-  "poc_commit": "411b9c9af106120d01a9a610e5134ff1760cc0f0",
-  "poc_tree": "64588bd18fd9741d0cc1fdbb2b4cfa0d7efaf428",
+  "poc_commit": "a5e4258ce6f7120de19122ab8e15b7834a77196e",
+  "poc_tree": "58f74f9359a31f5a2e6ac2496628b01a7e70cedc",
   "scope": "278 exact-source Java Maven sources and JUnit regression files (including native C build), 3 real PoC patterns and 3 negatives; partial private compiler PR mirror",
   "compiler_blobs": {
     "compiler/pom.xml": "2e566927d4b8e07884ce53b0c463d440201fe54c",

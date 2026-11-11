@@ -28,7 +28,7 @@ jobs:
           from pathlib import Path
           p=json.loads(Path('ci/poc26-source-manifest.json').read_text())
           c=json.loads(Path('ci/poc26-java-compiler-mirror-manifest.json').read_text())
-          assert p['source_commit']=='411b9c9af106120d01a9a610e5134ff1760cc0f0'
+          assert p['source_commit']=='a5e4258ce6f7120de19122ab8e15b7834a77196e'
           assert c['compiler_commit']=='2b0ca92b32eadeee6f36a59482be905035fce3af'
           assert c['compiler_tree']=='bf36383b041beb06c5386d13c5c7b37045af8626'
           assert len(c['compiler_blobs'])==278
@@ -48,6 +48,14 @@ jobs:
           java-version: '25'
           cache: maven
           cache-dependency-path: compiler/pom.xml
+      - name: Validate upgraded 90-pattern syntax hygiene and regression negatives
+        run: |
+          python3 -m unittest discover -s src/patterns -p 'test_tip_syntax_hygiene.py' -v
+          python3 src/patterns/tip_syntax_hygiene.py
+      - name: Validate upgraded 32-library prototype inventory (host-only)
+        run: |
+          python3 -m unittest discover -s src/libraries -p 'test_check_prototypes.py' -v
+          python3 src/libraries/check_prototypes.py --list
       - name: Build exact compiler and native carriers
         run: mvn -B -ntp -f compiler/pom.xml -Dmaven.test.skip=true package
       - name: Resolve exact compiler classpath
