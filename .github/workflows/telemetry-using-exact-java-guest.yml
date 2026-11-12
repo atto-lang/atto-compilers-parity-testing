@@ -18,9 +18,9 @@ jobs:
         shell: bash
         env:
           SOURCE_PR: '2994'
-          SOURCE_HEAD: '2fb87212cc9df9c66c9c215069c9385ffe89dc5c'
-          SOURCE_ROOT_TREE: 'eecdb1dc99629b825e1ae79218fde402e19461be'
-          SOURCE_JAVA_TREE: '79724f10039b981c76a81517513952d077896cdf'
+          SOURCE_HEAD: '059334fbfbe1b5b71bad3bca430697b74d59f812'
+          SOURCE_ROOT_TREE: 'bdad3fdb15948524e5fd8c9d6ccf02b397a0ad8b'
+          SOURCE_JAVA_TREE: '079978c3b74c5012d06b49de9f211849babb28e2'
           SOURCE_RESOURCES_TREE: '080bca4f997a736ea19f9961fc4ac95b5848150b'
           SOURCE_STDLIB_TREE: '58624daeecbe848db51cdd40a9da7e309fe69bc5'
         run: |
@@ -34,9 +34,9 @@ jobs:
           }
           count="$(git ls-tree -r --name-only HEAD:compiler/src/main/java | grep -c '\.java$')"
           test "$count" -eq 261
-          test "$(git hash-object compiler/src/test/java/dev/oreslang/TelemetryUsingSpanLanguageTest.java)" = 4d5d88b78d151369d83a0fcf0d603369136474cd
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/TelemetryUsingSpanLanguageTest.java)" = 5c97689a4da0f54a9855d70e2526123db277de68
           test "$(git hash-object compiler/src/test/java/dev/oreslang/UsingRequestBorrowScopeParserTest.java)" = 2cde253f25493516663864ce7ae47a2bd175eedb
-          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/TelemetrySpanScopeTest.java)" = 609e92ebe9e6336163a23605dd81df6dcdc841b5
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/TelemetrySpanScopeTest.java)" = da9335ae539cefb63fcebc532d9f83bbd243f02b
           test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/TraceContextSuspensionTest.java)" = f572e8ae680bdfb68831c5bb0a6a252d413a6268
           echo "EXACT_JAVA_TREE_MATCH|SOURCE_PR=$SOURCE_PR|SOURCE_HEAD=$SOURCE_HEAD|SOURCE_ROOT_TREE=$SOURCE_ROOT_TREE|JAVA_FILES=$count|MIRROR_HEAD=$GITHUB_SHA"
       - name: Set up GraalVM Java 25

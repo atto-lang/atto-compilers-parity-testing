@@ -38,6 +38,8 @@ public final class TelemetrySpanScope implements AutoCloseable {
     private final TraceContext active;
     private final boolean recording;
     private final long startNanos;
+    /** Frozen at lexical close; never compute a closed span against the wall clock. */
+    private long finishedDurationNanos;
     private final AtomicBoolean ended = new AtomicBoolean();
     private final Map<String, String> attributes = new LinkedHashMap<>();
 
@@ -67,7 +69,10 @@ public final class TelemetrySpanScope implements AutoCloseable {
 
     private static void requireHostControl() {
         if (OresScheduler.currentTaskDomain() != null
-                || ActorRuntime.inActorExecution()) {
+                || OresScheduler.isSchedulerCarrierThread()
+                || ActorRuntime.inActorExecution()
+                || ActorRuntime.inActorGroupMailmanExecution()
+                || ActorRuntime.isActorCarrierThread()) {
             throw new SecurityException(
                     "telemetry instrumentation configuration requires a trusted host control turn");
         }
@@ -87,6 +92,7 @@ public final class TelemetrySpanScope implements AutoCloseable {
         if (spanNamePrefix.length() > MAX_NAME) {
             throw new IllegalArgumentException("span prefix too long");
         }
+        requireSafeName(spanNamePrefix, true);
         long nanos = Math.multiplyExact(durationMillis, 1_000_000L);
         if (samplePercent > 0) {
             // Initialize the random provider on a trusted host control turn,
@@ -105,10 +111,26 @@ public final class TelemetrySpanScope implements AutoCloseable {
     }
 
     /** Called only by compiler-lowered lexical using, exactly once per entry. */
-    public static TelemetrySpanScope open(String name) {
-        if (name == null || name.isBlank() || name.length() > MAX_NAME) {
+    private static void requireSafeName(String name, boolean allowEmpty) {
+        if (name == null || (!allowEmpty && name.isBlank()) || name.length() > MAX_NAME) {
             throw new IllegalArgumentException("telemetry span name must have 1..128 characters");
         }
+        // No control, unpaired surrogate or directional-formatting characters
+        // can enter telemetry labels (even when sampling is disabled).
+        for (int i = 0; i < name.length();) {
+            int point = name.codePointAt(i);
+            if (Character.isISOControl(point)
+                    || Character.getType(point) == Character.FORMAT
+                    || (point <= Character.MAX_VALUE
+                        && Character.isSurrogate((char) point))) {
+                throw new IllegalArgumentException("telemetry span name contains unsafe characters");
+            }
+            i += Character.charCount(point);
+        }
+    }
+
+    public static TelemetrySpanScope open(String name) {
+        requireSafeName(name, false);
         TraceContext parent = TraceContext.current();
         Policy policy = POLICY.get();
         // Keep inherited trace identity even when local recording is off.
@@ -183,12 +205,26 @@ public final class TelemetrySpanScope implements AutoCloseable {
         String lower = key.toLowerCase(java.util.Locale.ROOT);
         if (lower.contains("password") || lower.contains("authorization")
                 || lower.contains("cookie") || lower.contains("secret")
-                || lower.contains("token") || lower.contains("body")) {
+                || lower.contains("token") || lower.contains("body")
+                || lower.contains("credential") || lower.contains("api_key")
+                || lower.contains("apikey") || lower.contains("private_key")
+                || lower.contains("access_key") || lower.contains("session")
+                || lower.contains("headers") || lower.contains("bearer")) {
             throw new SecurityException("sensitive attribute keys are not allowed");
         }
-        if (!(value instanceof String || value instanceof Number
-                || value instanceof Boolean)) {
-            throw new IllegalArgumentException("telemetry attribute must be scalar");
+        // Do not invoke an arbitrary Number.toString() on an actor carrier.
+        // Number is extensible and may block, throw or expose foreign state.
+        // Only trusted, final boxed primitives are allowed for this v1 ABI.
+        boolean scalar = value instanceof String || value instanceof Boolean
+                || value instanceof Byte || value instanceof Short
+                || value instanceof Integer || value instanceof Long
+                || value instanceof Float || value instanceof Double;
+        if (!scalar) {
+            throw new IllegalArgumentException("telemetry attribute must be a boxed primitive scalar");
+        }
+        if (value instanceof Double doubleValue && !Double.isFinite(doubleValue)
+                || value instanceof Float floatValue && !Float.isFinite(floatValue)) {
+            throw new IllegalArgumentException("telemetry attribute must be finite");
         }
         String safe = String.valueOf(value);
         if (safe.length() > MAX_ATTRIBUTE_VALUE) {
@@ -216,13 +252,17 @@ public final class TelemetrySpanScope implements AutoCloseable {
 
     /** Host diagnostic copy. No guest API exposes the mutable attributes map. */
     public Map<String, String> attributesSnapshot() {
+        requireOwner();
         return Map.copyOf(attributes);
     }
 
     /** Return the last span duration for optional diagnostic sinks. */
     public long elapsedNanos() {
+        requireOwner();
         if (!recording) return 0L;
-        return Math.max(0L, System.nanoTime() - startNanos);
+        return ended.get()
+                ? finishedDurationNanos
+                : Math.max(0L, System.nanoTime() - startNanos);
     }
 
     /** Idempotent close: normal completion and cancellation cleanup can race. */
@@ -235,6 +275,7 @@ public final class TelemetrySpanScope implements AutoCloseable {
         }
         if (!ended.compareAndSet(false, true)) return;
         if (recording) {
+            finishedDurationNanos = Math.max(0L, System.nanoTime() - startNanos);
             TraceContext.install(parent);
             ENDED.incrementAndGet();
         }
