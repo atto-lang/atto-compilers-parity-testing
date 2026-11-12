@@ -1,0 +1,72 @@
+name: Generator exact-source JUnit suite diagnostics
+
+on:
+  push:
+    branches:
+      - ci/generator-cancel-diagnostic-ba973a0d-20261112
+
+permissions:
+  contents: read
+
+jobs:
+  generator-junit-diagnostic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          - GeneratorCancellationInterruptionTest
+          - GeneratorRuntimeTest
+    steps:
+      - name: Checkout funded mirror
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Reject nonidentical source and JUnit blobs
+        shell: bash
+        env:
+          EXPECTED_MAIN_TREE: '570cc5399b7636ebb35f6de7a2df05b4d246dac9'
+          EXPECTED_JAVA_TREE: 'cbb1d399c39aa3701e46a4fa951f048545e4c671'
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse 'HEAD:compiler/src/main')" = "$EXPECTED_MAIN_TREE"
+          test "$(git rev-parse 'HEAD:compiler/src/main/java')" = "$EXPECTED_JAVA_TREE"
+          test "$(git rev-parse 'HEAD:compiler/stdlib')" = 711c0751213039f6d047099aad9fa9e754eb8ce6
+          test "$(git hash-object compiler/pom.xml)" = 8cf5eb37b685834ba79860d2fb693efc319c51e3
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/GeneratorRuntimeTest.java)" = 423cd02f63ece65de40f4449fc3d05f654b549dc
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/GeneratorCancellationInterruptionTest.java)" = ff7818fe865261a95df8ee4958c78567892d9a33
+          printf 'EXACT_GENERATOR_SOURCE|HEAD=%s|MAIN_TREE=%s|JAVA_TREE=%s\n' "$GITHUB_SHA" "$EXPECTED_MAIN_TREE" "$EXPECTED_JAVA_TREE"
+      - name: Set up GraalVM Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: graalvm
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: compiler/pom.xml
+      - name: Run bounded, separated JUnit suite
+        shell: bash
+        env:
+          TEST_SUITE: ${{ matrix.suite }}
+        run: |
+          set -euo pipefail
+          java -version
+          java compiler/scripts/VerifyGeneratorCloseReports.java --selftest
+          echo "BEGIN_EXACT_GENERATOR_SUITE=$TEST_SUITE"
+          timeout --signal=TERM --kill-after=20s 480s \
+            mvn -B -ntp -f compiler/pom.xml \
+              "-Dtest=$TEST_SUITE" \
+              -DfailIfNoTests=true \
+              -DtrimStackTrace=false test \
+            2>&1 | tee "generator-${TEST_SUITE}.log"
+          echo "PASS_EXACT_GENERATOR_SUITE=$TEST_SUITE"
+      - name: Upload diagnostics and reports even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generator-exact-${{ matrix.suite }}
+          path: |
+            compiler/target/surefire-reports/
+            generator-*.log
+          if-no-files-found: ignore
