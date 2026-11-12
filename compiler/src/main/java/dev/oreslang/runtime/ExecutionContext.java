@@ -83,24 +83,10 @@ public final class ExecutionContext {
     }
 
     static ExecutionContext task(long runtimeDomain, long execution) {
-        return task(runtimeDomain, execution, 0);
-    }
-
-    /**
-     * Mint a scheduler-owned Task identity with optional same-scheduler
-     * parentage. Parentage is immutable diagnostic lineage, never inherited
-     * allocation, cancellation, actor-state or scheduler authority.
-     */
-    static ExecutionContext task(long runtimeDomain, long execution,
-            long parentExecution) {
-        if (parentExecution < 0 || parentExecution == execution) {
-            throw new IllegalArgumentException(
-                    "task parent execution must be nonnegative and distinct");
-        }
         return new ExecutionContext(
                 new ExecutionId(runtimeDomain, execution),
                 AllocationDomain.none(),
-                parentExecution,
+                0,
                 0);
     }
 
@@ -131,7 +117,7 @@ public final class ExecutionContext {
         return allocationDomain;
     }
 
-    /** Scheduler-admitted same-domain parent Task, or zero for a root/unrelated task. */
+    /** Zero until compiler-lowered causal ancestry is attached. */
     public long parentExecution() {
         return parentExecution;
     }

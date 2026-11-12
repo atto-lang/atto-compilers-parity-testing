@@ -1210,11 +1210,6 @@ public final class OresEvalRootNode extends RootNode {
             /** Independent Task launch authority is one-shot even if a scheduler mis-dispatches it. */
             private boolean taskLaunchConsumed;
 
-            // Direct suspends calls share this Task's continuation and identity.
-            // Bound same-turn nesting before a real await; no host stack overflow.
-            private static final int MAX_INLINE_SUSPENDS_DEPTH = 64;
-            private int inlineSuspendsDepth;
-
             private SourceValueCont awaitingContinuation;
             // Heap-owned cancellation unwind state survives suspension and
             // never exposes the internal cancellation marker to catch/trap.
@@ -1966,6 +1961,11 @@ public final class OresEvalRootNode extends RootNode {
                 return block.body().stream().anyMatch(
                         nested -> statementContainsPotentialSuspension(nested, seen));
             }
+            if (stmt instanceof Ast.UsingTelemetrySpanStmt scope) {
+                return expressionContainsPotentialSuspension(scope.name(), seen)
+                        || scope.body().stream().anyMatch(
+                                nested -> statementContainsPotentialSuspension(nested, seen));
+            }
             if (stmt instanceof Ast.TaskScopeStmt) {
                 // Scope exit always waits for physical child quiescence.
                 return true;
@@ -2248,6 +2248,8 @@ public final class OresEvalRootNode extends RootNode {
                 return block.body().stream().anyMatch(this::containsSourceLoop);
             if (stmt instanceof Ast.TaskScopeStmt scope)
                 return scope.body().stream().anyMatch(this::containsSourceLoop);
+            if (stmt instanceof Ast.UsingTelemetrySpanStmt scope)
+                return scope.body().stream().anyMatch(this::containsSourceLoop);
             if (stmt instanceof Ast.IfStmt conditional)
                 return conditional.branches().stream().anyMatch(
                         branch -> branch.body().stream().anyMatch(this::containsSourceLoop))
@@ -2516,6 +2518,48 @@ public final class OresEvalRootNode extends RootNode {
                 if (stmt instanceof Ast.UsingBorrowStmt) {
                     throw new IllegalStateException(
                             "using request.borrow() as view is not executable without checked loan cleanup");
+                }
+                if (stmt instanceof Ast.UsingTelemetrySpanStmt scope) {
+                    evalSuspendableExpr(task, scope.name(), env,
+                            (t, label, failure) -> {
+                                if (failure != null) {
+                                    continuation.accept(t, SourceFlow.throwing(failure));
+                                    return;
+                                }
+                                final dev.oreslang.runtime.TelemetrySpanScope active;
+                                try {
+                                    if (!(label instanceof String name)) {
+                                        throw new IllegalArgumentException(
+                                                "telemetry.span requires a string name");
+                                    }
+                                    active = dev.oreslang.runtime.TelemetrySpanScope.open(name);
+                                } catch (RuntimeException | Error openFailure) {
+                                    continuation.accept(t, SourceFlow.throwing(openFailure));
+                                    return;
+                                }
+                                Env spanEnv = new Env(env);
+                                spanEnv.define(scope.binding(), active, Ast.BindingKind.CONST);
+                                SourceCleanupFrame cleanup = t.registerSourceCleanup(
+                                        (owner, finished) -> {
+                                            try {
+                                                active.close();
+                                                finished.accept(owner, SourceFlow.normal());
+                                            } catch (RuntimeException | Error closeFailure) {
+                                                finished.accept(owner, SourceFlow.throwing(closeFailure));
+                                            }
+                                        });
+                                runBlock(t, scope.body(), spanEnv, (owner, flow) -> {
+                                    owner.disarmSourceCleanup(cleanup);
+                                    try {
+                                        active.close();
+                                        continuation.accept(owner, flow);
+                                    } catch (RuntimeException | Error closeFailure) {
+                                        continuation.accept(owner, mergeFinallyFlow(
+                                                flow, SourceFlow.throwing(closeFailure)));
+                                    }
+                                });
+                            });
+                    return;
                 }
                 if (stmt instanceof Ast.BindingStmt binding) {
                     evalSuspendableExpr(
@@ -5181,91 +5225,33 @@ public final class OresEvalRootNode extends RootNode {
                     });
         }
 
-        /**
-         * Compiler-backed SourceTask CPS for direct suspends function calls.
-         * Unlike async functions and explicit task blocks, this MUST NOT
-         * allocate a new Task or logical ExecutionContext. runBlock retains
-         * the callee's lexical frame, cleanup/defer stack and return callback
-         * as heap-owned continuations through scheduler Await/Cooperate.
-         *
-         * Indirect/instance-method, actor scalar and native backends need
-         * separate lowering. This path does not fabricate their support.
-         */
-        private void runInlineSuspendsFunction(
-                SourceTask task,
-                Ast.FunctionDecl function,
-                List<Object> supplied,
-                SourceValueCont continuation) {
-            if (OresScheduler.currentExecutionContext() == null) {
-                continuation.accept(task, null, new SecurityException(
-                        "suspends direct call requires an admitted Task execution context"));
-                return;
-            }
-            if (task.inlineSuspendsDepth >= SourceTask.MAX_INLINE_SUSPENDS_DEPTH) {
-                continuation.accept(task, null, new IllegalStateException(
-                        "suspends function continuation nesting exceeds "
-                                + SourceTask.MAX_INLINE_SUSPENDS_DEPTH));
-                return;
-            }
-
-            final Env params;
-            try {
-                List<Object> arguments = normalizeFunctionArguments(function, supplied);
-                params = new Env(null, function.nonLexical(), null, null,
-                        declarationModules.get(function));
-                bindCallableArguments(params, function.parameters(), arguments,
-                        "function " + function.name());
-            } catch (RuntimeException | Error failure) {
-                continuation.accept(task, null, failure);
-                return;
-            }
-
-            task.inlineSuspendsDepth++;
-            final boolean[] delivered = { false };
-            try {
-                runBlock(task, function.body(), params, (owner, flow) -> {
-                    if (owner != task) {
-                        throw new SecurityException(
-                                "suspends continuation resumed on a different SourceTask");
-                    }
-                    if (delivered[0]) {
-                        throw new IllegalStateException(
-                                "suspends function continuation delivered twice");
-                    }
-                    delivered[0] = true;
-                    task.inlineSuspendsDepth--;
-                    switch (flow.kind()) {
-                        case NORMAL, RETURN -> {
-                            Object result;
-                            try {
-                                Object raw = flow.kind() == SourceFlowKind.RETURN
-                                        ? flow.value() : null;
-                                result = shapeReturnedValue(function.returnType(), raw,
-                                        "function " + function.name());
-                            } catch (RuntimeException | Error failure) {
-                                continuation.accept(task, null, failure);
-                                return;
-                            }
-                            continuation.accept(task, result, null);
-                        }
-                        case THROW -> continuation.accept(task, null, flow.failure());
-                        case BREAK, CONTINUE -> continuation.accept(task, null,
-                                new IllegalStateException(
-                                        "loop control escaped a suspends function boundary"));
-                    }
-                });
-            } catch (RuntimeException | Error failure) {
-                if (delivered[0]) throw failure;
-                task.inlineSuspendsDepth--;
-                continuation.accept(task, null, failure);
-            }
-        }
-
         private void evalSuspendableCall(
                 SourceTask task,
                 Ast.CallExpr call,
                 Env env,
                 SourceValueCont continuation) {
+            String integerIntrinsic = integerIntrinsicName(call, env);
+            if (integerIntrinsic != null) {
+                if (call.typeArgumentsPresent()) {
+                    continuation.accept(task, null, new IllegalArgumentException(
+                            "Integer." + integerIntrinsic + " does not accept type arguments"));
+                    return;
+                }
+                evalSuspendableArguments(task, call.arguments(), env,
+                        (t, arguments, failure) -> {
+                            if (failure != null) {
+                                continuation.accept(t, null, failure);
+                                return;
+                            }
+                            try {
+                                continuation.accept(t,
+                                        applyIntegerIntrinsic(integerIntrinsic, arguments), null);
+                            } catch (RuntimeException | Error invalid) {
+                                continuation.accept(t, null, invalid);
+                            }
+                        });
+                return;
+            }
             if (call.callee() instanceof Ast.NameExpr name
                     && env.lookup(name.name()) == Env.MISSING) {
                 Ast.FunctionDecl direct = findFunction(name.name(), call.arguments().size());
@@ -5278,16 +5264,6 @@ public final class OresEvalRootNode extends RootNode {
                             (t, values, failure) -> {
                                 if (failure != null) {
                                     continuation.accept(t, null, failure);
-                                    return;
-                                }
-                                // A suspends function is a *call in the same
-                                // logical execution*, not a new Task/Future.
-                                // Keep its live source continuation in the
-                                // caller's heap-owned SourceTask across await.
-                                if (direct.suspends()
-                                        && direct.actorKind() == Ast.ActorKind.NONE) {
-                                    runInlineSuspendsFunction(
-                                            t, direct, values, continuation);
                                     return;
                                 }
                                 try {
@@ -6424,6 +6400,19 @@ public final class OresEvalRootNode extends RootNode {
                 throw new IllegalStateException(
                         "using request.borrow() as view is not executable without checked loan cleanup");
             }
+            if (stmt instanceof Ast.UsingTelemetrySpanStmt scope) {
+                Object value = eval(scope.name(), env);
+                if (!(value instanceof String name)) {
+                    throw new IllegalArgumentException(
+                            "telemetry.span requires a string name");
+                }
+                try (var active = dev.oreslang.runtime.TelemetrySpanScope.open(name)) {
+                    Env spanEnv = new Env(env);
+                    spanEnv.define(scope.binding(), active, Ast.BindingKind.CONST);
+                    executeBlock(scope.body(), spanEnv, true);
+                }
+                return;
+            }
             if (ActorRuntime.currentActorKind() == ActorRuntime.ActorKind.UNTRUSTED) {
                 context.schedulerSafepoint();
             }
@@ -7172,6 +7161,17 @@ public final class OresEvalRootNode extends RootNode {
         }
 
         private Invocation prepareInvocation(Ast.CallExpr call, Env env) {
+            String integerIntrinsic = integerIntrinsicName(call, env);
+            if (integerIntrinsic != null) {
+                if (call.typeArgumentsPresent()) {
+                    throw new IllegalArgumentException(
+                            "Integer." + integerIntrinsic + " does not accept type arguments");
+                }
+                List<Object> values = evaluateArguments(call.arguments(), env);
+                return invokableInvocation(
+                        arguments -> applyIntegerIntrinsic(integerIntrinsic, arguments),
+                        values);
+            }
             if (call.callee() instanceof Ast.NameExpr directName
                     && env.lookup(directName.name()) == Env.MISSING) {
                 Ast.FunctionDecl direct = findFunction(directName.name(), call.arguments().size());
@@ -7360,6 +7360,41 @@ public final class OresEvalRootNode extends RootNode {
                 }
             }
             return List.copyOf(values);
+        }
+
+        /** A sealed guest intrinsic, never host Java's Integer class. */
+        private String integerIntrinsicName(Ast.CallExpr call, Env env) {
+            if (!(call.callee() instanceof Ast.MemberExpr member)
+                    || !(member.receiver() instanceof Ast.NameExpr owner)
+                    || !owner.name().equals("Integer")
+                    || env.lookup("Integer") != Env.MISSING
+                    || namedImports.containsKey("Integer")
+                    || namespaceImports.containsKey("Integer")
+                    || modules.containsKey("Integer")
+                    || findClass("Integer") != null
+                    || hostClasses.containsKey("Integer")
+                    || hostFunctions.containsKey("Integer")) return null;
+            return switch (member.member()) {
+                case "rem", "mod", "pow", "bitXor" -> member.member();
+                default -> null;
+            };
+        }
+
+        private long applyIntegerIntrinsic(String operation, List<Object> values) {
+            if (values.size() != 2) {
+                throw new IllegalArgumentException(
+                        "Integer." + operation + " expects exactly two int arguments");
+            }
+            long left = integralLong(values.get(0));
+            long right = integralLong(values.get(1));
+            return switch (operation) {
+                case "rem" -> dev.oreslang.runtime.StrictIntegerArithmetic.rem(left, right);
+                case "mod" -> dev.oreslang.runtime.StrictIntegerArithmetic.mod(left, right);
+                case "pow" -> dev.oreslang.runtime.StrictIntegerArithmetic.pow(left, right);
+                case "bitXor" -> dev.oreslang.runtime.StrictIntegerArithmetic.bitXor(left, right);
+                default -> throw new IllegalArgumentException(
+                        "unknown Integer intrinsic: " + operation);
+            };
         }
 
         private boolean isBooleanIntrinsicCall(Ast.CallExpr call, Env env) {
@@ -8007,6 +8042,32 @@ public final class OresEvalRootNode extends RootNode {
         }
 
         private Object member(Object receiver, String name, Env env) {
+            if (receiver instanceof dev.oreslang.runtime.TelemetrySpanScope scope) {
+                return switch (name) {
+                    case "attribute" -> (Invokable) args -> {
+                        if (args.size() != 2 || !(args.get(0) instanceof String key)) {
+                            throw new IllegalArgumentException(
+                                    "span.attribute requires (string key, scalar value)");
+                        }
+                        scope.attribute(key, args.get(1));
+                        return null;
+                    };
+                    case "trace_id" -> (Invokable) args -> {
+                        requireZero(args, "span.trace_id");
+                        return scope.traceId();
+                    };
+                    case "span_id" -> (Invokable) args -> {
+                        requireZero(args, "span.span_id");
+                        return scope.spanId();
+                    };
+                    case "recording" -> (Invokable) args -> {
+                        requireZero(args, "span.recording");
+                        return scope.recording();
+                    };
+                    default -> throw new IllegalArgumentException(
+                            "unknown telemetry span member " + name);
+                };
+            }
             if (receiver instanceof String text) {
                 if (name.equals("split_literal")) {
                     return (Invokable) args -> {
