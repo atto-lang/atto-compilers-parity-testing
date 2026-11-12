@@ -1,0 +1,66 @@
+name: Exact-source generator runtime method-group isolation
+
+on:
+  push:
+    branches:
+      - ci/generator-runtime-method-groups-ba973a0d-20261112
+
+permissions:
+  contents: read
+
+jobs:
+  method-group:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: group1
+            methods: 'closeAtYieldWaitsForTheProducerToLeaveItsGuestTurn+terminalPullWaitsForTheProducerToLeaveItsGuestTurn+rejectedBackingGuestTurnFailsThePullInsteadOfParkingForever+producerSubmissionRejectionIsStickyAndNeverRunsGuestBody+asyncPullOnClosedSchedulerReturnsFailedOresFuture+terminalPullRemainsCompletedAfterSchedulerShutdown'
+          - group: group2
+            methods: 'asyncPullDuringPendingProducerExitReturnsPromptly+asyncPullsUseOresFutureIncludingTerminalPulls+closeUnblocksAnInFlightPullAndInterruptsProducer+concurrentSyncPullIsRejectedInsteadOfQueueingAnotherConsumer+cancelledAsyncPullBeforeEngineAdmissionReleasesGateImmediately+cancelledAsyncPullKeepsSingleFlightGateUntilEnginePullUnwinds'
+          - group: group3
+            methods: 'asyncCloseIsMemoizedAndWaitsOffCallerForCleanup+asyncCloseRacingOutstandingPullWaitsForPhysicalProducerExit+asyncCloseReceiptSurvivesConcurrentRuntimeShutdown+concurrentAsyncPullIsRejectedBeforeAnotherPullTaskIsAdmitted+syncClosePreservesCleanupFailureAfterPhysicalExit+asyncCloseReceiptPreservesCleanupFailureAfterPhysicalExit'
+          - group: group4
+            methods: 'asyncCloseBeforeFirstPullNeverStartsProducer+asyncClosePreservesCleanupFailureAfterPhysicalExit+closeAtYieldDoesNotResumeGuestBody+asyncCloseFutureWaitsForPhysicalProducerExit+syncGeneratorReturnsOneStableIteratorView+closeInvalidatesPrefetchedSyncYield'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Validate exact original source and JUnit test
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD:compiler/src/main)" = 570cc5399b7636ebb35f6de7a2df05b4d246dac9
+          test "$(git rev-parse HEAD:compiler/src/main/java)" = cbb1d399c39aa3701e46a4fa951f048545e4c671
+          test "$(git hash-object compiler/pom.xml)" = 8cf5eb37b685834ba79860d2fb693efc319c51e3
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/GeneratorRuntimeTest.java)" = 423cd02f63ece65de40f4449fc3d05f654b549dc
+      - uses: actions/setup-java@v4
+        with:
+          distribution: graalvm
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: compiler/pom.xml
+      - name: Execute bounded JUnit method group
+        shell: bash
+        env:
+          METHODS: ${{ matrix.methods }}
+          GROUP: ${{ matrix.group }}
+        run: |
+          set -euo pipefail
+          echo "START_GENERATOR_RUNTIME_METHOD_GROUP=$GROUP"
+          timeout --signal=TERM --kill-after=20s 360s \
+            mvn -B -ntp -f compiler/pom.xml \
+              "-Dtest=GeneratorRuntimeTest#$METHODS" \
+              -DfailIfNoTests=true -DtrimStackTrace=false test \
+            2>&1 | tee "generator-runtime-$GROUP.log"
+          echo "PASS_GENERATOR_RUNTIME_METHOD_GROUP=$GROUP"
+      - name: Upload each method-group execution receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generator-methods-${{ matrix.group }}
+          path: |
+            compiler/target/surefire-reports/
+            generator-runtime-*.log
+          if-no-files-found: ignore
