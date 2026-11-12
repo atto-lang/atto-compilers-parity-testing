@@ -78,6 +78,11 @@
       "legacy_followup_merged": true,
       "legacy_followup_merge_commit": "a0a98222dab75f8b71f0da82883d149067d9697f",
       "note": "Scalar-v1/program-v2 reject canonical and compatibility generator syntax until real ESM lowering exists. Latest bootstrap CI had steps=null."
+    },
+    "forge": {
+      "state": "unsupported",
+      "tracking_pull_request": 111,
+      "note": "Merged deterministic generator-frame substrate and explicit source generator-rejection gate do not implement executable guest gen* source lowering; native compiler/run parity not verified."
     }
   },
   "policy": {
@@ -102,6 +107,24 @@
     "structural_suspend_boundary": "Structural borrowed params are rejected across plain suspend functions/methods as well as async/generator frames.",
     "generic_contract": "Sync generic generators preserve Iterator<T>; continuation-backed generic generators remain unsupported pending a sendable bound; missing element type is rejected.",
     "compatibility_fixture": "g10 exercises retained legacy generator declaration spellings and expects 42.",
-    "static_restack": "Java #2117 was restacked onto current #2113 with identical root-tree content."
+    "static_restack": "Java #2117 was restacked onto current #2113 with identical root-tree content.",
+    "lifecycle_fixtures_2026_11_12": {
+      "status": "not_executed",
+      "cases": [
+        "g11",
+        "g12",
+        "g13"
+      ],
+      "expected": "exit:42",
+      "backends": [
+        "java",
+        "llvm",
+        "wasm",
+        "dotnet",
+        "js",
+        "forge"
+      ],
+      "note": "New source-level corpus targets only. No compiler-backed execution results or exact-head CI evidence are claimed. PR 3000 Java race regression remains a draft with zero-step source Actions."
+    }
   }
 }
