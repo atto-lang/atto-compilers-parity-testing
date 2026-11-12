@@ -1,0 +1,54 @@
+name: Atto suspends/await compatibility regression (real Java guest)
+on:
+  push:
+    branches:
+      - ci/suspends-compat-regression-20261111
+permissions:
+  contents: read
+jobs:
+  java-compatibility:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Check all 276 exact source Git blobs
+        shell: bash
+        env:
+          SOURCE_HEAD: 40121bf30f419ce2a7480d3cd644a75cbc6e4311
+          SOURCE_TREE: 819bf10d9186193b6f84c90a3e3ae18790d32a6c
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          count=0
+          while IFS=' ' read -r sha path; do
+            test -f "compiler/$path"
+            test ! -L "compiler/$path"
+            test "$(git hash-object "compiler/$path")" = "$sha"
+            count=$((count+1))
+          done < ci/suspends-compat-blobs.manifest
+          test "$count" -eq 276
+          echo "ATTO_SUSPENDS_COMPAT_EXACT_BLOBS_PASS|$SOURCE_HEAD|$count"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: graalvm
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: compiler/pom.xml
+      - name: Execute real guest backwards-compatibility and runtime regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          java -version
+          mvn -B -ntp -f compiler/pom.xml -Dtest=SuspendsAwaitExecutionContextGuestTest,SuspendsInlineContinuationGuestTest,SuspendsAwaitExecutionContextRuntimeTest,AsyncAwaitLanguageTest,SourceTaskCancelRaceTest,SourceTaskCancelTest,SourceTaskContextTest,SourceTryFinallyTest,StructuredTaskScopeV2Test,SuspendsContractLanguageTest,OresSchedulerTest \
+            -DfailIfNoTests=true test 2>&1 | tee ci/suspends-compat-results.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atto-suspends-java-compatibility-regression
+          path: |
+            compiler/target/surefire-reports/
+            ci/suspends-compat-results.log
+          if-no-files-found: ignore
