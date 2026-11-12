@@ -1,0 +1,32 @@
+name: Atto exact-blob ExecutionContext host test (NOT guest)
+on:
+  push:
+    branches:
+      - ci/atto-suspends-execution-context-20261111
+  pull_request:
+    paths:
+      - '.github/workflows/suspends-execution-context-v1.yml'
+      - 'proof/suspends-context/**'
+permissions:
+  contents: read
+jobs:
+  exact-blob-host:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          persist-credentials: false
+      - name: Verify exact source blob and compile real Java class
+        shell: bash
+        run: |
+          set -euo pipefail
+          git hash-object proof/suspends-context/src/dev/oreslang/runtime/ExecutionContext.java
+          test "$(git hash-object proof/suspends-context/src/dev/oreslang/runtime/ExecutionContext.java)" = "0ccb14b7a71533b8e08297b0b32388e2a70de8fe"
+          javac -version
+          mkdir -p proof/suspends-context/build
+          javac -d proof/suspends-context/build \
+            proof/suspends-context/src/dev/oreslang/runtime/ExecutionContext.java \
+            proof/suspends-context/test/dev/oreslang/runtime/ExecutionContextSmoke.java
+          java -ea -cp proof/suspends-context/build dev.oreslang.runtime.ExecutionContextSmoke
+          echo 'HOST_ONLY: does not prove OresScheduler or Graal guest execution'
