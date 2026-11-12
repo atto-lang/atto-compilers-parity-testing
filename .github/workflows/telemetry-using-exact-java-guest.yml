@@ -1,0 +1,66 @@
+name: Atto telemetry using exact Java compiler guest verification
+on:
+  push:
+    branches:
+      - ci/telemetry-using-exact-java-20261112
+permissions:
+  contents: read
+jobs:
+  telemetry-exact-java-guest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout exact funded mirror HEAD
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Verify exact compiler source and test Git objects
+        shell: bash
+        env:
+          SOURCE_PR: '2994'
+          SOURCE_HEAD: '07a9233aac29e53b92168523a1c5e74cf0c5e6b4'
+          SOURCE_ROOT_TREE: 'e27d2922eec6192cb51d28b8e1fd0afd4559987a'
+          SOURCE_JAVA_TREE: '79724f10039b981c76a81517513952d077896cdf'
+          SOURCE_RESOURCES_TREE: '080bca4f997a736ea19f9961fc4ac95b5848150b'
+          SOURCE_STDLIB_TREE: '58624daeecbe848db51cdd40a9da7e309fe69bc5'
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse 'HEAD:compiler/src/main/java')" = "$SOURCE_JAVA_TREE"
+          test "$(git rev-parse 'HEAD:compiler/src/main/resources')" = "$SOURCE_RESOURCES_TREE"
+          test "$(git rev-parse 'HEAD:compiler/stdlib')" = "$SOURCE_STDLIB_TREE"
+          test "$(git hash-object compiler/pom.xml)" = 4e970d68ddf84732c5ed5088254bddbb52713706 || {
+            echo 'POM_MIRROR_MISMATCH: refresh source-head pom hash' >&2; exit 1;
+          }
+          count="$(git ls-tree -r --name-only HEAD:compiler/src/main/java | grep -c '\.java$')"
+          test "$count" -eq 261
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/TelemetryUsingSpanLanguageTest.java)" = e7c935bb4410aac3a02a370f410b7408c1f34394
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/UsingRequestBorrowScopeParserTest.java)" = 2cde253f25493516663864ce7ae47a2bd175eedb
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/TelemetrySpanScopeTest.java)" = 609e92ebe9e6336163a23605dd81df6dcdc841b5
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/TraceContextSuspensionTest.java)" = f572e8ae680bdfb68831c5bb0a6a252d413a6268
+          echo "EXACT_JAVA_TREE_MATCH|SOURCE_PR=$SOURCE_PR|SOURCE_HEAD=$SOURCE_HEAD|SOURCE_ROOT_TREE=$SOURCE_ROOT_TREE|JAVA_FILES=$count|MIRROR_HEAD=$GITHUB_SHA"
+      - name: Set up GraalVM Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: graalvm
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: compiler/pom.xml
+      - name: Execute Atto telemetry compiler guest and runtime JUnit
+        shell: bash
+        run: |
+          set -euo pipefail
+          java -version
+          mvn -B -ntp -f compiler/pom.xml \
+            -Dtest=TraceContextSuspensionTest,TelemetrySpanScopeTest,TelemetryUsingSpanLanguageTest,SourceTaskCancelTest,SourceTaskContextTest,UsingRequestBorrowScopeParserTest \
+            -DfailIfNoTests=true test 2>&1 | tee telemetry-exact-java-guest.log
+          echo 'TELEMETRY_EXACT_JAVA_GUEST_EXECUTED'
+      - name: Upload exact-head JUnit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atto-telemetry-exact-java-junit
+          path: |
+            compiler/target/surefire-reports/
+            telemetry-exact-java-guest.log
+          if-no-files-found: ignore
