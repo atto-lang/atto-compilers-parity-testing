@@ -18,8 +18,8 @@ jobs:
         shell: bash
         env:
           SOURCE_PR: '2994'
-          SOURCE_HEAD: 'a972cf9aeaa613b2fd5042995e8f7f985dc9efae'
-          SOURCE_ROOT_TREE: 'eedd8d0497e76c2388fd93a1cafbadf80f6aa8b4'
+          SOURCE_HEAD: '2fb87212cc9df9c66c9c215069c9385ffe89dc5c'
+          SOURCE_ROOT_TREE: 'eecdb1dc99629b825e1ae79218fde402e19461be'
           SOURCE_JAVA_TREE: '79724f10039b981c76a81517513952d077896cdf'
           SOURCE_RESOURCES_TREE: '080bca4f997a736ea19f9961fc4ac95b5848150b'
           SOURCE_STDLIB_TREE: '58624daeecbe848db51cdd40a9da7e309fe69bc5'
@@ -34,7 +34,7 @@ jobs:
           }
           count="$(git ls-tree -r --name-only HEAD:compiler/src/main/java | grep -c '\.java$')"
           test "$count" -eq 261
-          test "$(git hash-object compiler/src/test/java/dev/oreslang/TelemetryUsingSpanLanguageTest.java)" = b79ec7be8daab59323ddaa5583159d6a7cded6c2
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/TelemetryUsingSpanLanguageTest.java)" = 4d5d88b78d151369d83a0fcf0d603369136474cd
           test "$(git hash-object compiler/src/test/java/dev/oreslang/UsingRequestBorrowScopeParserTest.java)" = 2cde253f25493516663864ce7ae47a2bd175eedb
           test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/TelemetrySpanScopeTest.java)" = 609e92ebe9e6336163a23605dd81df6dcdc841b5
           test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/TraceContextSuspensionTest.java)" = f572e8ae680bdfb68831c5bb0a6a252d413a6268
