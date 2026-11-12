@@ -3,7 +3,7 @@ name: Atto generator cancellation exact Java source and tests
 on:
   push:
     branches:
-      - ci/generator-cancel-exact-java-2ea04d3b-20261112
+      - ci/generator-cancel-exact-java-ba973a0d-20261112
   workflow_dispatch:
 
 permissions:
@@ -22,10 +22,10 @@ jobs:
         shell: bash
         env:
           SOURCE_PR: '2998'
-          SOURCE_HEAD: '2ea04d3b4462e2fb6d4bef8a657bbe1ae4a56b19'
-          SOURCE_ROOT_TREE: 'ce2b0615d2ec3b1c4d1943183e0561b9195fcfc7'
-          SOURCE_MAIN_TREE: '7fe2c7930725beef0d2090ab73847be97899f54b'
-          SOURCE_JAVA_TREE: 'd60ab1670a52d2fe0c1485cb09032754e0b94f41'
+          SOURCE_HEAD: 'ba973a0d7d10c7d271dd49982b0dddb9ba761b4e'
+          SOURCE_ROOT_TREE: '0bfcc97e384c082542c9a563336e0d3d18f09b05'
+          SOURCE_MAIN_TREE: '570cc5399b7636ebb35f6de7a2df05b4d246dac9'
+          SOURCE_JAVA_TREE: 'cbb1d399c39aa3701e46a4fa951f048545e4c671'
           SOURCE_RESOURCES_TREE: 'e7b8b2b2729cc6348dd6ae579ba61031d6cc972d'
           SOURCE_NATIVE_C_TREE: 'f7aea1a1e5b2cb3a42849291d03a04235f23cbf3'
           SOURCE_STDLIB_TREE: '711c0751213039f6d047099aad9fa9e754eb8ce6'
@@ -42,7 +42,7 @@ jobs:
           test "$(git hash-object compiler/scripts/build-native-thread.sh)" = d7d79b3af7aae08a5277fe63ca6b6047c0da9aa6
           test "$(git hash-object compiler/scripts/VerifyGeneratorCloseReports.java)" = fd4f37c6744fe68b2565c80d0408745191a7f5da
           test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/GeneratorRuntimeTest.java)" = 423cd02f63ece65de40f4449fc3d05f654b549dc
-          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/GeneratorCancellationInterruptionTest.java)" = 32ab306b1edb9e7883bfa42e02ec63f80d528edc
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/GeneratorCancellationInterruptionTest.java)" = ff7818fe865261a95df8ee4958c78567892d9a33
           count="$(git ls-tree -r --name-only HEAD:compiler/src/main/java | grep -c '\.java$')"
           test "$count" -eq 157
           printf 'EXACT_SOURCE_MAIN_TREE=%s SOURCE_HEAD=%s SOURCE_ROOT_TREE=%s MIRROR_HEAD=%s JAVA_FILES=%s\n' "$SOURCE_MAIN_TREE" "$SOURCE_HEAD" "$SOURCE_ROOT_TREE" "$GITHUB_SHA" "$count"
