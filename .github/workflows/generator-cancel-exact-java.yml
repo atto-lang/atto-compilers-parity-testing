@@ -1,0 +1,77 @@
+name: Atto generator cancellation exact Java source and tests
+
+on:
+  push:
+    branches:
+      - ci/generator-cancel-exact-java-2ea04d3b-20261112
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generator-exact-java:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Checkout funded mirror only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify exact source Git objects before any execution
+        shell: bash
+        env:
+          SOURCE_PR: '2998'
+          SOURCE_HEAD: '2ea04d3b4462e2fb6d4bef8a657bbe1ae4a56b19'
+          SOURCE_ROOT_TREE: 'ce2b0615d2ec3b1c4d1943183e0561b9195fcfc7'
+          SOURCE_MAIN_TREE: '7fe2c7930725beef0d2090ab73847be97899f54b'
+          SOURCE_JAVA_TREE: 'd60ab1670a52d2fe0c1485cb09032754e0b94f41'
+          SOURCE_RESOURCES_TREE: 'e7b8b2b2729cc6348dd6ae579ba61031d6cc972d'
+          SOURCE_NATIVE_C_TREE: 'f7aea1a1e5b2cb3a42849291d03a04235f23cbf3'
+          SOURCE_STDLIB_TREE: '711c0751213039f6d047099aad9fa9e754eb8ce6'
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          test "$(git rev-parse 'HEAD:compiler/src/main')" = "$SOURCE_MAIN_TREE"
+          test "$(git rev-parse 'HEAD:compiler/src/main/java')" = "$SOURCE_JAVA_TREE"
+          test "$(git rev-parse 'HEAD:compiler/src/main/resources')" = "$SOURCE_RESOURCES_TREE"
+          test "$(git rev-parse 'HEAD:compiler/src/main/c')" = "$SOURCE_NATIVE_C_TREE"
+          test "$(git rev-parse 'HEAD:compiler/stdlib')" = "$SOURCE_STDLIB_TREE"
+          test "$(git hash-object compiler/pom.xml)" = 8cf5eb37b685834ba79860d2fb693efc319c51e3
+          test "$(git hash-object compiler/scripts/build-native-thread.sh)" = d7d79b3af7aae08a5277fe63ca6b6047c0da9aa6
+          test "$(git hash-object compiler/scripts/VerifyGeneratorCloseReports.java)" = fd4f37c6744fe68b2565c80d0408745191a7f5da
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/GeneratorRuntimeTest.java)" = 423cd02f63ece65de40f4449fc3d05f654b549dc
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/GeneratorCancellationInterruptionTest.java)" = 32ab306b1edb9e7883bfa42e02ec63f80d528edc
+          count="$(git ls-tree -r --name-only HEAD:compiler/src/main/java | grep -c '\.java$')"
+          test "$count" -eq 157
+          printf 'EXACT_SOURCE_MAIN_TREE=%s SOURCE_HEAD=%s SOURCE_ROOT_TREE=%s MIRROR_HEAD=%s JAVA_FILES=%s\n' "$SOURCE_MAIN_TREE" "$SOURCE_HEAD" "$SOURCE_ROOT_TREE" "$GITHUB_SHA" "$count"
+      - name: Install GraalVM Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: graalvm
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: compiler/pom.xml
+      - name: Run verifier negative controls and real generator JUnit
+        shell: bash
+        run: |
+          set -euo pipefail
+          java -version
+          java compiler/scripts/VerifyGeneratorCloseReports.java --selftest
+          mvn -B -ntp -f compiler/pom.xml \
+            -Dtest=GeneratorCancellationInterruptionTest,GeneratorRuntimeTest \
+            -DfailIfNoTests=true test 2>&1 | tee generator-exact-java.log
+          java compiler/scripts/VerifyGeneratorCloseReports.java \
+            compiler/target/surefire-reports/TEST-dev.oreslang.runtime.GeneratorCancellationInterruptionTest.xml \
+            compiler/target/surefire-reports/TEST-dev.oreslang.runtime.GeneratorRuntimeTest.xml
+          echo GENERATOR_EXACT_SOURCE_JUNIT_EXECUTED
+      - name: Upload test receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generator-exact-source-junit
+          path: |
+            compiler/target/surefire-reports/
+            generator-exact-java.log
+          if-no-files-found: ignore

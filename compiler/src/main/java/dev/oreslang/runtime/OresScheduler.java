@@ -49,62 +49,17 @@ public final class OresScheduler implements AutoCloseable {
         }
         return value;
     }
-    /**
-     * All per-thread scheduler state in one object behind one ThreadLocal.
-     * Each turn used to set() and remove() about six separate ThreadLocals;
-     * remove() deletes the map entry, so the next set() re-probes and
-     * re-inserts it. Plain field writes on one holder avoid that churn.
-     * A null field means what an absent ThreadLocal value meant before.
-     */
-    private static final class ThreadState {
-        OresScheduler current;
-        /** The carrier still belongs to this scheduler during terminal callbacks. */
-        OresScheduler carrierScheduler;
-        ExecutionContext executionContext;
-        Boolean schedulerCarrier;
-        Boolean cancellationCleanup;
-        ActorTurnWatchdog.Lease watchdogLease;
-        long dispatchId;   // 0 outside a dispatch
-        long dispatchNext; // [dispatchNext, dispatchLimit) unused ids owned by this thread
-        long dispatchLimit;
-    }
-    private static final ThreadLocal<ThreadState> STATE = new ThreadLocal<>();
-    /** Read-only stand-in for threads that never ran a turn. Never written. */
-    private static final ThreadState NO_STATE = new ThreadState();
-
-    /** For reads: never allocates (e.g. a virtual thread asking current()). */
-    private static ThreadState peek() {
-        ThreadState state = STATE.get();
-        return state != null ? state : NO_STATE;
-    }
-
-    /** For writes: creates this thread's holder on first use. */
-    private static ThreadState state() {
-        ThreadState state = STATE.get();
-        if (state == null) {
-            state = new ThreadState();
-            STATE.set(state);
-        }
-        return state;
-    }
-    /**
-     * Dispatch ids only need to be unique and nonzero, so each thread takes a
-     * private block from the global counter: one contended atomic per
-     * DISPATCH_ID_BLOCK turns instead of one per turn.
-     */
-    private static final int DISPATCH_ID_BLOCK = 1024;
-
-    private static long nextDispatchId(ThreadState state) {
-        if (state.dispatchNext == state.dispatchLimit) {
-            long end = NEXT_DISPATCH_ID.addAndGet(DISPATCH_ID_BLOCK);
-            if (end < DISPATCH_ID_BLOCK) { // wrapped past Long.MAX_VALUE
-                throw new IllegalStateException("OresScheduler dispatch id space exhausted");
-            }
-            state.dispatchNext = end - DISPATCH_ID_BLOCK + 1;
-            state.dispatchLimit = end + 1;
-        }
-        return state.dispatchNext++;
-    }
+    private static final ThreadLocal<OresScheduler> CURRENT = new ThreadLocal<>();
+    /** The carrier still belongs to this scheduler during terminal callbacks. */
+    private static final ThreadLocal<OresScheduler> CURRENT_CARRIER_SCHEDULER =
+            new ThreadLocal<>();
+    private static final ThreadLocal<Long> CURRENT_DISPATCH_ID = new ThreadLocal<>();
+    private static final ThreadLocal<ExecutionContext> CURRENT_EXECUTION_CONTEXT = new ThreadLocal<>();
+    private static final ThreadLocal<Boolean> SCHEDULER_CARRIER = new ThreadLocal<>();
+    private static final ThreadLocal<Boolean> CURRENT_CANCELLATION_CLEANUP =
+            new ThreadLocal<>();
+    private static final ThreadLocal<ActorTurnWatchdog.Lease> CURRENT_WATCHDOG_LEASE =
+            new ThreadLocal<>();
     private static final int DEFAULT_QUEUE_CAPACITY = 65_536;
     // A timed source task owns one global reservation until its Future's
     // terminal subscriber drain completes, even if its guest resources retired.
@@ -205,9 +160,8 @@ public final class OresScheduler implements AutoCloseable {
     private static final IdentityHashMap<OresFuture<?>, OresFuture<?>> AWAIT_GRAPH =
             new IdentityHashMap<>();
 
-    private static boolean registerAwaitDependency(TaskRunner<?> runner,
-            OresFuture<?> awaited) {
-        OresFuture<?> owner = runner.completion;
+    private static boolean registerAwaitDependency(
+            OresFuture<?> owner, OresFuture<?> awaited) {
         synchronized (AWAIT_GRAPH_LOCK) {
             if (AWAIT_GRAPH.containsKey(owner)) {
                 throw new IllegalStateException("task already has an active Future await");
@@ -223,24 +177,13 @@ public final class OresScheduler implements AutoCloseable {
                 throw new IllegalStateException("Future await graph contains a cycle");
             }
             AWAIT_GRAPH.put(owner, awaited);
-            runner.awaitEdgeRegistered = true;
             return true;
         }
     }
 
-    /**
-     * Runs at the start and end of every turn, so the common case (no edge)
-     * must not take the VM-wide graph lock. The flag is written only under
-     * the lock together with the map, so reading false here is equivalent to
-     * having acquired the lock before any concurrent registration.
-     */
-    private static void removeAwaitDependency(TaskRunner<?> runner) {
-        if (!runner.awaitEdgeRegistered) return;
+    private static void removeAwaitDependency(OresFuture<?> owner) {
         synchronized (AWAIT_GRAPH_LOCK) {
-            if (runner.awaitEdgeRegistered) {
-                AWAIT_GRAPH.remove(runner.completion);
-                runner.awaitEdgeRegistered = false;
-            }
+            AWAIT_GRAPH.remove(owner);
         }
     }
 
@@ -258,14 +201,6 @@ public final class OresScheduler implements AutoCloseable {
     private final ExecutorService ownedExecutor;
     private final TurnExecutor turnExecutor;
     private final Set<TaskRunner<?>> tasks = ConcurrentHashMap.newKeySet();
-    /**
-     * Tasks that have physically stopped executing but whose cleanup or
-     * retirement failed. They are held strongly here (never reclaimed) and
-     * keep {@link #hasIncompleteCleanup()} true, but they no longer count as
-     * live work. Otherwise an actor STOP waiting for physical quiescence would
-     * hang forever instead of reaching its quarantine/report path.
-     */
-    private final Set<TaskRunner<?>> quarantined = ConcurrentHashMap.newKeySet();
     /** Linearizes new task admission with scheduler shutdown. */
     private final Object taskAdmissionLock = new Object();
     private final AtomicBoolean closed = new AtomicBoolean();
@@ -277,9 +212,6 @@ public final class OresScheduler implements AutoCloseable {
     private final AtomicReference<Throwable> physicalRetirementFailure = new AtomicReference<>();
     private volatile Runnable actorStopQuiescenceListener;
     private final AtomicLong watchdogOverruns = new AtomicLong();
-    /** Built once: a per-turn lambda here allocated on every dispatch. */
-    private final java.util.function.Consumer<ActorTurnWatchdog.Lease> onWatchdogOverrun =
-            ignored -> watchdogOverruns.incrementAndGet();
 
     /**
      * Create a user-owned scheduler with exactly {@code parallelism} carrier
@@ -314,11 +246,11 @@ public final class OresScheduler implements AutoCloseable {
                 .daemon(true)
                 .name(name + "-carrier-" + carrierId.getAndIncrement())
                 .unstarted(() -> {
-                    state().schedulerCarrier = Boolean.TRUE;
+                    SCHEDULER_CARRIER.set(Boolean.TRUE);
                     try {
                         task.run();
                     } finally {
-                        state().schedulerCarrier = null;
+                        SCHEDULER_CARRIER.remove();
                     }
                 });
         ThreadPoolExecutor pool = new ThreadPoolExecutor(
@@ -400,7 +332,7 @@ public final class OresScheduler implements AutoCloseable {
 
     /** True only on private carriers owned by user-created OresSchedulers. */
     public static boolean isSchedulerCarrierThread() {
-        return Boolean.TRUE.equals(peek().schedulerCarrier);
+        return Boolean.TRUE.equals(SCHEDULER_CARRIER.get());
     }
 
     public String name() {
@@ -418,13 +350,13 @@ public final class OresScheduler implements AutoCloseable {
 
     /** Poll records forward progress without claiming a physical carrier handoff. */
     static void checkpointCurrentTurn() {
-        ActorTurnWatchdog.Lease lease = peek().watchdogLease;
+        ActorTurnWatchdog.Lease lease = CURRENT_WATCHDOG_LEASE.get();
         if (lease != null) lease.checkpoint();
     }
 
     /** Advisory request; only a compiler-lowered continuation may actually yield. */
     public static boolean preemptionRequested() {
-        ActorTurnWatchdog.Lease lease = peek().watchdogLease;
+        ActorTurnWatchdog.Lease lease = CURRENT_WATCHDOG_LEASE.get();
         return lease != null && lease.preemptionRequested();
     }
 
@@ -434,11 +366,11 @@ public final class OresScheduler implements AutoCloseable {
 
     /** Scheduler currently executing this Ores task turn, if any. */
     public static OresScheduler current() {
-        return peek().current;
+        return CURRENT.get();
     }
 
     public static OresScheduler requireCurrent() {
-        OresScheduler scheduler = peek().current;
+        OresScheduler scheduler = CURRENT.get();
         if (scheduler == null) {
             throw new IllegalStateException(
                     "operation requires an executing OresScheduler task");
@@ -454,7 +386,7 @@ public final class OresScheduler implements AutoCloseable {
      * distinct for concurrent tasks sharing the same OresScheduler.</p>
      */
     public static Object currentTaskDomain() {
-        return peek().executionContext;
+        return CURRENT_EXECUTION_CONTEXT.get();
     }
 
     /**
@@ -465,7 +397,7 @@ public final class OresScheduler implements AutoCloseable {
      * actor heap/allocation domain.</p>
      */
     public static ExecutionContext currentExecutionContext() {
-        return peek().executionContext;
+        return CURRENT_EXECUTION_CONTEXT.get();
     }
 
     /**
@@ -475,7 +407,8 @@ public final class OresScheduler implements AutoCloseable {
      * the same physical carrier thread immediately.
      */
     public static long currentDispatchId() {
-        return peek().dispatchId;
+        Long id = CURRENT_DISPATCH_ID.get();
+        return id == null ? 0L : id;
     }
 
     public static <T> Step<T> done(T value) {
@@ -511,7 +444,7 @@ public final class OresScheduler implements AutoCloseable {
      * caller-provided CancellationException classifier or general guest right.
      */
     public static boolean cancellationCleanupTurn() {
-        return Boolean.TRUE.equals(peek().cancellationCleanup);
+        return Boolean.TRUE.equals(CURRENT_CANCELLATION_CLEANUP.get());
     }
 
     /**
@@ -593,7 +526,6 @@ public final class OresScheduler implements AutoCloseable {
      */
     public boolean hasIncompleteCleanup() {
         return physicalRetirementFailure.get() != null
-                || !quarantined.isEmpty()
                 || !tasks.isEmpty()
                 || retiringPhysicalCallbacks.get() != 0
                 || pendingTerminalNotifications.get() != 0;
@@ -715,17 +647,23 @@ public final class OresScheduler implements AutoCloseable {
     void runBound(Runnable turn) {
         Objects.requireNonNull(turn, "turn");
         ensureOpen();
-        ThreadState state = state();
-        OresScheduler prior = state.current;
-        long priorDispatch = state.dispatchId;
-        long id = nextDispatchId(state);
-        state.current = this;
-        state.dispatchId = id;
+        OresScheduler prior = CURRENT.get();
+        Long priorDispatch = CURRENT_DISPATCH_ID.get();
+        CURRENT.set(this);
+        CURRENT_DISPATCH_ID.set(allocatePositiveId(NEXT_DISPATCH_ID, "dispatch"));
         try {
             turn.run();
         } finally {
-            state.dispatchId = priorDispatch;
-            state.current = prior;
+            if (priorDispatch == null) {
+                CURRENT_DISPATCH_ID.remove();
+            } else {
+                CURRENT_DISPATCH_ID.set(priorDispatch);
+            }
+            if (prior == null) {
+                CURRENT.remove();
+            } else {
+                CURRENT.set(prior);
+            }
         }
     }
 
@@ -735,11 +673,10 @@ public final class OresScheduler implements AutoCloseable {
         Objects.requireNonNull(afterTurn, "afterTurn");
         ensureOpen();
         executor.execute(() -> {
-            ThreadState state = state();
-            boolean priorCarrier = Boolean.TRUE.equals(state.schedulerCarrier);
-            OresScheduler previousCarrierScheduler = state.carrierScheduler;
-            state.schedulerCarrier = Boolean.TRUE;
-            state.carrierScheduler = this;
+            boolean priorCarrier = Boolean.TRUE.equals(SCHEDULER_CARRIER.get());
+            OresScheduler previousCarrierScheduler = CURRENT_CARRIER_SCHEDULER.get();
+            SCHEDULER_CARRIER.set(Boolean.TRUE);
+            CURRENT_CARRIER_SCHEDULER.set(this);
             try {
                 turnExecutor.execute(() -> runBound(turn));
             } catch (RuntimeException | Error failure) {
@@ -753,8 +690,16 @@ public final class OresScheduler implements AutoCloseable {
                 try {
                     afterTurn.run();
                 } finally {
-                    state.carrierScheduler = previousCarrierScheduler;
-                    state.schedulerCarrier = priorCarrier ? Boolean.TRUE : null;
+                    if (previousCarrierScheduler == null) {
+                        CURRENT_CARRIER_SCHEDULER.remove();
+                    } else {
+                        CURRENT_CARRIER_SCHEDULER.set(previousCarrierScheduler);
+                    }
+                    if (priorCarrier) {
+                        SCHEDULER_CARRIER.set(Boolean.TRUE);
+                    } else {
+                        SCHEDULER_CARRIER.remove();
+                    }
                 }
             }
         });
@@ -777,7 +722,7 @@ public final class OresScheduler implements AutoCloseable {
 
     @Override
     public void close() {
-        if (peek().current == this) {
+        if (CURRENT.get() == this) {
             throw new IllegalStateException(
                     "OresScheduler cannot be closed from one of its own task turns; "
                             + "close it from an outside/root scheduler task");
@@ -808,7 +753,7 @@ public final class OresScheduler implements AutoCloseable {
             // A terminal Future listener runs after CURRENT has been cleared
             // but may still be executing on this executor's physical carrier.
             // Waiting for our own thread to terminate would deadlock/time out.
-            if (peek().carrierScheduler != this) {
+            if (CURRENT_CARRIER_SCHEDULER.get() != this) {
                 try {
                     if (!ownedExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
                         throw new IllegalStateException(
@@ -833,8 +778,6 @@ public final class OresScheduler implements AutoCloseable {
 
         private final Task<T> task;
         private final ExecutionContext executionContext;
-        /** Immutable logical trace identity persists across await/cooperate turns. */
-        private volatile TraceContext traceContext;
         private final Runnable onQuiescent;
         // 0=unclaimed, 1=retirement callback executing, 2=retired,
         // 3=callback failed. The publication path cannot overtake state 1.
@@ -859,9 +802,6 @@ public final class OresScheduler implements AutoCloseable {
                 new AtomicReference<>();
         private final AtomicReference<OresFuture.RuntimeWaiterRegistration<?>>
                 activeAwaitRegistration = new AtomicReference<>();
-        /** True iff AWAIT_GRAPH holds an edge for completion; written only
-         *  under AWAIT_GRAPH_LOCK. Lets turns skip that VM-wide lock. */
-        private volatile boolean awaitEdgeRegistered;
         private final OresFuture<T> completion;
         private final boolean timedAdmission;
         private final Runnable onNotificationDrained;
@@ -879,8 +819,6 @@ public final class OresScheduler implements AutoCloseable {
             this.task = task;
             long execution = allocatePositiveId(nextExecution, "execution");
             this.executionContext = ExecutionContext.task(schedulerDomain, execution);
-            // Capture from the creating logical task, not its transient carrier identity.
-            this.traceContext = TraceContext.current();
             this.onQuiescent = onQuiescent;
             this.timedAdmission = timedAdmission;
             this.onNotificationDrained = onNotificationDrained;
@@ -998,16 +936,13 @@ public final class OresScheduler implements AutoCloseable {
             ownsExecution.set(true);
             if (!phase.compareAndSet(QUEUED, RUNNING)) return;
 
-            ActorTurnWatchdog.Lease lease = ActorTurnWatchdog.enter(onWatchdogOverrun);
+            ActorTurnWatchdog.Lease lease = ActorTurnWatchdog.enter(
+                    ignored -> watchdogOverruns.incrementAndGet());
             watchdogLease = lease;
-            final ThreadState state = state();
-            ActorTurnWatchdog.Lease previousWatchdog = state.watchdogLease;
-            state.watchdogLease = lease;
-            ExecutionContext priorExecutionContext = state.executionContext;
-            state.executionContext = executionContext;
-            // Only this physical turn may observe the task's active span. The
-            // suspended owner retains the updated context after this turn exits.
-            TraceContext previousTraceContext = TraceContext.install(traceContext);
+            ActorTurnWatchdog.Lease previousWatchdog = CURRENT_WATCHDOG_LEASE.get();
+            CURRENT_WATCHDOG_LEASE.set(lease);
+            ExecutionContext priorExecutionContext = CURRENT_EXECUTION_CONTEXT.get();
+            CURRENT_EXECUTION_CONTEXT.set(executionContext);
             try {
                 detachActiveAwaitRegistration();
                 Resume resume = pendingResume.getAndSet(null);
@@ -1044,10 +979,14 @@ public final class OresScheduler implements AutoCloseable {
                 }
 
                 final Step<T> step;
-                Boolean priorCleanup = state.cancellationCleanup;
+                Boolean priorCleanup = CURRENT_CANCELLATION_CLEANUP.get();
                 // A source defer may itself suspend repeatedly. Every one of
                 // those resumes is still a cleanup-only Task turn.
-                state.cancellationCleanup = cleanupCancellationInjected.get() ? Boolean.TRUE : null;
+                if (cleanupCancellationInjected.get()) {
+                    CURRENT_CANCELLATION_CLEANUP.set(true);
+                } else {
+                    CURRENT_CANCELLATION_CLEANUP.remove();
+                }
                 try {
                     step = Objects.requireNonNull(
                             task.resume(resume),
@@ -1058,13 +997,6 @@ public final class OresScheduler implements AutoCloseable {
                         // TERMINAL. A wall deadline or forced cancellation
                         // that already won keeps its existing terminal cause.
                         if (phase.compareAndSet(RUNNING, TERMINAL)) {
-                            // A cleanup-aware Future is in deferred-cancellation
-                            // mode: cancel() only records the request, so the
-                            // publish step needs a recorded outcome or the
-                            // Future never settles (observed as a lost wakeup).
-                            if (task instanceof CleanupAwareTask<?>) {
-                                terminalOutcome.compareAndSet(null, new TerminalFailure<>(failure));
-                            }
                             checkpointCancellationPending.set(true);
                         }
                         // Never invoke arbitrary synchronous Future listeners
@@ -1078,7 +1010,8 @@ public final class OresScheduler implements AutoCloseable {
                     if (failure instanceof LinkageError fatal) throw fatal;
                     return;
                 } finally {
-                    state.cancellationCleanup = priorCleanup;
+                    if (priorCleanup == null) CURRENT_CANCELLATION_CLEANUP.remove();
+                    else CURRENT_CANCELLATION_CLEANUP.set(priorCleanup);
                 }
 
                 if (step instanceof Done<?> done) {
@@ -1101,13 +1034,16 @@ public final class OresScheduler implements AutoCloseable {
                 failTerminal(new IllegalStateException(
                         "unknown OresScheduler task step " + step.getClass().getName()));
             } finally {
-                // A compiler-inserted span may have started or ended inside
-                // task.resume(). Save that logical scope across suspension, then
-                // clear the carrier before any unrelated task can reuse it.
-                traceContext = TraceContext.current();
-                TraceContext.install(previousTraceContext);
-                state.watchdogLease = previousWatchdog;
-                state.executionContext = priorExecutionContext;
+                if (previousWatchdog == null) {
+                    CURRENT_WATCHDOG_LEASE.remove();
+                } else {
+                    CURRENT_WATCHDOG_LEASE.set(previousWatchdog);
+                }
+                if (priorExecutionContext == null) {
+                    CURRENT_EXECUTION_CONTEXT.remove();
+                } else {
+                    CURRENT_EXECUTION_CONTEXT.set(priorExecutionContext);
+                }
             }
         }
 
@@ -1192,7 +1128,7 @@ public final class OresScheduler implements AutoCloseable {
                 // Register before callback publication. Detect A -> B -> ... -> A
                 // under one lock, including cycles crossing scheduler instances.
                 // No user code executes while the graph lock is held.
-                if (!registerAwaitDependency(this, awaited)) {
+                if (!registerAwaitDependency(completion, awaited)) {
                     // The producer may have settled while another task
                     // published a dependency. Prefer the terminal outcome
                     // over a now-obsolete await graph.
@@ -1211,7 +1147,7 @@ public final class OresScheduler implements AutoCloseable {
                 // edge was installed. Recheck admission before fast-path
                 // observation so terminal results cannot strand an edge.
                 if (phase.get() != WAITING) {
-                    removeAwaitDependency(this);
+                    removeAwaitDependency(completion);
                     return;
                 }
                 // Hot path: terminal Futures are immutable. Observe their
@@ -1264,7 +1200,7 @@ public final class OresScheduler implements AutoCloseable {
                     || (task instanceof CleanupAwareTask<?>
                         && completion.deferredCancellationCause() != null
                         && !cleanupCancellationInjected.get())) {
-                removeAwaitDependency(this);
+                removeAwaitDependency(completion);
                 return;
             }
 
@@ -1279,7 +1215,7 @@ public final class OresScheduler implements AutoCloseable {
 
             // The awaited Future has settled: this is no longer a pending
             // dependency, even though scheduling the continuation may lag.
-            removeAwaitDependency(this);
+            removeAwaitDependency(completion);
             if (phase.get() == TERMINAL) {
                 pendingResume.compareAndSet(resume, null);
                 return;
@@ -1305,7 +1241,7 @@ public final class OresScheduler implements AutoCloseable {
         }
 
         private void detachActiveAwaitRegistration() {
-            removeAwaitDependency(this);
+            removeAwaitDependency(completion);
             OresFuture.RuntimeWaiterRegistration<?> registration =
                     activeAwaitRegistration.getAndSet(null);
             if (registration != null) registration.detach();
@@ -1403,32 +1339,10 @@ public final class OresScheduler implements AutoCloseable {
             }
         }
 
-        /**
-         * The Task has stopped executing but its cleanup did not finish.
-         * Hold it in quarantine: never reclaimed, still reported by
-         * hasIncompleteCleanup(), but no longer blocking physical quiescence.
-         */
-        private void quarantineIfStopped() {
-            if (!cleanupIncomplete.get() || phase.get() != TERMINAL
-                    || executing.get()) return;
-            if (!quarantined.add(this)) return;
-            Throwable reason = quiescenceFailure.get();
-            physicalRetirementFailure.compareAndSet(null, reason != null
-                    ? reason : new CleanupIncompleteError(
-                            "task cleanup incomplete; quarantined"));
-            tasks.remove(this);
-            cancelWallDeadline();
-            notifyActorStopQuiescent();
-        }
-
         private void retireWhenQuiescent() {
             // Never run physical retirement while a source defer/finally/FFI
             // obligation remains incomplete, or while a guest carrier runs.
-            if (cleanupIncomplete.get()) {
-                quarantineIfStopped();
-                return;
-            }
-            if (phase.get() != TERMINAL
+            if (cleanupIncomplete.get() || phase.get() != TERMINAL
                     || executing.get() || !quiescenceState.compareAndSet(0, 1))
                 return;
             cancelWallDeadline();
@@ -1441,7 +1355,7 @@ public final class OresScheduler implements AutoCloseable {
             } catch (Throwable retirementFailure) {
                 // Do not publish a preceding successful guest result when
                 // physical owner/FFI loan retirement failed. The callback is
-                // at-most-once; the Task moves to quarantine below.
+                // at-most-once; leave the Task strongly held in quarantine.
                 quiescenceFailure.compareAndSet(null, retirementFailure);
                 cleanupIncomplete.set(true);
                 if (retirementFailure instanceof VirtualMachineError fatal) throw fatal;
@@ -1451,7 +1365,6 @@ public final class OresScheduler implements AutoCloseable {
                 deadlineQuiescenceRetired.set(true);
                 releaseDeadlineSlotIfRetired();
                 quiescenceState.set(cleanupIncomplete.get() ? 3 : 2);
-                quarantineIfStopped();
             }
         }
 

@@ -75,12 +75,11 @@ public final class TypeAutoTraits {
         }
         if (type instanceof Record record) {
             Capabilities members = combine(record.members().values().stream().toList(), nested);
-            // readOnly is a view capability, not proof of a frozen allocation.
-            // A writable alias may still exist (for example after a readonly
-            // capability overlay). Match ThreadSafetyTraits: moving owned
-            // fields is safe, but sharing this view needs a separate backing
-            // allocation/exclusivity proof that Record does not carry.
-            return Optional.of(new Capabilities(members.send(), false, false));
+            boolean immutable = record.readOnly();
+            return Optional.of(new Capabilities(
+                    members.send(),
+                    immutable && members.sync(),
+                    immutable && members.share()));
         }
         if (!(type instanceof Named named)) return Optional.of(NONE);
 
@@ -104,12 +103,7 @@ public final class TypeAutoTraits {
             case "Weak" -> Optional.of(wrapped(named, Kind.WEAK, true, nested));
             case "Rc" -> Optional.of(wrapped(named, Kind.RC, false, nested));
             case "RefCell" -> Optional.of(wrapped(named, Kind.REFCELL, false, nested));
-            // Mutex<T> is pinned to the actor/execution domain that created it: the
-            // runtime refuses to move one across an async task boundary and throws
-            // WrongMutexDomainException on foreign access. Rust's "Send if T is Send"
-            // would admit programs that can only fail at runtime. SharedMutex is the
-            // shareable form.
-            case "Mutex" -> Optional.of(NONE);
+            case "Mutex" -> Optional.of(wrapped(named, Kind.MUTEX, false, nested));
             case "RwLock" -> Optional.of(wrapped(named, Kind.RWLOCK, false, nested));
             case "SharedMutex" -> {
                 if (named.arguments().size() != 1) yield Optional.of(NONE);
@@ -168,4 +162,3 @@ public final class TypeAutoTraits {
         return new Capabilities(send, sync, share);
     }
 }
-

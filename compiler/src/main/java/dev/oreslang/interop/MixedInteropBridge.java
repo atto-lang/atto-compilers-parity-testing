@@ -1,5 +1,6 @@
 package dev.oreslang.interop;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /** Host-side bridge used by generated Java facades in mixed source files. */
@@ -23,23 +24,14 @@ public final class MixedInteropBridge {
         return current == null ? Map.of() : current;
     }
 
-    /** Closes a scope that was opened over no scope (the common case). */
-    private static final Scope CLEAR_ON_CLOSE = CURRENT::remove;
-
     public static Scope open(Map<String, Invoker> invokers) {
-        // Every scheduler turn opens the scope it captured, which is usually
-        // empty. Map.copyOf returns an already-immutable map unchanged and
-        // still rejects null keys/values, so the defensive copy stays exact.
-        Map<String, Invoker> next = Map.copyOf(invokers);
+        Map<String, Invoker> next = Map.copyOf(new LinkedHashMap<>(invokers));
         Map<String, Invoker> previous = CURRENT.get();
-        if (previous == null) {
-            // invoke() distinguishes "no scope" from "empty scope", so the
-            // empty map must still be installed; only the closure is shared.
-            CURRENT.set(next);
-            return CLEAR_ON_CLOSE;
-        }
         CURRENT.set(next);
-        return () -> CURRENT.set(previous);
+        return () -> {
+            if (previous == null) CURRENT.remove();
+            else CURRENT.set(previous);
+        };
     }
 
     public static Object invoke(String unitId, String functionName, Object... arguments) {

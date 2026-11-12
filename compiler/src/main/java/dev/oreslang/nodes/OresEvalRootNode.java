@@ -16,18 +16,14 @@ import dev.oreslang.runtime.IsolatePolicy;
 import dev.oreslang.runtime.NativeIo;
 import dev.oreslang.runtime.NativeHttp;
 import dev.oreslang.runtime.HttpResponseDraft;
-import dev.oreslang.runtime.OutboundHttpRequest;
 import dev.oreslang.runtime.OresMutex;
 import dev.oreslang.runtime.ActorRuntime;
 import dev.oreslang.runtime.AsyncRuntime;
 import dev.oreslang.runtime.OresFuture;
 import dev.oreslang.runtime.ChannelRuntime;
-import dev.oreslang.runtime.OresKeyedMap;
 import dev.oreslang.runtime.Awaitable;
 import dev.oreslang.runtime.OresScheduler;
 import dev.oreslang.runtime.TaskScope;
-import dev.oreslang.runtime.TaskHandle;
-import dev.oreslang.runtime.SourceTaskHandles;
 import dev.oreslang.runtime.SourceCooperationQuantum;
 import dev.oreslang.runtime.OresFutures;
 import dev.oreslang.runtime.SharedCodeImageStore;
@@ -55,13 +51,6 @@ public final class OresEvalRootNode extends RootNode {
     public static final String MAIN_ONLY_COMMAND = "__ores_internal_main_only__";
     public static final String INVOKE_PUBLIC_COMMAND = "__ores_internal_invoke_public__";
     public static final String REGISTER_IMPORT_COMMAND = "__ores_internal_register_import__";
-
-    // Visited set for class-hierarchy walks (cycle detection). Identity-based:
-    // Ast.ClassDecl is a record, so a hash set would hash the whole class AST
-    // on every field or method lookup.
-    private static java.util.Set<Ast.ClassDecl> classVisitSet() {
-        return java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
-    }
 
     private final Ast.Program program;
     private final String codeUnitId;
@@ -581,7 +570,7 @@ public final class OresEvalRootNode extends RootNode {
             }
 
             List<Ast.FieldDecl> classFields =
-                    effectiveFields(klass, classVisitSet());
+                    effectiveFields(klass, new LinkedHashSet<>());
             LinkedHashMap<String, Object> fields = new LinkedHashMap<>();
             for (Ast.FieldDecl field : classFields) {
                 fields.put(field.name(), UNINITIALIZED_FIELD);
@@ -594,7 +583,7 @@ public final class OresEvalRootNode extends RootNode {
             for (Ast.FieldDecl field : classFields) {
                 if (field.initializer() == null) continue;
                 OwnedField owned =
-                        findField(klass, field.name(), classVisitSet());
+                        findField(klass, field.name(), new LinkedHashSet<>());
                 Ast.ClassDecl fieldOwner =
                         owned == null ? klass : owned.owner();
                 Env initializerEnv =
@@ -972,8 +961,8 @@ public final class OresEvalRootNode extends RootNode {
             Ast.ClassDecl checked = findClass(checkedClassName);
             Evaluator checkedOwner = this;
             if (checked == null) {
-                ClassFacade facade = importedConstructibleClass(checkedClassName);
-                if (facade != null) {
+                Object imported = importedValue(checkedClassName);
+                if (imported instanceof ClassFacade facade) {
                     checkedOwner = facade.owner();
                     checked = facade.klass();
                 }
@@ -1019,7 +1008,7 @@ public final class OresEvalRootNode extends RootNode {
             if (expression instanceof Ast.MemberExpr member) {
                 Ast.ClassDecl owner = staticClassView(member.receiver(), env);
                 if (owner == null) return null;
-                OwnedField field = findField(owner, member.member(), classVisitSet());
+                OwnedField field = findField(owner, member.member(), new LinkedHashSet<>());
                 if (field == null) return null;
                 if (field.field().type() != null) {
                     return staticClassView(field.field().type());
@@ -1073,7 +1062,7 @@ public final class OresEvalRootNode extends RootNode {
             Ast.ClassDecl sourceClass = staticClassView(sourceExpression, env);
             if (sourceClass == null) return null;
             OwnedField field = findField(
-                    sourceClass, memberName, classVisitSet());
+                    sourceClass, memberName, new LinkedHashSet<>());
             if (field == null) return null;
             if (field.field().type() != null) {
                 return staticClassView(field.field().type());
@@ -1186,10 +1175,6 @@ public final class OresEvalRootNode extends RootNode {
         }
 
         private final class SourceTask implements OresScheduler.CleanupAwareTask<Object> {
-            // Task-local context captured from the turn that created this
-            // task (parent task or awaited caller), re-installed every turn.
-            private dev.oreslang.runtime.TaskContext taskContext =
-                    dev.oreslang.runtime.TaskContext.current();
             // The trampoline prevents recursive loop iterations from retaining
             // interpreter Java frames until a quantum is exhausted.
             // The reduction counter and clock belong to the heap-owned
@@ -1264,20 +1249,6 @@ public final class OresEvalRootNode extends RootNode {
 
             @Override
             public OresScheduler.Step<Object> resume(
-                    OresScheduler.Resume resume)
-                    throws Exception {
-                dev.oreslang.runtime.TaskContext previousContext =
-                        dev.oreslang.runtime.TaskContext.install(taskContext);
-                try {
-                    return resumeTurn(resume);
-                } finally {
-                    // Bindings entered/exited during this turn stay with the task.
-                    taskContext = dev.oreslang.runtime.TaskContext.current();
-                    dev.oreslang.runtime.TaskContext.install(previousContext);
-                }
-            }
-
-            private OresScheduler.Step<Object> resumeTurn(
                     OresScheduler.Resume resume)
                     throws Exception {
                 try {
@@ -1758,12 +1729,9 @@ public final class OresEvalRootNode extends RootNode {
                     current != null ? current : context.vm().rootScheduler();
             try {
                 TaskScope structuredScope = env.structuredTaskScope();
-                // Both paths yield a TaskHandle so source code can cancel the
-                // task and await its physical-quiescence barrier (get_done).
-                TaskHandle<Object> handle = structuredScope != null
-                        ? structuredScope.startTask(task)
-                        : scheduler.startTracked(task);
-                OresFuture<Object> future = SourceTaskHandles.register(handle);
+                OresFuture<Object> future = structuredScope != null
+                        ? structuredScope.startTask(task).result()
+                        : scheduler.start(task);
                 transfer.commit();
                 return future;
             } catch (RuntimeException | Error failure) {
@@ -1961,11 +1929,6 @@ public final class OresEvalRootNode extends RootNode {
                 return block.body().stream().anyMatch(
                         nested -> statementContainsPotentialSuspension(nested, seen));
             }
-            if (stmt instanceof Ast.UsingTelemetrySpanStmt scope) {
-                return expressionContainsPotentialSuspension(scope.name(), seen)
-                        || scope.body().stream().anyMatch(
-                                nested -> statementContainsPotentialSuspension(nested, seen));
-            }
             if (stmt instanceof Ast.TaskScopeStmt) {
                 // Scope exit always waits for physical child quiescence.
                 return true;
@@ -2076,16 +2039,12 @@ public final class OresEvalRootNode extends RootNode {
                 return true;
             }
             if (expr instanceof Ast.MatchExpr matched) {
-                // Value matches are expressions, but canonical arms may own
-                // lexical statement blocks. Scan every statement so an await
-                // in a block prefix selects the resumable SourceTask path.
+                // Value matches are expressions, not procedural blocks. Check
+                // subject, guards and arm results for cooperative suspension.
                 if (expressionContainsPotentialSuspension(matched.subject(), seen)) return true;
                 for (Ast.MatchValueArm arm : matched.arms()) {
                     if (arm.guard() != null
                             && expressionContainsPotentialSuspension(arm.guard(), seen)) return true;
-                    for (Ast.Stmt statement : arm.prefixStatements()) {
-                        if (statementContainsPotentialSuspension(statement, seen)) return true;
-                    }
                     if (expressionContainsPotentialSuspension(arm.value(), seen)) return true;
                 }
                 return false;
@@ -2247,8 +2206,6 @@ public final class OresEvalRootNode extends RootNode {
             if (stmt instanceof Ast.BlockStmt block)
                 return block.body().stream().anyMatch(this::containsSourceLoop);
             if (stmt instanceof Ast.TaskScopeStmt scope)
-                return scope.body().stream().anyMatch(this::containsSourceLoop);
-            if (stmt instanceof Ast.UsingTelemetrySpanStmt scope)
                 return scope.body().stream().anyMatch(this::containsSourceLoop);
             if (stmt instanceof Ast.IfStmt conditional)
                 return conditional.branches().stream().anyMatch(
@@ -2519,48 +2476,6 @@ public final class OresEvalRootNode extends RootNode {
                     throw new IllegalStateException(
                             "using request.borrow() as view is not executable without checked loan cleanup");
                 }
-                if (stmt instanceof Ast.UsingTelemetrySpanStmt scope) {
-                    evalSuspendableExpr(task, scope.name(), env,
-                            (t, label, failure) -> {
-                                if (failure != null) {
-                                    continuation.accept(t, SourceFlow.throwing(failure));
-                                    return;
-                                }
-                                final dev.oreslang.runtime.TelemetrySpanScope active;
-                                try {
-                                    if (!(label instanceof String name)) {
-                                        throw new IllegalArgumentException(
-                                                "telemetry.span requires a string name");
-                                    }
-                                    active = dev.oreslang.runtime.TelemetrySpanScope.open(name);
-                                } catch (RuntimeException | Error openFailure) {
-                                    continuation.accept(t, SourceFlow.throwing(openFailure));
-                                    return;
-                                }
-                                Env spanEnv = new Env(env);
-                                spanEnv.define(scope.binding(), active, Ast.BindingKind.CONST);
-                                SourceCleanupFrame cleanup = t.registerSourceCleanup(
-                                        (owner, finished) -> {
-                                            try {
-                                                active.close();
-                                                finished.accept(owner, SourceFlow.normal());
-                                            } catch (RuntimeException | Error closeFailure) {
-                                                finished.accept(owner, SourceFlow.throwing(closeFailure));
-                                            }
-                                        });
-                                runBlock(t, scope.body(), spanEnv, (owner, flow) -> {
-                                    owner.disarmSourceCleanup(cleanup);
-                                    try {
-                                        active.close();
-                                        continuation.accept(owner, flow);
-                                    } catch (RuntimeException | Error closeFailure) {
-                                        continuation.accept(owner, mergeFinallyFlow(
-                                                flow, SourceFlow.throwing(closeFailure)));
-                                    }
-                                });
-                            });
-                    return;
-                }
                 if (stmt instanceof Ast.BindingStmt binding) {
                     evalSuspendableExpr(
                             task,
@@ -2705,25 +2620,11 @@ public final class OresEvalRootNode extends RootNode {
                     final TaskScope runtimeScope;
                     try {
                         runtimeScope = OresScheduler.requireCurrent().newTaskScope();
-                        runtimeScope.cancelSiblingsOnFailure(!taskScope.supervise());
                     } catch (RuntimeException | Error failure) {
                         continuation.accept(task, SourceFlow.throwing(failure));
                         return;
                     }
 
-                    // deadline(ms): expiry cancels the scope's children with
-                    // reason "timeout"; they unwind their own defers/guards.
-                    final java.util.concurrent.ScheduledFuture<?> deadlineTimer;
-                    try {
-                        deadlineTimer = taskScope.deadlineMillis() == null ? null
-                                : SourceTaskHandles.cancelScopeAfter(
-                                        runtimeScope,
-                                        ((Number) eval(taskScope.deadlineMillis(), env)).longValue());
-                    } catch (RuntimeException | Error failure) {
-                        runtimeScope.cancel("task scope deadline rejected");
-                        continuation.accept(task, SourceFlow.throwing(failure));
-                        return;
-                    }
                     Env scopedEnv = env.withStructuredTaskScope(runtimeScope);
                     runBlock(
                             task,
@@ -2734,11 +2635,7 @@ public final class OresEvalRootNode extends RootNode {
                                             t,
                                             runtimeScope,
                                             flow,
-                                            taskScope.supervise(),
-                                            (owner, finished) -> {
-                                                if (deadlineTimer != null) deadlineTimer.cancel(false);
-                                                continuation.accept(owner, finished);
-                                            }));
+                                            continuation));
                     return;
                 }
 
@@ -2839,7 +2736,6 @@ public final class OresEvalRootNode extends RootNode {
                                 // try body owns it via the heap cleanup stack.
                                 t.disarmSourceCleanup(pendingFinally);
                                 if (flow.kind() == SourceFlowKind.THROW
-                                        && attempted.hasCatch()
                                         && isGuestCatchableFailure(flow.failure())) {
                                     Env caught = new Env(env);
                                     caught.define(
@@ -3321,7 +3217,6 @@ public final class OresEvalRootNode extends RootNode {
                 SourceTask task,
                 TaskScope scope,
                 SourceFlow flow,
-                boolean supervise,
                 SourceFlowCont continuation) {
             boolean cancellingForUnwind =
                     flow.kind() == SourceFlowKind.THROW;
@@ -3349,8 +3244,7 @@ public final class OresEvalRootNode extends RootNode {
                             mergeStructuredChildOutcome(
                                     pendingFlow,
                                     scope,
-                                    cleanupCancellation,
-                                    supervise));
+                                    cleanupCancellation));
                 } catch (RuntimeException | Error failure) {
                     continuation.accept(
                             task,
@@ -3375,16 +3269,14 @@ public final class OresEvalRootNode extends RootNode {
                                 mergeStructuredChildOutcome(
                                         pendingFlow,
                                         scope,
-                                        cleanupCancellation,
-                                        supervise));
+                                        cleanupCancellation));
                     });
         }
 
         private SourceFlow mergeStructuredChildOutcome(
                 SourceFlow flow,
                 TaskScope scope,
-                boolean cancellationWasCleanup,
-                boolean supervise) {
+                boolean cancellationWasCleanup) {
             dev.oreslang.runtime.TaskHandle.TaskOutcome<?> outcome =
                     scope.firstNonSuccessOutcome();
             if (outcome == null
@@ -3392,23 +3284,17 @@ public final class OresEvalRootNode extends RootNode {
                 return flow;
             }
             if (outcome instanceof dev.oreslang.runtime.TaskHandle.Failed<?> failed) {
-                // supervise: an ordinary child failure is the owner's to
-                // inspect via get_done(). A panic or failed cleanup still
-                // escapes: neither may be silently absorbed.
-                if (supervise
-                        && !(failed.failure() instanceof dev.oreslang.runtime.UntrappableTaskFailure)
-                        && !(failed.failure() instanceof dev.oreslang.runtime.TaskOwnedLeases.CleanupFailure)
-                        && !(failed.failure() instanceof OresScheduler.CleanupIncompleteError)) {
-                    return flow;
-                }
                 return mergeCleanupFailure(flow, failed.failure());
             }
-            if (outcome instanceof dev.oreslang.runtime.TaskHandle.Cancelled<?>) {
-                // Like Kotlin: a cancelled child does not fail its parent.
-                // Its only cancellers are its owner (via its task handle) and
-                // this scope's own unwind. Failures are recorded ahead of
-                // cancellations by TaskScope, so none is hidden here.
-                return flow;
+            if (outcome instanceof dev.oreslang.runtime.TaskHandle.Cancelled<?> cancelled) {
+                if (cancellationWasCleanup) {
+                    return flow;
+                }
+                return mergeCleanupFailure(
+                        flow,
+                        new java.util.concurrent.CancellationException(
+                                "structured Task child cancelled: "
+                                        + cancelled.reason()));
             }
             throw new IllegalStateException(
                     "unknown structured Task child outcome " + outcome);
@@ -3683,19 +3569,36 @@ public final class OresEvalRootNode extends RootNode {
          * asynchronous; both await the SAME physical producer finalizer.
          */
         private final class SourceOwnedClose {
-            private final Runnable release;
+            private final java.util.function.Supplier<OresFuture<Void>> releaseAsync;
             private OresFuture<Void> closing;
 
             SourceOwnedClose(Runnable release) {
-                this.release = Objects.requireNonNull(release, "release");
+                Objects.requireNonNull(release, "release");
+                this.releaseAsync = () -> {
+                    try {
+                        return context.asyncRuntime().submit(() -> {
+                            release.run();
+                            return null;
+                        });
+                    } catch (RuntimeException | Error failure) {
+                        return OresFuture.failed(failure);
+                    }
+                };
+            }
+
+            SourceOwnedClose(java.util.function.Supplier<OresFuture<Void>> releaseAsync) {
+                this.releaseAsync = Objects.requireNonNull(releaseAsync, "releaseAsync");
             }
 
             synchronized OresFuture<Void> closeOnce() {
                 if (closing == null) {
-                    closing = context.asyncRuntime().submit(() -> {
-                        release.run();
-                        return null;
-                    });
+                    try {
+                        closing = Objects.requireNonNull(
+                                releaseAsync.get(),
+                                "async iterator close returned null Future");
+                    } catch (RuntimeException | Error failure) {
+                        closing = OresFuture.failed(failure);
+                    }
                 }
                 return closing;
             }
@@ -3705,7 +3608,8 @@ public final class OresEvalRootNode extends RootNode {
                 List<Ast.Stmt> body, java.util.function.BiConsumer<Env, Object> bind,
                 SourceFlowCont continuation) {
             GeneratorRuntime.AsyncGenerator<?> generator = sourceAsyncGenerator(value, env);
-            SourceOwnedClose closer = new SourceOwnedClose(generator::close);
+            SourceOwnedClose closer = new SourceOwnedClose(
+                    (java.util.function.Supplier<OresFuture<Void>>) generator::closeAsync);
             SourceCleanupFrame registered = task.registerSourceCleanup(
                     (owner, completed) -> finishAsyncForOf(owner, closer,
                             SourceFlow.throwing(owner.cancellationCause), completed));
@@ -3888,15 +3792,10 @@ public final class OresEvalRootNode extends RootNode {
                                 continuation.accept(t, left);
                                 return;
                             }
-                            // The right operand sees bindings established by the
-                            // left operand, as in the synchronous condition path.
-                            Env rightEnv = new Env(env);
-                            left.bindings().forEach((name, value) ->
-                                    rightEnv.define(name, value, Ast.BindingKind.VAL));
                             evalSuspendableCondition(
                                     t,
                                     binary.right(),
-                                    rightEnv,
+                                    env,
                                     (t2, right) ->
                                             continuation.accept(
                                                     t2,
@@ -3925,7 +3824,9 @@ public final class OresEvalRootNode extends RootNode {
                                         t,
                                         new ConditionResult(
                                                 true,
-                                                java.util.Collections.singletonMap(test.binding(), value)));
+                                                Map.of(
+                                                        test.binding(),
+                                                        value)));
                             } else {
                                 continuation.accept(
                                         t,
@@ -3958,7 +3859,7 @@ public final class OresEvalRootNode extends RootNode {
                                     matched
                                             ? new ConditionResult(
                                                     true,
-                                                    immutableBindings(bindings))
+                                                    Map.copyOf(bindings))
                                             : ConditionResult.noMatch());
                         });
                 return;
@@ -3980,14 +3881,6 @@ public final class OresEvalRootNode extends RootNode {
                     });
         }
 
-        // Snapshot source-order bindings without discarding null guest values.
-        // Map.copyOf/Map.of reject null and could fail after a pattern matched.
-        private static Map<String, Object> immutableBindings(
-                Map<String, Object> values) {
-            return java.util.Collections.unmodifiableMap(
-                    new LinkedHashMap<>(values));
-        }
-
         private ConditionResult mergeConditionBindings(
                 ConditionResult left,
                 ConditionResult right) {
@@ -3996,14 +3889,10 @@ public final class OresEvalRootNode extends RootNode {
             }
             LinkedHashMap<String, Object> bindings =
                     new LinkedHashMap<>(left.bindings());
-            for (Map.Entry<String, Object> entry : right.bindings().entrySet()) {
-                if (bindings.containsKey(entry.getKey())) {
-                    throw new IllegalStateException(
-                            "condition pattern binds '" + entry.getKey() + "' more than once");
-                }
-                bindings.put(entry.getKey(), entry.getValue());
-            }
-            return new ConditionResult(true, immutableBindings(bindings));
+            bindings.putAll(right.bindings());
+            return new ConditionResult(
+                    true,
+                    Map.copyOf(bindings));
         }
 
         private void evalSuspendableExpr(
@@ -4038,10 +3927,6 @@ public final class OresEvalRootNode extends RootNode {
                     new java.util.concurrent.atomic.AtomicBoolean();
             SourceValueCont continuation = (resumedTask, value, failure) -> {
                 if (!delivered.compareAndSet(false, true)) {
-                    // A failure raised by the first delivery reaches here through a nested
-                    // catch. Rethrow it: the downstream already owns it, and an ISE would mask it.
-                    if (failure instanceof RuntimeException runtime) throw runtime;
-                    if (failure instanceof Error error) throw error;
                     throw new IllegalStateException(
                             "suspendable expression completed more than once");
                 }
@@ -4670,7 +4555,7 @@ public final class OresEvalRootNode extends RootNode {
             }
 
             if (arm.guard() == null) {
-                evalSuspendableValueMatchBody(task, arm, armEnv, continuation);
+                evalSuspendableExpr(task, arm.value(), armEnv, continuation);
                 return;
             }
             evalSuspendableExpr(
@@ -4684,8 +4569,8 @@ public final class OresEvalRootNode extends RootNode {
                         }
                         try {
                             if (truth(guard)) {
-                                evalSuspendableValueMatchBody(
-                                        t, arm, armEnv, continuation);
+                                evalSuspendableExpr(
+                                        t, arm.value(), armEnv, continuation);
                             } else {
                                 evalSuspendableValueMatchArm(
                                         t, matched, subject, parent,
@@ -4693,42 +4578,6 @@ public final class OresEvalRootNode extends RootNode {
                             }
                         } catch (RuntimeException | Error guardFailure) {
                             continuation.accept(t, null, guardFailure);
-                        }
-                    });
-        }
-
-        /**
-         * A value-arm block is a local control-flow domain. runBlock performs
-         * defer/finally/resource cleanup before publishing SourceFlow.RETURN;
-         * only then is that return converted to MatchExpr's ARM_RESULT.
-         */
-        private void evalSuspendableValueMatchBody(
-                SourceTask task,
-                Ast.MatchValueArm arm,
-                Env armEnv,
-                SourceValueCont continuation) {
-            runBlock(
-                    task,
-                    arm.loweringBody(),
-                    armEnv,
-                    (t, flow) -> {
-                        switch (flow.kind()) {
-                            case RETURN ->
-                                    continuation.accept(t, flow.value(), null);
-                            case THROW ->
-                                    continuation.accept(t, null, flow.failure());
-                            case NORMAL ->
-                                    continuation.accept(
-                                            t,
-                                            null,
-                                            new IllegalStateException(
-                                                    "value match arm completed without explicit ARM_RESULT"));
-                            case BREAK, CONTINUE ->
-                                    continuation.accept(
-                                            t,
-                                            null,
-                                            new IllegalStateException(
-                                                    "value match arm cannot break/continue an enclosing loop"));
                         }
                     });
         }
@@ -4784,9 +4633,6 @@ public final class OresEvalRootNode extends RootNode {
                 Ast.ObjectExpr object,
                 Env env,
                 SourceValueCont continuation) {
-            if (object.fields().stream().anyMatch(Ast.ObjectField::spread)) {
-                throw new IllegalArgumentException("unverified aggregate spread cannot execute");
-            }
             ArrayList<Object> values = new ArrayList<>();
             evalSuspendableObjectField(
                     task,
@@ -5215,9 +5061,7 @@ public final class OresEvalRootNode extends RootNode {
                         try {
                             continuation.accept(
                                     t,
-                                    runtime.operation().equals("workflow_request")
-                                            ? submitWorkflowGuestIntrinsic(value, env)
-                                            : applyRuntimeOwnership(runtime.operation(), value),
+                                    applyRuntimeOwnership(runtime.operation(), value),
                                     null);
                         } catch (RuntimeException | Error ownershipFailure) {
                             continuation.accept(t, null, ownershipFailure);
@@ -5230,28 +5074,6 @@ public final class OresEvalRootNode extends RootNode {
                 Ast.CallExpr call,
                 Env env,
                 SourceValueCont continuation) {
-            String integerIntrinsic = integerIntrinsicName(call, env);
-            if (integerIntrinsic != null) {
-                if (call.typeArgumentsPresent()) {
-                    continuation.accept(task, null, new IllegalArgumentException(
-                            "Integer." + integerIntrinsic + " does not accept type arguments"));
-                    return;
-                }
-                evalSuspendableArguments(task, call.arguments(), env,
-                        (t, arguments, failure) -> {
-                            if (failure != null) {
-                                continuation.accept(t, null, failure);
-                                return;
-                            }
-                            try {
-                                continuation.accept(t,
-                                        applyIntegerIntrinsic(integerIntrinsic, arguments), null);
-                            } catch (RuntimeException | Error invalid) {
-                                continuation.accept(t, null, invalid);
-                            }
-                        });
-                return;
-            }
             if (call.callee() instanceof Ast.NameExpr name
                     && env.lookup(name.name()) == Env.MISSING) {
                 Ast.FunctionDecl direct = findFunction(name.name(), call.arguments().size());
@@ -5504,7 +5326,7 @@ public final class OresEvalRootNode extends RootNode {
                 }
 
                 OwnedField ownedField = object.owner.findField(
-                        object.klass, member.member(), classVisitSet());
+                        object.klass, member.member(), new LinkedHashSet<>());
                 if (ownedField != null) {
                     object.owner.requireClassMemberVisible(
                             ownedField.field().visibility(), ownedField.owner(),
@@ -5619,7 +5441,7 @@ public final class OresEvalRootNode extends RootNode {
                             checkedComputedClassView(receiverExpression);
                     Ast.ClassDecl staticClass = staticView.klass();
                     OwnedField ownedField = staticView.owner().findField(
-                            staticClass, key, classVisitSet());
+                            staticClass, key, new LinkedHashSet<>());
                     if (ownedField == null) {
                         throw new IllegalArgumentException(
                                 "unknown class field key " + staticClass.name() + "." + key);
@@ -5746,7 +5568,7 @@ public final class OresEvalRootNode extends RootNode {
                         checkedComputedClassView(receiverExpression);
                 Ast.ClassDecl staticClass = staticView.klass();
                 OwnedField targetField = staticView.owner().findField(
-                        staticClass, fieldName, classVisitSet());
+                        staticClass, fieldName, new LinkedHashSet<>());
                 if (targetField == null) {
                     throw new IllegalArgumentException(
                             "unknown class field key " + staticClass.name() + "." + fieldName);
@@ -5821,7 +5643,7 @@ public final class OresEvalRootNode extends RootNode {
                             object.owner.findField(
                                     object.klass,
                                     member.member(),
-                                    classVisitSet());
+                                    new LinkedHashSet<>());
                     if (targetField == null) {
                         throw new IllegalArgumentException(
                                 "unknown field " + member.member());
@@ -5893,8 +5715,8 @@ public final class OresEvalRootNode extends RootNode {
             Evaluator owner = this;
             boolean externalConstruction = false;
             if (klass == null) {
-                ClassFacade externalClass = importedConstructibleClass(created.type().name());
-                if (externalClass != null) {
+                Object imported = importedValue(created.type().name());
+                if (imported instanceof ClassFacade externalClass) {
                     owner = externalClass.owner();
                     klass = externalClass.klass();
                     externalConstruction = true;
@@ -5920,16 +5742,17 @@ public final class OresEvalRootNode extends RootNode {
                             "actor callables cannot expose generator activations across mailbox turns");
                 }
 
-                List<?> captured = fn.async()
+                boolean asyncGeneratorProtocol = fn.async() || fn.suspends();
+                List<?> captured = asyncGeneratorProtocol
                         ? detachAsyncArguments(normalized, fn.parameters())
                         : List.copyOf(normalized);
                 GeneratorRuntime.Producer<Object> producer = emitter -> {
-                    GeneratorRuntime.Emitter<Object> boundaryEmitter = fn.async()
+                    GeneratorRuntime.Emitter<Object> boundaryEmitter = asyncGeneratorProtocol
                             ? value -> emitter.emit(detachAsyncValue(value, new IdentityHashMap<>()))
                             : emitter;
                     callGeneratorBodyRaw(fn, captured, boundaryEmitter);
                 };
-                return fn.async()
+                return asyncGeneratorProtocol
                         ? GeneratorRuntime.asyncGenerator(context.asyncRuntime(), producer)
                         : GeneratorRuntime.generator(context.asyncRuntime(), producer);
             }
@@ -6251,7 +6074,7 @@ public final class OresEvalRootNode extends RootNode {
             GeneratorRuntime.Emitter<Object> previous = activeGeneratorEmitter.get();
             Boolean previousAsync = activeGeneratorAsync.get();
             activeGeneratorEmitter.set(emitter);
-            activeGeneratorAsync.set(fn.async());
+            activeGeneratorAsync.set(fn.async() || fn.suspends());
             try {
                 executeBlock(fn.body(), env);
             } catch (ReturnSignal signal) {
@@ -6399,19 +6222,6 @@ public final class OresEvalRootNode extends RootNode {
             if (stmt instanceof Ast.UsingBorrowStmt) {
                 throw new IllegalStateException(
                         "using request.borrow() as view is not executable without checked loan cleanup");
-            }
-            if (stmt instanceof Ast.UsingTelemetrySpanStmt scope) {
-                Object value = eval(scope.name(), env);
-                if (!(value instanceof String name)) {
-                    throw new IllegalArgumentException(
-                            "telemetry.span requires a string name");
-                }
-                try (var active = dev.oreslang.runtime.TelemetrySpanScope.open(name)) {
-                    Env spanEnv = new Env(env);
-                    spanEnv.define(scope.binding(), active, Ast.BindingKind.CONST);
-                    executeBlock(scope.body(), spanEnv, true);
-                }
-                return;
             }
             if (ActorRuntime.currentActorKind() == ActorRuntime.ActorKind.UNTRUSTED) {
                 context.schedulerSafepoint();
@@ -6563,7 +6373,7 @@ public final class OresEvalRootNode extends RootNode {
                                         + "the static pattern proof and runtime type metadata disagree");
                     }
                     selected = arm;
-                    selectedBindings = immutableBindings(bindings);
+                    selectedBindings = Map.copyOf(bindings);
                 }
 
                 if (selected == null && fallback != null) {
@@ -6572,7 +6382,7 @@ public final class OresEvalRootNode extends RootNode {
                         throw new IllegalStateException("match fallback did not accept the unmatched subject");
                     }
                     selected = fallback;
-                    selectedBindings = immutableBindings(bindings);
+                    selectedBindings = Map.copyOf(bindings);
                 }
 
                 if (selected == null) {
@@ -6634,7 +6444,7 @@ public final class OresEvalRootNode extends RootNode {
                     catch (RuntimeException failure) {
                         // Guest catch may recover explicit denials and other ordinary
                         // errors, but must never consume panic or scheduler control.
-                        if (!tried.hasCatch() || !isGuestCatchableFailure(failure)) throw failure;
+                        if (!isGuestCatchableFailure(failure)) throw failure;
                         Env catchEnv = new Env(env);
                         catchEnv.define(tried.errorName(), failure, Ast.BindingKind.VAL);
                         executeBlock(tried.catchBody(), catchEnv, true);
@@ -7025,32 +6835,14 @@ public final class OresEvalRootNode extends RootNode {
 
         private ChannelRuntime.SelectSet asSelectSet(Object value) {
             if (value instanceof ChannelRuntime.SelectSet set) return set;
-            if (value instanceof ChannelRuntime.SelectPlan plan)
-                return plan.selectSetSnapshot();
-            if (value instanceof ChannelRuntime.DynamicSelectPlan<?> plan)
-                return plan.selectSetSnapshot();
-            if (value instanceof OresKeyedMap<?, ?> map)
-                value = map.shallowSnapshot();
 
             ArrayList<ChannelRuntime.SelectCase> cases = new ArrayList<>();
             if (value instanceof List<?> list) {
-                for (Object item : list) {
-                    if (cases.size() == ChannelRuntime.MAX_SELECT_CASES)
-                        throw new ChannelRuntime.SelectAdmissionException(
-                                "select case count exceeds maximum "
-                                        + ChannelRuntime.MAX_SELECT_CASES);
-                    cases.add(requireSelectCase(item));
-                }
+                for (Object item : list) cases.add(requireSelectCase(item));
                 return new ChannelRuntime.SelectSet(cases);
             }
             if (value instanceof Map<?, ?> map) {
-                for (Object item : map.values()) {
-                    if (cases.size() == ChannelRuntime.MAX_SELECT_CASES)
-                        throw new ChannelRuntime.SelectAdmissionException(
-                                "select case count exceeds maximum "
-                                        + ChannelRuntime.MAX_SELECT_CASES);
-                    cases.add(requireSelectCase(item));
-                }
+                for (Object item : map.values()) cases.add(requireSelectCase(item));
                 return new ChannelRuntime.SelectSet(cases);
             }
             throw new IllegalArgumentException(
@@ -7161,17 +6953,6 @@ public final class OresEvalRootNode extends RootNode {
         }
 
         private Invocation prepareInvocation(Ast.CallExpr call, Env env) {
-            String integerIntrinsic = integerIntrinsicName(call, env);
-            if (integerIntrinsic != null) {
-                if (call.typeArgumentsPresent()) {
-                    throw new IllegalArgumentException(
-                            "Integer." + integerIntrinsic + " does not accept type arguments");
-                }
-                List<Object> values = evaluateArguments(call.arguments(), env);
-                return invokableInvocation(
-                        arguments -> applyIntegerIntrinsic(integerIntrinsic, arguments),
-                        values);
-            }
             if (call.callee() instanceof Ast.NameExpr directName
                     && env.lookup(directName.name()) == Env.MISSING) {
                 Ast.FunctionDecl direct = findFunction(directName.name(), call.arguments().size());
@@ -7251,7 +7032,7 @@ public final class OresEvalRootNode extends RootNode {
                     }
 
                     OwnedField ownedField = object.owner.findField(
-                            object.klass, methodCall.member(), classVisitSet());
+                            object.klass, methodCall.member(), new LinkedHashSet<>());
                     if (ownedField != null) {
                         object.owner.requireClassMemberVisible(
                                 ownedField.field().visibility(),
@@ -7362,41 +7143,6 @@ public final class OresEvalRootNode extends RootNode {
             return List.copyOf(values);
         }
 
-        /** A sealed guest intrinsic, never host Java's Integer class. */
-        private String integerIntrinsicName(Ast.CallExpr call, Env env) {
-            if (!(call.callee() instanceof Ast.MemberExpr member)
-                    || !(member.receiver() instanceof Ast.NameExpr owner)
-                    || !owner.name().equals("Integer")
-                    || env.lookup("Integer") != Env.MISSING
-                    || namedImports.containsKey("Integer")
-                    || namespaceImports.containsKey("Integer")
-                    || modules.containsKey("Integer")
-                    || findClass("Integer") != null
-                    || hostClasses.containsKey("Integer")
-                    || hostFunctions.containsKey("Integer")) return null;
-            return switch (member.member()) {
-                case "rem", "mod", "pow", "bitXor" -> member.member();
-                default -> null;
-            };
-        }
-
-        private long applyIntegerIntrinsic(String operation, List<Object> values) {
-            if (values.size() != 2) {
-                throw new IllegalArgumentException(
-                        "Integer." + operation + " expects exactly two int arguments");
-            }
-            long left = integralLong(values.get(0));
-            long right = integralLong(values.get(1));
-            return switch (operation) {
-                case "rem" -> dev.oreslang.runtime.StrictIntegerArithmetic.rem(left, right);
-                case "mod" -> dev.oreslang.runtime.StrictIntegerArithmetic.mod(left, right);
-                case "pow" -> dev.oreslang.runtime.StrictIntegerArithmetic.pow(left, right);
-                case "bitXor" -> dev.oreslang.runtime.StrictIntegerArithmetic.bitXor(left, right);
-                default -> throw new IllegalArgumentException(
-                        "unknown Integer intrinsic: " + operation);
-            };
-        }
-
         private boolean isBooleanIntrinsicCall(Ast.CallExpr call, Env env) {
             return booleanIntrinsicName(call, env) != null;
         }
@@ -7500,17 +7246,6 @@ public final class OresEvalRootNode extends RootNode {
             throw new IllegalArgumentException(name + " operands must be bool");
         }
 
-        private OresFuture<java.util.List<Object>> submitWorkflowGuestIntrinsic(
-                Object payload, Env env) {
-            // A storage effect may become in-doubt even if its future is
-            // cancelled: no implicit retry, and no held guest mutex guard.
-            if (env.hasLiveMutexGuards()) {
-                throw new IllegalStateException(
-                        "rt workflow_request cannot run while holding a live MutexGuard");
-            }
-            return context.submitWorkflowGuest(payload);
-        }
-
         private Object applyRuntimeOwnership(String operation, Object value) {
             return switch (operation) {
                 case "fail" -> {
@@ -7540,24 +7275,9 @@ public final class OresEvalRootNode extends RootNode {
                     bindings.forEach((name, value) ->
                             armEnv.define(name, value, Ast.BindingKind.VAL));
                     if (arm.guard() != null && !truth(eval(arm.guard(), armEnv))) continue;
-
-                    try {
-                        // The tail barrier prevents the terminal ARM_RESULT
-                        // from being rewritten as a callable tail call.
-                        executeBlock(arm.loweringBody(), armEnv, true);
-                    } catch (ReturnSignal returned) {
-                        return returned.value;
-                    } catch (TailCallSignal escapedTailCall) {
-                        throw new IllegalStateException(
-                                "value match ARM_RESULT escaped as a callable tail call",
-                                escapedTailCall);
-                    } catch (BreakSignal | ContinueSignal escapedLoopControl) {
-                        throw new IllegalStateException(
-                                "value match arm cannot break/continue an enclosing loop",
-                                escapedLoopControl);
-                    }
-                    throw new IllegalStateException(
-                            "value match arm completed without explicit ARM_RESULT");
+                    // The arm's return is the result of this expression;
+                    // do not throw the enclosing callable's Return signal.
+                    return eval(arm.value(), armEnv);
                 }
                 throw new IllegalStateException(
                         "exhaustive value match invariant violated at runtime");
@@ -7583,8 +7303,6 @@ public final class OresEvalRootNode extends RootNode {
                 if (name.name().equals("Channel")) return new ChannelFactory();
                 if (name.name().equals("SelectCase")) return new SelectCaseFactory();
                 if (name.name().equals("SelectSet")) return new SelectSetFactory(this);
-                if (name.name().equals("SelectPlan")) return new SelectPlanFactory(this, false);
-                if (name.name().equals("DynamicSelectPlan")) return new SelectPlanFactory(this, true);
                 if (name.name().equals("Future")) return FutureFactory.INSTANCE;
                 if (name.name().equals("BooleanOps") && !modules.containsKey("BooleanOps")) {
                     return BooleanOpsNamespace.INSTANCE;
@@ -7592,33 +7310,6 @@ public final class OresEvalRootNode extends RootNode {
                 if (name.name().equals("print")) return (Invokable) args -> {
                     context.requireCapability(IsolatePolicy.Capability.STDOUT, "print");
                     requireOne(args, "print"); context.output().print(display(args.getFirst())); context.output().flush(); return null;
-                };
-                if (name.name().equals("task_cancel_requested")) return (Invokable) args -> {
-                    requireZero(args, "task_cancel_requested");
-                    return SourceTaskHandles.currentTaskCancelRequested();
-                };
-                if (name.name().equals("task_context")) return (Invokable) args -> {
-                    requireOne(args, "task_context");
-                    if (!(args.getFirst() instanceof dev.oreslang.runtime.OresSymbol key)) {
-                        throw new IllegalArgumentException("task_context expects a Symbol key");
-                    }
-                    String found = dev.oreslang.runtime.TaskContext.lookup(key.name());
-                    return found == null ? new OptionValue(false, null) : new OptionValue(true, found);
-                };
-                if (name.name().equals("$task_context_enter")) return (Invokable) args -> {
-                    if (args.size() != 2
-                            || !(args.get(0) instanceof dev.oreslang.runtime.OresSymbol key)
-                            || !(args.get(1) instanceof String value)) {
-                        throw new IllegalArgumentException(
-                                "task context(#key, value) requires a Symbol key and a String value");
-                    }
-                    dev.oreslang.runtime.TaskContext.enter(key.name(), value);
-                    return null;
-                };
-                if (name.name().equals("$task_context_exit")) return (Invokable) args -> {
-                    requireZero(args, "task context exit");
-                    dev.oreslang.runtime.TaskContext.exit();
-                    return null;
                 };
                 if (name.name().equals("Some")) return (Invokable) args -> {
                     requireOne(args, "Some");
@@ -7691,7 +7382,7 @@ public final class OresEvalRootNode extends RootNode {
                             throw new IllegalArgumentException("unknown field " + target.member());
                         }
                         OwnedField ownedField = object.owner.findField(
-                                object.klass, target.member(), classVisitSet());
+                                object.klass, target.member(), new LinkedHashSet<>());
                         if (ownedField == null) {
                             throw new IllegalArgumentException("unknown field " + target.member());
                         }
@@ -7861,9 +7552,6 @@ public final class OresEvalRootNode extends RootNode {
                             "rt " + runtime.operation() + " expects exactly one argument");
                 }
                 Object value = eval(runtime.arguments().getFirst(), env);
-                if (runtime.operation().equals("workflow_request")) {
-                    return submitWorkflowGuestIntrinsic(value, env);
-                }
                 return applyRuntimeOwnership(runtime.operation(), value);
             }
             if (expr instanceof Ast.CallExpr call) {
@@ -7912,8 +7600,8 @@ public final class OresEvalRootNode extends RootNode {
                 Evaluator owner = this;
                 boolean externalConstruction = false;
                 if (klass == null) {
-                    ClassFacade externalClass = importedConstructibleClass(created.type().name());
-                    if (externalClass != null) {
+                    Object imported = importedValue(created.type().name());
+                    if (imported instanceof ClassFacade externalClass) {
                         owner = externalClass.owner();
                         klass = externalClass.klass();
                         externalConstruction = true;
@@ -7976,9 +7664,6 @@ public final class OresEvalRootNode extends RootNode {
             }
             if (expr instanceof Ast.TupleExpr tuple) return tuple.elements().stream().map(item -> eval(item, env)).toList();
             if (expr instanceof Ast.ObjectExpr object) {
-                if (object.fields().stream().anyMatch(Ast.ObjectField::spread)) {
-                    throw new IllegalArgumentException("unverified aggregate spread cannot execute");
-                }
                 LinkedHashMap<String, Object> result = new LinkedHashMap<>();
                 if (object.explicitStruct()) {
                     for (Ast.StructFieldSpec field : object.declaredFields()) {
@@ -8042,32 +7727,6 @@ public final class OresEvalRootNode extends RootNode {
         }
 
         private Object member(Object receiver, String name, Env env) {
-            if (receiver instanceof dev.oreslang.runtime.TelemetrySpanScope scope) {
-                return switch (name) {
-                    case "attribute" -> (Invokable) args -> {
-                        if (args.size() != 2 || !(args.get(0) instanceof String key)) {
-                            throw new IllegalArgumentException(
-                                    "span.attribute requires (string key, scalar value)");
-                        }
-                        scope.attribute(key, args.get(1));
-                        return null;
-                    };
-                    case "trace_id" -> (Invokable) args -> {
-                        requireZero(args, "span.trace_id");
-                        return scope.traceId();
-                    };
-                    case "span_id" -> (Invokable) args -> {
-                        requireZero(args, "span.span_id");
-                        return scope.spanId();
-                    };
-                    case "recording" -> (Invokable) args -> {
-                        requireZero(args, "span.recording");
-                        return scope.recording();
-                    };
-                    default -> throw new IllegalArgumentException(
-                            "unknown telemetry span member " + name);
-                };
-            }
             if (receiver instanceof String text) {
                 if (name.equals("split_literal")) {
                     return (Invokable) args -> {
@@ -8151,110 +7810,95 @@ public final class OresEvalRootNode extends RootNode {
             }
             if (receiver instanceof FileSystemFacade fs) {
                 return switch (name) {
-                    case "read_text", "read_text_blocking" -> (Invokable) args -> {
+                    case "read_text" -> (Invokable) fs::readText;
+                    case "read_text_async" -> (Invokable) args -> {
                         List<Object> values = immutableIoStrings(args);
                         return context.nativeIo().submit(context, dev.oreslang.runtime.RuntimePermissions.Permission.READ,
-                                "fs." + name, () -> fs.readText(values));
+                                "fs.read_text_async", () -> fs.readText(values));
                     };
-                    case "read_text_bounded_async" -> (Invokable) args -> {
-                        requireTwo(args, "fs.read_text_bounded_async");
-                        // Capture immutable validated scalar arguments before
-                        // handing the I/O operation to the descriptor worker.
-                        String path = requireString(args.get(0), "fs.read_text_bounded_async path");
-                        if (!(args.get(1) instanceof Number limit) || !isIntegral(limit)) {
-                            throw new IllegalArgumentException(
-                                    "fs.read_text_bounded_async requires integer max_bytes");
-                        }
-                        long maxBytes = limit.longValue();
-                        return context.nativeIo().submit(context, dev.oreslang.runtime.RuntimePermissions.Permission.READ,
-                                "fs.read_text_bounded_async",
-                                () -> dev.oreslang.runtime.NativeIo.readTextBounded(context, path, maxBytes));
-                    };
-                    case "write_text", "write_text_blocking" -> (Invokable) args -> {
+                    case "write_text" -> (Invokable) fs::writeText;
+                    case "write_text_atomic" -> (Invokable) fs::writeTextAtomic;
+                    case "write_text_async" -> (Invokable) args -> {
                         List<Object> values = immutableIoStrings(args);
                         return context.nativeIo().submit(context, dev.oreslang.runtime.RuntimePermissions.Permission.WRITE,
-                                "fs." + name, () -> fs.writeText(values));
+                                "fs.write_text_async", () -> fs.writeText(values));
                     };
-                    case "write_text_atomic", "write_text_atomic_blocking", "write_text_atomic_async" -> (Invokable) args -> {
+                    case "append_text" -> (Invokable) fs::appendText;
+                    case "append_text_async" -> (Invokable) args -> {
                         List<Object> values = immutableIoStrings(args);
                         return context.nativeIo().submit(context, dev.oreslang.runtime.RuntimePermissions.Permission.WRITE,
-                                "fs." + name, () -> fs.writeTextAtomic(values));
+                                "fs.append_text_async", () -> fs.appendText(values));
                     };
-                    case "append_text", "append_text_blocking" -> (Invokable) args -> {
+                    case "list_dir" -> (Invokable) fs::listDir;
+                    case "is_dir" -> (Invokable) fs::isDir;
+                    case "is_symlink" -> (Invokable) fs::isSymlink;
+                    case "exists" -> (Invokable) fs::exists;
+                    case "exists_async" -> (Invokable) args -> {
+                        List<Object> values = immutableIoStrings(args);
+                        return context.nativeIo().submit(context, dev.oreslang.runtime.RuntimePermissions.Permission.READ,
+                                "fs.exists_async", () -> fs.exists(values));
+                    };
+                    case "remove" -> (Invokable) fs::remove;
+                    case "remove_async" -> (Invokable) args -> {
                         List<Object> values = immutableIoStrings(args);
                         return context.nativeIo().submit(context, dev.oreslang.runtime.RuntimePermissions.Permission.WRITE,
-                                "fs." + name, () -> fs.appendText(values));
+                                "fs.remove_async", () -> fs.remove(values));
                     };
-                    case "list_dir", "list_dir_blocking" -> (Invokable) args -> {
-                        List<Object> values = immutableIoStrings(args);
-                        return context.nativeIo().submit(context, dev.oreslang.runtime.RuntimePermissions.Permission.READ,
-                                "fs." + name, () -> fs.listDir(values));
-                    };
-                    case "is_dir", "is_dir_blocking" -> (Invokable) args -> {
-                        List<Object> values = immutableIoStrings(args);
-                        return context.nativeIo().submit(context, dev.oreslang.runtime.RuntimePermissions.Permission.READ,
-                                "fs." + name, () -> fs.isDir(values));
-                    };
-                    case "is_symlink", "is_symlink_blocking" -> (Invokable) args -> {
-                        List<Object> values = immutableIoStrings(args);
-                        return context.nativeIo().submit(context, dev.oreslang.runtime.RuntimePermissions.Permission.READ,
-                                "fs." + name, () -> fs.isSymlink(values));
-                    };
-                    case "exists", "exists_blocking" -> (Invokable) args -> {
-                        List<Object> values = immutableIoStrings(args);
-                        return context.nativeIo().submit(context, dev.oreslang.runtime.RuntimePermissions.Permission.READ,
-                                "fs." + name, () -> fs.exists(values));
-                    };
-                    case "file_size", "file_size_blocking", "file_size_async" -> (Invokable) args -> {
-                        List<Object> values = immutableIoStrings(args);
-                        return context.nativeIo().submit(context, dev.oreslang.runtime.RuntimePermissions.Permission.READ,
-                                "fs." + name, () -> fs.fileSize(values));
-                    };
-                    case "remove", "remove_blocking" -> (Invokable) args -> {
+                    case "mkdir_all" -> (Invokable) fs::mkdirAll;
+                    case "mkdir_all_async" -> (Invokable) args -> {
                         List<Object> values = immutableIoStrings(args);
                         return context.nativeIo().submit(context, dev.oreslang.runtime.RuntimePermissions.Permission.WRITE,
-                                "fs." + name, () -> fs.remove(values));
-                    };
-                    case "mkdir_all", "mkdir_all_blocking" -> (Invokable) args -> {
-                        List<Object> values = immutableIoStrings(args);
-                        return context.nativeIo().submit(context, dev.oreslang.runtime.RuntimePermissions.Permission.WRITE,
-                                "fs." + name, () -> fs.mkdirAll(values));
+                                "fs.mkdir_all_async", () -> fs.mkdirAll(values));
                     };
                     default -> throw new IllegalArgumentException("unknown filesystem member " + name);
                 };
             }
             if (receiver instanceof NetworkFacade network) {
                 return switch (name) {
-                    case "connect", "connect_blocking" -> (Invokable) args -> {
-                        requireTwo(args, "network." + name);
+                    case "connect" -> (Invokable) network::connect;
+                    case "connect_async" -> (Invokable) args -> {
+                        requireTwo(args, "network.connect_async");
                         String host = requireString(args.get(0), "host");
                         if (!(args.get(1) instanceof Number port)) throw new IllegalArgumentException("port must be an integer");
                         List<Object> values = List.of(host, port.intValue());
                         return context.nativeIo().submit(context, dev.oreslang.runtime.RuntimePermissions.Permission.NET,
-                                "network." + name, () -> network.connect(values));
+                                "network.connect_async", () -> network.connect(values));
                     };
                     default -> throw new IllegalArgumentException("unknown network member " + name);
                 };
             }
             if (receiver instanceof NativeIo.TcpConnection socket) {
                 return switch (name) {
-                    case "read_line", "read_line_blocking" -> (Invokable) args -> {
-                        requireZero(args, "socket." + name);
+                    case "read_line_async" -> (Invokable) args -> {
+                        requireZero(args, "socket.read_line_async");
                         return context.nativeIo().submit(context, dev.oreslang.runtime.RuntimePermissions.Permission.NET,
-                                "socket." + name, () -> {
+                                "socket.read_line_async", () -> {
                                     String value = socket.readLine();
                                     return new OptionValue(value != null, value);
                                 });
                     };
-                    case "write_text", "write_text_blocking" -> (Invokable) args -> {
-                        String value = requireStringArg(args, "socket." + name);
+                    case "write_text_async" -> (Invokable) args -> {
+                        String value = requireStringArg(args, "socket.write_text_async");
                         return context.nativeIo().submit(context, dev.oreslang.runtime.RuntimePermissions.Permission.NET,
-                                "socket." + name, () -> { socket.writeText(value); return null; });
+                                "socket.write_text_async", () -> { socket.writeText(value); return null; });
                     };
-                    case "close", "close_blocking" -> (Invokable) args -> {
-                        requireZero(args, "socket." + name);
-                        return context.nativeIo().submitClose(
-                                context, "socket." + name, () -> { socket.close(); return null; });
+                    case "close_async" -> (Invokable) args -> {
+                        requireZero(args, "socket.close_async");
+                        return context.nativeIo().submitClose(context, () -> { socket.close(); return null; });
+                    };
+                    case "read_line" -> (Invokable) args -> {
+                        requireZero(args, "network.socket.read_line");
+                        String value = socket.readLine();
+                        return value == null ? new OptionValue(false, null) : new OptionValue(true, value);
+                    };
+                    case "write_text" -> (Invokable) args -> {
+                        socket.writeText(requireStringArg(args, "network.socket.write_text"));
+                        return null;
+                    };
+                    case "close" -> (Invokable) args -> {
+                        requireZero(args, "network.socket.close");
+                        socket.close();
+                        return null;
                     };
                     default -> throw new IllegalArgumentException("unknown network socket member " + name);
                 };
@@ -8368,75 +8012,6 @@ public final class OresEvalRootNode extends RootNode {
                     default -> throw new IllegalArgumentException("unknown HTTP exchange member " + name);
                 };
             }
-            if (receiver instanceof OutboundHttpRequest.Response response) {
-                return switch (name) {
-                    case "status" -> response.status();
-                    case "header_count" -> response.headerCount();
-                    case "header_name_at" -> (Invokable) args -> {
-                        if (args.size() != 1 || !(args.get(0) instanceof Number index)
-                                || !isIntegral(index)) {
-                            throw new IllegalArgumentException(
-                                    "HttpClientResponse.header_name_at requires one integral index");
-                        }
-                        long value = index.longValue();
-                        if (value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) {
-                            throw new IllegalArgumentException("HTTP header index is outside int range");
-                        }
-                        return response.headerNameAt((int) value);
-                    };
-                    case "header_value_at" -> (Invokable) args -> {
-                        if (args.size() != 1 || !(args.get(0) instanceof Number index)
-                                || !isIntegral(index)) {
-                            throw new IllegalArgumentException(
-                                    "HttpClientResponse.header_value_at requires one integral index");
-                        }
-                        long value = index.longValue();
-                        if (value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) {
-                            throw new IllegalArgumentException("HTTP header index is outside int range");
-                        }
-                        return response.headerValueAt((int) value);
-                    };
-                    case "header_values" -> (Invokable) args ->
-                            response.headerValues(
-                                    requireStringArg(
-                                            args,
-                                            "HttpClientResponse.header_values"));
-                    case "take_body" -> (Invokable) args -> {
-                        requireZero(args, "HttpClientResponse.take_body");
-                        return response.takeBody();
-                    };
-                    case "close" -> (Invokable) args -> {
-                        requireZero(args, "HttpClientResponse.close");
-                        return response.closeAsync();
-                    };
-                    default -> throw new IllegalArgumentException(
-                            "unknown HttpClientResponse member " + name);
-                };
-            }
-            if (receiver instanceof OutboundHttpRequest.Body body) {
-                return switch (name) {
-                    case "closed" -> body.closed();
-                    case "read_chunk" -> (Invokable) args -> {
-                        if (args.size() != 1 || !(args.get(0) instanceof Number limit)
-                                || !isIntegral(limit)) {
-                            throw new IllegalArgumentException(
-                                    "HttpClientBody.read_chunk requires one integral byte limit");
-                        }
-                        long value = limit.longValue();
-                        if (value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) {
-                            throw new IllegalArgumentException(
-                                    "HTTP body read limit is outside int range");
-                        }
-                        return body.readChunk((int) value);
-                    };
-                    case "close" -> (Invokable) args -> {
-                        requireZero(args, "HttpClientBody.close");
-                        return body.closeAsync();
-                    };
-                    default -> throw new IllegalArgumentException(
-                            "unknown HttpClientBody member " + name);
-                };
-            }
             if (receiver instanceof HttpFacade http) {
                 return switch (name) {
                     case "handler" -> (Invokable) args -> {
@@ -8475,26 +8050,17 @@ public final class OresEvalRootNode extends RootNode {
                         return HttpResponseDraft.text(body, (int) code,
                                 List.of(Map.entry("Content-Type", contentType)));
                     };
-                    case "request" -> (Invokable) args -> {
-                        if (args.size() != 3 || !(args.get(2) instanceof List<?> headers)) {
-                            throw new IllegalArgumentException(
-                                    "http.request requires method, URL and List<(String,String)> headers");
-                        }
-                        return OutboundHttpRequest.request(
-                                context,
-                                requireString(args.get(0), "HTTP method"),
-                                requireString(args.get(1), "HTTP URL"),
-                                headers);
-                    };
-                    case "get_text", "get_text_blocking" -> (Invokable) args -> {
+                    case "get_text" -> (Invokable) http::getText;
+                    case "get_text_async" -> (Invokable) args -> {
                         List<Object> values = immutableIoStrings(args);
                         return context.nativeIo().submit(context, dev.oreslang.runtime.RuntimePermissions.Permission.NET,
-                                "http." + name, () -> http.getText(values));
+                                "http.get_text_async", () -> http.getText(values));
                     };
-                    case "post_text", "post_text_blocking" -> (Invokable) args -> {
+                    case "post_text" -> (Invokable) http::postText;
+                    case "post_text_async" -> (Invokable) args -> {
                         List<Object> values = immutableIoStrings(args);
                         return context.nativeIo().submit(context, dev.oreslang.runtime.RuntimePermissions.Permission.NET,
-                                "http." + name, () -> http.postText(values));
+                                "http.post_text_async", () -> http.postText(values));
                     };
                     default -> throw new IllegalArgumentException("unknown http member " + name);
                 };
@@ -8563,12 +8129,6 @@ public final class OresEvalRootNode extends RootNode {
             if (receiver instanceof SelectSetFactory factory) {
                 if (!name.equals("new")) {
                     throw new IllegalArgumentException("unknown SelectSet factory member " + name);
-                }
-                return (Invokable) factory::create;
-            }
-            if (receiver instanceof SelectPlanFactory factory) {
-                if (!name.equals("new")) {
-                    throw new IllegalArgumentException("unknown select plan factory member " + name);
                 }
                 return (Invokable) factory::create;
             }
@@ -8696,37 +8256,6 @@ public final class OresEvalRootNode extends RootNode {
                         }
                         return chainFuture(future, callback, false, true);
                     };
-                    case "cancel" -> (Invokable) args -> {
-                        requireZero(args, "Future.cancel");
-                        return requireOwnedTask(future, "cancel").cancel("cancelled");
-                    };
-                    case "cancel_with" -> (Invokable) args -> {
-                        requireOne(args, "Future.cancel_with");
-                        if (!(args.getFirst() instanceof dev.oreslang.runtime.OresSymbol reason)) {
-                            throw new IllegalArgumentException(
-                                    "Future.cancel_with expects a Symbol reason");
-                        }
-                        return requireOwnedTask(future, "cancel_with").cancel(reason.name());
-                    };
-                    case "cancel_after" -> (Invokable) args -> {
-                        requireOne(args, "Future.cancel_after");
-                        if (!(args.getFirst() instanceof Number millis)) {
-                            throw new IllegalArgumentException(
-                                    "Future.cancel_after expects an int number of milliseconds");
-                        }
-                        return SourceTaskHandles.cancelAfter(
-                                requireOwnedTask(future, "cancel_after"), millis.longValue());
-                    };
-                    case "is_cancel_requested" -> (Invokable) args -> {
-                        requireZero(args, "Future.is_cancel_requested");
-                        return requireOwnedTask(future, "is_cancel_requested")
-                                .isCancellationRequested();
-                    };
-                    case "get_done" -> (Invokable) args -> {
-                        requireZero(args, "Future.get_done");
-                        return SourceTaskHandles.outcomeSymbol(
-                                requireOwnedTask(future, "get_done"));
-                    };
                     default -> throw new IllegalArgumentException(
                             "unknown Future instance member " + name);
                 };
@@ -8741,10 +8270,6 @@ public final class OresEvalRootNode extends RootNode {
                         requireOne(args, "Future.race");
                         return OresFutures.race(asSequence(args.getFirst()));
                     };
-                    case "first" -> (Invokable) args -> {
-                        requireOne(args, "Future.first");
-                        return SourceTaskHandles.first(asSequence(args.getFirst()));
-                    };
                     default -> throw new IllegalArgumentException("unknown Future member " + name);
                 };
             }
@@ -8758,7 +8283,7 @@ public final class OresEvalRootNode extends RootNode {
             if (receiver instanceof GeneratorRuntime.AsyncGenerator<?> generator) {
                 return switch (name) {
                     case "next" -> (Invokable) args -> { requireZero(args, "AsyncIterator.next"); return generator.nextStep(); };
-                    case "close" -> (Invokable) args -> { requireZero(args, "AsyncIterator.close"); generator.close(); return null; };
+                    case "close" -> (Invokable) args -> { requireZero(args, "AsyncIterator.close"); return generator.closeAsync(); };
                     default -> throw new IllegalArgumentException("unknown AsyncIterator member " + name);
                 };
             }
@@ -8787,7 +8312,7 @@ public final class OresEvalRootNode extends RootNode {
             if (receiver instanceof ImportedNamespace namespace) return namespace.owner().exportValue(namespace.kind(), name);
             if (receiver instanceof ModuleFacade namespace) return namespace.owner().moduleMember(namespace.module(), name);
             if (receiver instanceof ClassFacade klass) {
-                List<Ast.MethodDecl> functions = klass.owner().findStaticFunctionsByName(klass.klass(), name, classVisitSet());
+                List<Ast.MethodDecl> functions = klass.owner().findStaticFunctionsByName(klass.klass(), name, new LinkedHashSet<>());
                 if (functions.size() == 1) {
                     Ast.MethodDecl fn = functions.getFirst();
                     klass.owner().requireClassMemberVisible(
@@ -8811,7 +8336,7 @@ public final class OresEvalRootNode extends RootNode {
             if (receiver instanceof OresObject object) {
                 if (object.fields.containsKey(name)) {
                     OwnedField ownedField = object.owner.findField(
-                            object.klass, name, classVisitSet());
+                            object.klass, name, new LinkedHashSet<>());
                     if (ownedField != null) {
                         object.owner.requireClassMemberVisible(
                                 ownedField.field().visibility(),
@@ -8828,7 +8353,7 @@ public final class OresEvalRootNode extends RootNode {
                     }
                     return value;
                 }
-                if (object.owner.hasInstanceMethodNamed(object.klass, name, classVisitSet())) {
+                if (object.owner.hasInstanceMethodNamed(object.klass, name, new LinkedHashSet<>())) {
                     return new BoundMethod(object, name, env == null ? null : env.accessClass());
                 }
                 throw new IllegalArgumentException("unknown member " + object.klass.name() + "." + name);
@@ -9337,42 +8862,6 @@ public final class OresEvalRootNode extends RootNode {
             }
         }
 
-        /**
-         * Resolve a checked class import by its exact binding, or an explicitly
-         * imported module's public class. A dotted constructor type is NOT a
-         * local class name and must never fall through to an unrelated class
-         * in the current unit or another imported module.
-         *
-         * Qualified resolution deliberately permits one imported module
-         * boundary only: this does not invent new nested namespace aliases,
-         * turn type-only imports into runtime values, or bypass visibility.
-         */
-        private ClassFacade importedConstructibleClass(String name) {
-            Object direct = importedValue(name);
-            if (direct instanceof ClassFacade klass) return klass;
-
-            int separator = name.indexOf('.');
-            if (separator <= 0 || separator != name.lastIndexOf('.')
-                    || separator == name.length() - 1) {
-                return null;
-            }
-            String binding = name.substring(0, separator);
-            String className = name.substring(separator + 1);
-            Object namespace = importedValue(binding);
-            Object exported;
-            if (namespace instanceof ModuleFacade module) {
-                // moduleMember enforces public export visibility by declaration
-                // identity inside the owning (already linked) code unit.
-                exported = module.owner().moduleMember(module.module(), className);
-            } else if (namespace instanceof ImportedNamespace star
-                    && star.kind() == Ast.ImportKind.ALL) {
-                exported = star.owner().exportValue(Ast.ImportKind.ALL, className);
-            } else {
-                return null;
-            }
-            return exported instanceof ClassFacade klass ? klass : null;
-        }
-
         private Object importedValue(String name) {
             ImportedBinding direct = namedImports.get(name);
             if (direct != null) {
@@ -9479,9 +8968,7 @@ public final class OresEvalRootNode extends RootNode {
                                         + " is a type-only selector and cannot be evaluated as a runtime value");
                 case MODULE -> {
                     Ast.ModuleDecl module = modules.get(name);
-                    if (module == null || module.name().equals(Parser.ROOT_MODULE)) {
-                        throw new IllegalArgumentException("code unit '" + codeUnitId + "' does not export module '" + name + "'");
-                    }
+                    if (module == null) throw new IllegalArgumentException("code unit '" + codeUnitId + "' does not export module '" + name + "'");
                     yield new ModuleFacade(this, module);
                 }
                 case ALL -> exportAny(name);
@@ -9546,7 +9033,7 @@ public final class OresEvalRootNode extends RootNode {
                 // Compatibility path for classes authored before explicit
                 // constructor syntax: positional fields form a synthesized
                 // constructor whose visibility follows the class.
-                List<Ast.FieldDecl> classFields = effectiveFields(klass, classVisitSet());
+                List<Ast.FieldDecl> classFields = effectiveFields(klass, new LinkedHashSet<>());
                 if (args.size() > classFields.size()) {
                     throw new IllegalArgumentException(
                             "too many constructor arguments for " + klass.name());
@@ -9568,7 +9055,7 @@ public final class OresEvalRootNode extends RootNode {
                         }
                         value = args.get(i);
                     } else if (field.initializer() != null) {
-                        OwnedField owned = findField(klass, field.name(), classVisitSet());
+                        OwnedField owned = findField(klass, field.name(), new LinkedHashSet<>());
                         Ast.ClassDecl fieldOwner = owned == null ? klass : owned.owner();
                         // The object must remain unobservable while fields
                         // are being initialized. Static analysis never binds
@@ -9596,7 +9083,7 @@ public final class OresEvalRootNode extends RootNode {
                                 + constructor.arity() + " argument(s), got " + args.size());
             }
 
-            List<Ast.FieldDecl> classFields = effectiveFields(klass, classVisitSet());
+            List<Ast.FieldDecl> classFields = effectiveFields(klass, new LinkedHashSet<>());
             LinkedHashMap<String, Object> fields = new LinkedHashMap<>();
             for (Ast.FieldDecl field : classFields) {
                 fields.put(field.name(), UNINITIALIZED_FIELD);
@@ -9642,7 +9129,7 @@ public final class OresEvalRootNode extends RootNode {
             // parent-field initializers.
             for (Ast.FieldDecl field : classFields) {
                 if (field.initializer() == null) continue;
-                OwnedField owned = findField(klass, field.name(), classVisitSet());
+                OwnedField owned = findField(klass, field.name(), new LinkedHashSet<>());
                 Ast.ClassDecl fieldOwner = owned == null ? klass : owned.owner();
                 // Do not bind self. Constructor parameters are scalar-only,
                 // and the partly built instance is not an initializer value.
@@ -9979,19 +9466,26 @@ public final class OresEvalRootNode extends RootNode {
                         rightEnv.define(name, value, Ast.BindingKind.VAL));
                 ConditionResult right = evalCondition(binary.right(), rightEnv);
                 if (!right.matched()) return ConditionResult.noMatch();
-                return mergeConditionBindings(left, right);
+                LinkedHashMap<String, Object> merged = new LinkedHashMap<>(left.bindings());
+                for (Map.Entry<String, Object> entry : right.bindings().entrySet()) {
+                    Object previous = merged.putIfAbsent(entry.getKey(), entry.getValue());
+                    if (previous != null && previous != entry.getValue()) {
+                        throw new IllegalStateException("condition pattern binds '" + entry.getKey() + "' more than once");
+                    }
+                }
+                return new ConditionResult(true, Map.copyOf(merged));
             }
             if (condition instanceof Ast.TypeTestExpr test) {
                 Object value = eval(test.value(), env);
                 if (!oresTypeMatches(value, test.targetType())) return ConditionResult.noMatch();
                 if (test.binding() == null) return ConditionResult.match();
-                return new ConditionResult(true, java.util.Collections.singletonMap(test.binding(), value));
+                return new ConditionResult(true, Map.of(test.binding(), value));
             }
             if (condition instanceof Ast.PatternTestExpr test) {
                 Object value = eval(test.value(), env);
                 LinkedHashMap<String, Object> bindings = new LinkedHashMap<>();
                 return patternMatches(test.pattern(), value, bindings)
-                        ? new ConditionResult(true, immutableBindings(bindings))
+                        ? new ConditionResult(true, Map.copyOf(bindings))
                         : ConditionResult.noMatch();
             }
             return truth(eval(condition, env)) ? ConditionResult.match() : ConditionResult.noMatch();
@@ -10000,10 +9494,9 @@ public final class OresEvalRootNode extends RootNode {
         private boolean patternMatches(Ast.Pattern pattern, Object value, Map<String, Object> bindings) {
             if (pattern instanceof Ast.WildcardPattern) return true;
             if (pattern instanceof Ast.BindingPattern binding) {
-                if (bindings.containsKey(binding.name())) {
+                if (bindings.putIfAbsent(binding.name(), value) != null) {
                     throw new IllegalStateException("pattern binds '" + binding.name() + "' more than once");
                 }
-                bindings.put(binding.name(), value);
                 return true;
             }
             if (pattern instanceof Ast.LiteralPattern literal) {
@@ -10011,22 +9504,17 @@ public final class OresEvalRootNode extends RootNode {
             }
             if (pattern instanceof Ast.TypePattern typed) {
                 if (!oresTypeMatches(value, typed.type())) return false;
-                if (typed.binding() != null) {
-                    if (bindings.containsKey(typed.binding())) {
-                        throw new IllegalStateException("pattern binds '" + typed.binding() + "' more than once");
-                    }
-                    bindings.put(typed.binding(), value);
+                if (typed.binding() != null && bindings.putIfAbsent(typed.binding(), value) != null) {
+                    throw new IllegalStateException("pattern binds '" + typed.binding() + "' more than once");
                 }
                 return true;
             }
             if (pattern instanceof Ast.StructuralPattern structural) {
                 if (!structuralPatternMatches(value, structural.target())) return false;
-                if (structural.binding() != null) {
-                    if (bindings.containsKey(structural.binding())) {
-                        throw new IllegalStateException(
-                                "pattern binds '" + structural.binding() + "' more than once");
-                    }
-                    bindings.put(structural.binding(), value);
+                if (structural.binding() != null
+                        && bindings.putIfAbsent(structural.binding(), value) != null) {
+                    throw new IllegalStateException(
+                            "pattern binds '" + structural.binding() + "' more than once");
                 }
                 return true;
             }
@@ -10107,7 +9595,7 @@ public final class OresEvalRootNode extends RootNode {
                 // erased into an ordinary structural object view.
                 if (object.klass.actorKind() != Ast.ActorKind.NONE) return Env.MISSING;
                 OwnedField owned = object.owner.findField(
-                        object.klass, name, classVisitSet());
+                        object.klass, name, new LinkedHashSet<>());
                 if (owned == null
                         || owned.field().visibility() != Ast.Visibility.PUBLIC) {
                     return Env.MISSING;
@@ -10252,14 +9740,10 @@ public final class OresEvalRootNode extends RootNode {
             if (name.equals("Generator") || name.equals("Iterator")) return value instanceof GeneratorRuntime.Generator<?>;
             if (name.equals("AsyncGenerator") || name.equals("AsyncIterator")) return value instanceof GeneratorRuntime.AsyncGenerator<?>;
             if (name.equals("IteratorResult")) return value instanceof GeneratorRuntime.Step<?>;
-            if (name.equals("HttpClientResponse"))
-                return value instanceof OutboundHttpRequest.Response;
-            if (name.equals("HttpClientBody"))
-                return value instanceof OutboundHttpRequest.Body;
 
             if (value instanceof OresObject object) {
                 Ast.ClassDecl targetClass = findClass(name);
-                if (targetClass != null) return object.owner.classIsA(object.klass, targetClass, classVisitSet());
+                if (targetClass != null) return object.owner.classIsA(object.klass, targetClass, new LinkedHashSet<>());
                 Ast.InterfaceDecl targetInterface = findInterface(name);
                 if (targetInterface != null) {
                     return object.owner.classImplements(object.klass, targetInterface, new LinkedHashSet<>(), new LinkedHashSet<>());
@@ -10285,8 +9769,6 @@ public final class OresEvalRootNode extends RootNode {
             if (value instanceof GeneratorRuntime.Generator<?>) return "Iterator";
             if (value instanceof GeneratorRuntime.AsyncGenerator<?>) return "AsyncIterator";
             if (value instanceof GeneratorRuntime.Step<?>) return "IteratorResult";
-            if (value instanceof OutboundHttpRequest.Response) return "HttpClientResponse";
-            if (value instanceof OutboundHttpRequest.Body) return "HttpClientBody";
             if (value instanceof List<?>) return "List";
             if (value instanceof String) return "string";
             if (value instanceof Boolean) return "bool";
@@ -10610,7 +10092,7 @@ public final class OresEvalRootNode extends RootNode {
         }
 
         private Object shapeReturnedValue(Ast.TypeRef declared, Object value, String callable, Set<Ast.TypeAliasDecl> resolving) {
-            if (declared == null || declared.name().equals("$infer$")) return value;
+            if (declared == null) return value;
 
             Ast.TypeAliasDecl alias = findTypeAlias(declared.name());
             if (alias != null) {
@@ -10642,15 +10124,6 @@ public final class OresEvalRootNode extends RootNode {
                 throw new IllegalArgumentException(callable + " return value does not match any union alternative: " + failures);
             }
 
-            // A string-literal type is a contract on the returned value, not
-            // merely a compile-time hint. This protects host/import boundaries.
-            if (declared.isStringLiteral()) {
-                if (!(value instanceof String literal) || !literal.equals(declared.stringLiteralValue())) {
-                    throw returnTypeMismatch(callable, declared, value);
-                }
-                return value;
-            }
-
             if (declared.isTupleType()) {
                 List<?> items = asSequence(value);
                 if (items.size() != declared.arguments().size()) {
@@ -10680,18 +10153,6 @@ public final class OresEvalRootNode extends RootNode {
                     shaped.add(shapeReturnedValue(declared.arguments().getFirst(), items.get(i), callable + "[" + i + "]", resolving));
                 }
                 return shaped;
-            }
-
-            // Preserve the exact number of Option layers: no implicit
-            // flattening, no untyped payload, and no raw value masquerading
-            // as a Some/None result at an unchecked execution boundary.
-            if (declared.name().equals("Option")) {
-                if (!(value instanceof OptionValue option)) {
-                    throw returnTypeMismatch(callable, declared, value);
-                }
-                if (!option.present() || declared.arguments().isEmpty()) return option;
-                return new OptionValue(true, shapeReturnedValue(
-                        declared.arguments().getFirst(), option.value(), callable + ".Some", resolving));
             }
 
             if (declared.name().equals("bool") || declared.name().equals("Bool")) {
@@ -10802,7 +10263,7 @@ public final class OresEvalRootNode extends RootNode {
         private Object destructureMember(Object value, String name, Env env) {
             if (value instanceof OresObject object) {
                 OwnedField ownedField = object.owner.findField(
-                        object.klass, name, classVisitSet());
+                        object.klass, name, new LinkedHashSet<>());
                 if (ownedField != null) {
                     object.owner.requireClassMemberVisible(
                             ownedField.field().visibility(),
@@ -11154,7 +10615,6 @@ public final class OresEvalRootNode extends RootNode {
         }
 
         private boolean hasLiveMutexGuards() {
-            if (!OresMutex.mayHaveLiveGuards()) return false;
             Set<Object> seen = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
             for (Slot slot : slots.values()) {
                 if (containsLiveMutexGuard(slot.value, seen)) return true;
@@ -11210,7 +10670,6 @@ public final class OresEvalRootNode extends RootNode {
         }
 
         private void releaseMutexGuards(boolean failed) {
-            if (!OresMutex.mayHaveLiveGuards()) return;
             Set<Object> seen = java.util.Collections.newSetFromMap(
                     new java.util.IdentityHashMap<>());
             ArrayList<Throwable> releaseErrors = new ArrayList<>();
@@ -11628,49 +11087,6 @@ public final class OresEvalRootNode extends RootNode {
         }
     }
 
-    /** Plan construction copies values before publishing reusable descriptors. */
-    private record SelectPlanFactory(Evaluator owner, boolean dynamic) {
-        private Object create(List<Object> args) {
-            String where = dynamic ? "DynamicSelectPlan.new" : "SelectPlan.new";
-            requireOne(args, where);
-            Object input = args.getFirst();
-            if (input instanceof OresKeyedMap<?, ?> map)
-                input = map.shallowSnapshot();
-            if (input instanceof List<?> list) {
-                ArrayList<ChannelRuntime.SelectCase> cases = new ArrayList<>();
-                for (Object item : list) {
-                    if (cases.size() == ChannelRuntime.MAX_SELECT_CASES) {
-                        throw new ChannelRuntime.SelectAdmissionException(
-                                "select plan case count exceeds maximum "
-                                        + ChannelRuntime.MAX_SELECT_CASES);
-                    }
-                    cases.add(owner.requireSelectCase(item));
-                }
-                return dynamic
-                        ? ChannelRuntime.DynamicSelectPlan.fromList(cases)
-                        : ChannelRuntime.SelectPlan.from(cases);
-            }
-            if (input instanceof Map<?, ?> map) {
-                LinkedHashMap<Object, ChannelRuntime.SelectCase> cases =
-                        new LinkedHashMap<>();
-                for (Map.Entry<?, ?> entry : map.entrySet()) {
-                    Object key = Objects.requireNonNull(entry.getKey(), "select plan key");
-                    if (cases.size() == ChannelRuntime.MAX_SELECT_CASES) {
-                        throw new ChannelRuntime.SelectAdmissionException(
-                                "select plan case count exceeds maximum "
-                                        + ChannelRuntime.MAX_SELECT_CASES);
-                    }
-                    cases.put(key, owner.requireSelectCase(entry.getValue()));
-                }
-                return dynamic
-                        ? new ChannelRuntime.DynamicSelectPlan<>(cases)
-                        : ChannelRuntime.SelectPlan.fromMap(cases);
-            }
-            throw new IllegalArgumentException(
-                    where + " requires a list or map of SelectCase values");
-        }
-    }
-
     private record SelectResultValue(
             int index,
             String operation,
@@ -11816,9 +11232,6 @@ public final class OresEvalRootNode extends RootNode {
         }
         private Object exists(List<Object> args) {
             return NativeIo.exists(context, requireStringArg(args, "fs.exists"));
-        }
-        private Object fileSize(List<Object> args) {
-            return NativeIo.fileSize(context, requireStringArg(args, "fs.file_size"));
         }
         private Object listDir(List<Object> args) {
             return NativeIo.listDir(context, requireStringArg(args, "fs.list_dir"));
@@ -11978,15 +11391,6 @@ public final class OresEvalRootNode extends RootNode {
         if(value instanceof List<?> list)return new ArrayList<>(list);
         if(value instanceof Object[] array)return new ArrayList<>(java.util.Arrays.asList(array));
         throw new IllegalArgumentException(name+" requires an array/list/tuple value");
-    }
-    /** Task-handle members apply only to Futures made by a task { } block. */
-    private static TaskHandle<?> requireOwnedTask(OresFuture<?> future, String member) {
-        TaskHandle<?> handle = SourceTaskHandles.lookup(future);
-        if (handle == null) {
-            throw new IllegalArgumentException("Future." + member
-                    + " is only available on a task { } handle; a borrowed Future cannot be cancelled by an observer");
-        }
-        return handle;
     }
     private static void requireZero(List<Object> args,String name){if(!args.isEmpty())throw new IllegalArgumentException(name+" expects no arguments");}
     private static void requireOne(List<Object> args,String name){if(args.size()!=1)throw new IllegalArgumentException(name+" expects one argument");}

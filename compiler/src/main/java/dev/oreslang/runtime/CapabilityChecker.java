@@ -33,9 +33,6 @@ public final class CapabilityChecker {
     private final Set<Object> typeExpansionStack =
             java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
     private final PermissionCheckMode permissionCheckMode;
-    // Track lexical actor entry while recursively checking reachable helpers.
-    // An actor may perform actor-local cleanup, never a JVM-wide GC request.
-    private int actorExecutionDepth;
 
     private CapabilityChecker(Ast.Program program, PermissionCheckMode permissionCheckMode) {
         this.permissionCheckMode = permissionCheckMode;
@@ -111,8 +108,7 @@ public final class CapabilityChecker {
                 require(effective, IsolatePolicy.Capability.SHARED_MEMORY, "shared actor fnc " + fn.name());
             }
             checkCallableTypes(fn.parameters(), fn.returnType(), effective);
-            checkActorStatements(fn.body(), effective,
-                    fn.actorKind() != Ast.ActorKind.NONE);
+            checkStatements(fn.body(), effective);
         } finally {
             callableStack.remove(fn);
         }
@@ -180,8 +176,7 @@ public final class CapabilityChecker {
                         require(actorPolicy, IsolatePolicy.Capability.SHARED_MEMORY, "shared actor fnc " + fn.name());
                     }
                     checkCallableTypes(fn.parameters(), fn.returnType(), actorPolicy);
-                    checkActorStatements(fn.body(), actorPolicy,
-                            fn.actorKind() != Ast.ActorKind.NONE);
+                    checkStatements(fn.body(), actorPolicy);
                 } else if (declaration instanceof Ast.ClassDecl klass) {
                     IsolatePolicy actorPolicy = actorPolicy(klass.actorKind(), policy);
                     if (klass.actorKind() == Ast.ActorKind.SHARED) {
@@ -191,16 +186,12 @@ public final class CapabilityChecker {
                     for (Ast.TypeRef iface : klass.interfaces()) checkType(iface, actorPolicy);
                     for (Ast.FieldDecl field : klass.fields()) {
                         checkType(field.type(), actorPolicy);
-                        if (field.initializer() != null) {
-                            checkActorInitializer(field.initializer(), actorPolicy,
-                                    klass.actorKind() != Ast.ActorKind.NONE);
-                        }
+                        if (field.initializer() != null) checkExpr(field.initializer(), actorPolicy);
                     }
                     for (Ast.MethodDecl method : klass.methods()) {
                         checkType(method.explicitReceiverType(), actorPolicy);
                         checkCallableTypes(method.parameters(), method.returnType(), actorPolicy);
-                        checkActorStatements(method.body(), actorPolicy,
-                                klass.actorKind() != Ast.ActorKind.NONE);
+                        checkStatements(method.body(), actorPolicy);
                     }
                 } else if (declaration instanceof Ast.InterfaceDecl iface) {
                     for (Ast.TypeRef parent : iface.parents()) checkType(parent, policy);
@@ -305,26 +296,6 @@ public final class CapabilityChecker {
             } finally {
                 typeExpansionStack.remove(klass);
             }
-        }
-    }
-
-    private void checkActorStatements(
-            List<Ast.Stmt> statements, IsolatePolicy policy, boolean actor) {
-        if (actor) actorExecutionDepth++;
-        try {
-            checkStatements(statements, policy);
-        } finally {
-            if (actor) actorExecutionDepth--;
-        }
-    }
-
-    private void checkActorInitializer(
-            Ast.Expr expression, IsolatePolicy policy, boolean actor) {
-        if (actor) actorExecutionDepth++;
-        try {
-            checkExpr(expression, policy);
-        } finally {
-            if (actor) actorExecutionDepth--;
         }
     }
 
@@ -433,15 +404,6 @@ public final class CapabilityChecker {
                 }
                 return;
             }
-            if (runtime.operation().equals("workflow_request")) {
-                require(policy, IsolatePolicy.Capability.WORKFLOW_STORAGE,
-                        "rt workflow_request");
-                if (runtime.arguments().size() != 1) {
-                    throw new SecurityException("rt workflow_request requires one scalar payload");
-                }
-                for (Ast.Expr argument : runtime.arguments()) checkExpr(argument, policy);
-                return;
-            }
             if (!Set.of("copy", "take", "borrow", "share", "cooperate", "fail").contains(runtime.operation())) {
                 throw new SecurityException(
                         "runtime intrinsic 'rt " + runtime.operation() + "' is not admitted on this compiler head");
@@ -485,14 +447,7 @@ public final class CapabilityChecker {
                 if (path.equals("std.process.exit") || path.equals("process.exit")) require(policy, IsolatePolicy.Capability.PROCESS_EXIT, path);
                 if (path.startsWith("process.descriptor") || path.equals("process.context_id")) require(policy, IsolatePolicy.Capability.PROCESS_INFO, path);
                 if (path.startsWith("process.share_readonly")) require(policy, IsolatePolicy.Capability.ACTOR_SHARE_READONLY, path);
-                if (path.equals("process.gc") || path.startsWith("process.gc.")) {
-                    if (actorExecutionDepth > 0) {
-                        throw new SecurityException(
-                                "actor code cannot request process.gc(): "
-                                + "the JVM heap is shared; use actor.gc() for actor-local cleanup");
-                    }
-                    require(policy, IsolatePolicy.Capability.GC_CONTROL, path);
-                }
+                if (path.equals("process.gc") || path.startsWith("process.gc.")) require(policy, IsolatePolicy.Capability.GC_CONTROL, path);
                 if (path.equals("SharedMutex") || path.startsWith("SharedMutex.")) require(policy, IsolatePolicy.Capability.SHARED_MEMORY, path);
                 if (path.startsWith("network.") || path.startsWith("net.") || path.startsWith("http.")) {
                     require(policy, IsolatePolicy.Capability.NETWORK, path);
@@ -541,12 +496,6 @@ public final class CapabilityChecker {
         }
         else if (expr instanceof Ast.AwaitExpr e) checkExpr(e.expression(), policy);
         else if (expr instanceof Ast.TaskExpr e) {
-            // The type checker and evaluator still reject gpu task outright;
-            // isolate policy must also deny device work independently, so
-            // enabling a GPU provider can never bypass the GPU capability.
-            if (e.domain() == Ast.ExecutionDomain.GPU) {
-                require(policy, IsolatePolicy.Capability.GPU, "gpu task");
-            }
             checkStatements(e.body(), policy);
         }
         else if (expr instanceof Ast.ChannelOpExpr e) {

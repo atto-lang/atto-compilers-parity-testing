@@ -96,12 +96,7 @@ public final class OresSmartPointers {
         }
     }
 
-    /**
-     * Atomic shared ownership. Individual Arc handles are linear resources.
-     * Handle methods are serialized so a concurrent close cannot invalidate
-     * an in-flight retain, downgrade or payload access on the same handle.
-     * Source lowering still owns long-lived loans and drop insertion.
-     */
+    /** Atomic shared ownership. Individual Arc handles are linear resources. */
     public static final class Arc<T> implements AutoCloseable {
         private final ArcControl<T> control;
         private final AtomicBoolean closed = new AtomicBoolean();
@@ -114,7 +109,7 @@ public final class OresSmartPointers {
             }
         }
 
-        public synchronized T value() {
+        public T value() {
             requireLiveHandle();
             T value = control.value.get();
             if (value == null || control.strong.get() <= 0) {
@@ -124,30 +119,25 @@ public final class OresSmartPointers {
         }
 
         /** Explicit Arc clone. */
-        public synchronized Arc<T> retain() {
+        public Arc<T> retain() {
             requireLiveHandle();
-            // Allocate the host handle before reserving ownership, so an OOME
-            // cannot strand a strong count without a corresponding Arc handle.
-            Arc<T> retained = new Arc<>(control, true);
             incrementAtomic(control.strong, "Arc<T> strong count");
-            return retained;
+            return new Arc<>(control, true);
         }
 
-        public synchronized Weak<T> downgrade() {
+        public Weak<T> downgrade() {
             requireLiveHandle();
-            // A failed allocation must never strand a weak count.
-            Weak<T> weak = new Weak<>(control);
             incrementAtomic(control.weak, "Arc<T> weak count");
-            return weak;
+            return new Weak<>(control);
         }
 
-        public synchronized long strongCount() {
+        public long strongCount() {
             requireLiveHandle();
             return control.strong.get();
         }
 
         /** Number of explicit weak handles; excludes the implicit weak ref. */
-        public synchronized long weakCount() {
+        public long weakCount() {
             requireLiveHandle();
             long strong = control.strong.get();
             long weak = control.weak.get();
@@ -163,7 +153,7 @@ public final class OresSmartPointers {
         }
 
         @Override
-        public synchronized void close() {
+        public void close() {
             if (!closed.compareAndSet(false, true)) return;
             long remaining = decrementAtomic(control.strong, "Arc<T> strong count");
             if (remaining == 0) {
@@ -179,10 +169,7 @@ public final class OresSmartPointers {
         }
     }
 
-    /**
-     * Non-owning atomic Arc edge. Operations on one weak handle are
-     * serialized with close; control-block strong upgrades remain CAS-based.
-     */
+    /** Non-owning atomic Arc edge. */
     public static final class Weak<T> implements AutoCloseable {
         private final ArcControl<T> control;
         private final AtomicBoolean closed = new AtomicBoolean();
@@ -191,36 +178,26 @@ public final class OresSmartPointers {
             this.control = Objects.requireNonNull(control, "control");
         }
 
-        public synchronized Optional<Arc<T>> upgrade() {
+        public Optional<Arc<T>> upgrade() {
             requireLiveHandle();
-            long strong = control.strong.get();
-            if (strong == 0) return Optional.empty();
-            if (strong >= MAX_REFERENCE_COUNT) {
-                throw new IllegalStateException("Arc<T> strong count overflow");
-            }
-            // Construct both Arc and Optional before incrementing strong:
-            // failed host allocation cannot leak a strong count. Reuse this
-            // unpublished candidate across retries; CAS still decides whether
-            // an upgrade owns a reference, and 0 can never be resurrected.
-            Optional<Arc<T>> upgraded = Optional.of(new Arc<>(control, true));
             while (true) {
+                long strong = control.strong.get();
                 if (strong == 0) return Optional.empty();
                 if (strong >= MAX_REFERENCE_COUNT) {
                     throw new IllegalStateException("Arc<T> strong count overflow");
                 }
                 if (control.strong.compareAndSet(strong, strong + 1)) {
-                    return upgraded;
+                    return Optional.of(new Arc<>(control, true));
                 }
-                strong = control.strong.get();
             }
         }
 
-        public synchronized long strongCount() {
+        public long strongCount() {
             requireLiveHandle();
             return control.strong.get();
         }
 
-        public synchronized long weakCount() {
+        public long weakCount() {
             requireLiveHandle();
             long strong = control.strong.get();
             long weak = control.weak.get();
@@ -232,7 +209,7 @@ public final class OresSmartPointers {
         }
 
         @Override
-        public synchronized void close() {
+        public void close() {
             if (!closed.compareAndSet(false, true)) return;
             decrementAtomic(control.weak, "Arc<T> weak count");
         }
@@ -293,18 +270,14 @@ public final class OresSmartPointers {
 
         public Rc<T> retain() {
             requireLiveHandle();
-            // Like Arc, construct before changing the count: a failed host
-            // allocation must not strand an unowned strong reference.
-            Rc<T> retained = new Rc<>(control, true);
             incrementLocalStrong(control);
-            return retained;
+            return new Rc<>(control, true);
         }
 
         public RcWeak<T> downgrade() {
             requireLiveHandle();
-            RcWeak<T> weak = new RcWeak<>(control);
             incrementLocalWeak(control);
-            return weak;
+            return new RcWeak<>(control);
         }
 
         public long strongCount() {
@@ -360,10 +333,8 @@ public final class OresSmartPointers {
         public Optional<Rc<T>> upgrade() {
             requireLiveHandle();
             if (control.strong == 0) return Optional.empty();
-            // Both objects must exist before acquiring another strong ref.
-            Optional<Rc<T>> upgraded = Optional.of(new Rc<>(control, true));
             incrementLocalStrong(control);
-            return upgraded;
+            return Optional.of(new Rc<>(control, true));
         }
 
         public long strongCount() {
@@ -419,11 +390,8 @@ public final class OresSmartPointers {
             if (readers == Integer.MAX_VALUE) {
                 throw new IllegalStateException("RefCell<T> shared borrow count overflow");
             }
-            // Allocate the guard before admitting its shared loan; a failed
-            // allocation must not leave the cell permanently borrowed.
-            Ref<T> guard = new Ref<>(this, Thread.currentThread());
             readers++;
-            return guard;
+            return new Ref<>(this, Thread.currentThread());
         }
 
         public synchronized RefMut<T> borrowMut() {
@@ -431,11 +399,8 @@ public final class OresSmartPointers {
                 throw new IllegalStateException(
                         "RefCell<T> is already borrowed");
             }
-            // The exclusive flag may only be published after the guard
-            // exists; allocation failure must leave borrowMut retryable.
-            RefMut<T> guard = new RefMut<>(this, Thread.currentThread());
             writer = true;
-            return guard;
+            return new RefMut<>(this, Thread.currentThread());
         }
 
         private synchronized T readForGuard(Thread owner, boolean mutable) {

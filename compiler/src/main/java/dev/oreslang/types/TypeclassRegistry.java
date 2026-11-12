@@ -18,8 +18,6 @@ public final class TypeclassRegistry {
     public record TypeRef(String module, String name, List<TypeRef> arguments, boolean variable) {
         public TypeRef {
             Objects.requireNonNull(name, "name");
-            Objects.requireNonNull(module, "module");
-            if (!variable && module.isBlank()) throw new IllegalArgumentException("nominal types require a module");
             if (name.isBlank()) throw new IllegalArgumentException("type name cannot be empty");
             arguments = List.copyOf(arguments);
             if (variable && (!module.isEmpty() || !arguments.isEmpty())) {
@@ -60,16 +58,16 @@ public final class TypeclassRegistry {
     }
 
     public static final class Registry {
-        private final Map<Typeclass, Typeclass> definitions = new LinkedHashMap<>();
-        private final Map<Typeclass, List<Instance>> instances = new LinkedHashMap<>();
+        private final Map<String, Typeclass> definitions = new LinkedHashMap<>();
+        private final Map<String, List<Instance>> instances = new LinkedHashMap<>();
 
         public void define(Typeclass typeclass) {
-            if (definitions.putIfAbsent(typeclass, typeclass) != null)
+            if (definitions.putIfAbsent(typeclass.qualifiedName(), typeclass) != null)
                 throw new IllegalArgumentException("duplicate typeclass: " + typeclass.qualifiedName());
         }
 
         public void register(Instance instance) {
-            Typeclass tc = definitions.get(instance.typeclass());
+            Typeclass tc = definitions.get(instance.typeclass().qualifiedName());
             if (!instance.typeclass().equals(tc))
                 throw new IllegalArgumentException("undefined or mismatched typeclass: "
                         + instance.typeclass().qualifiedName());
@@ -81,7 +79,7 @@ public final class TypeclassRegistry {
                 throw new IllegalArgumentException("orphan instance: " + tc.qualifiedName()
                         + " in " + instance.definingModule());
             }
-            List<Instance> list = instances.computeIfAbsent(tc, ignored -> new ArrayList<>());
+            List<Instance> list = instances.computeIfAbsent(tc.qualifiedName(), ignored -> new ArrayList<>());
             for (Instance prior : list) {
                 if (overlaps(prior.arguments(), instance.arguments())) {
                     throw new IllegalArgumentException("overlapping typeclass instances: "
@@ -91,36 +89,16 @@ public final class TypeclassRegistry {
             list.add(instance);
         }
 
-        /**
-         * Compiler-owned static witness and variable substitution evidence.
-         * Bound variables are never inferred at runtime or from a mutable registry.
-         */
-        public record Resolution(Instance instance, Map<String, TypeRef> bindings) {
-            public Resolution {
-                Objects.requireNonNull(instance, "instance");
-                bindings = Map.copyOf(bindings);
-                if (bindings.values().stream().anyMatch(value -> !value.isGround())) {
-                    throw new IllegalArgumentException("witness resolution requires ground substitutions");
-                }
-            }
-        }
-
         /** Resolution never invents a dictionary; missing evidence is an error. */
         public Instance resolve(Typeclass typeclass, List<TypeRef> groundArguments) {
-            return resolveWithBindings(typeclass, groundArguments).instance();
-        }
-
-        /** Preserve the unique witness's generic substitutions for associated types. */
-        public Resolution resolveWithBindings(Typeclass typeclass, List<TypeRef> groundArguments) {
-            if (!typeclass.equals(definitions.get(typeclass)))
+            if (!typeclass.equals(definitions.get(typeclass.qualifiedName())))
                 throw new IllegalArgumentException("unknown typeclass: " + typeclass.qualifiedName());
             if (groundArguments.size() != typeclass.arity()
                     || groundArguments.stream().anyMatch(arg -> !arg.isGround())) {
                 throw new IllegalArgumentException("typeclass resolution needs concrete, correctly-arity-checked types");
             }
             Instance selected = null;
-            Map<String, TypeRef> selectedBindings = null;
-            for (Instance candidate : instances.getOrDefault(typeclass, List.of())) {
+            for (Instance candidate : instances.getOrDefault(typeclass.qualifiedName(), List.of())) {
                 Map<String, TypeRef> variables = new HashMap<>();
                 boolean match = true;
                 for (int i = 0; i < groundArguments.size(); i++) {
@@ -132,12 +110,11 @@ public final class TypeclassRegistry {
                 if (match) {
                     if (selected != null) throw new IllegalStateException("ambiguous typeclass dictionary");
                     selected = candidate;
-                    selectedBindings = Map.copyOf(variables);
                 }
             }
             if (selected == null) throw new IllegalArgumentException("missing typeclass instance: "
                     + typeclass.qualifiedName() + groundArguments);
-            return new Resolution(selected, selectedBindings);
+            return selected;
         }
     }
 
@@ -159,9 +136,7 @@ public final class TypeclassRegistry {
     private record Term(String atom, List<Term> arguments, boolean variable) { }
     private static Term term(TypeRef type, String side) {
         if (type.variable()) return new Term(side + type.name(), List.of(), true);
-        // Unification atoms must be injective: raw module::name conflates
-        // ("a::b", "c") with ("a", "b::c") and falsely rejects disjoint impls.
-        return new Term(type.module().length() + ":" + type.module() + type.name(),
+        return new Term(type.module() + "::" + type.name(),
                 type.arguments().stream().map(arg -> term(arg, side)).toList(), false);
     }
 
