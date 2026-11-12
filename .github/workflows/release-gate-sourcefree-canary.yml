@@ -1,0 +1,61 @@
+name: Source-free release-gate verifier canary
+on:
+  push:
+    branches:
+      - audit/sourcefree-release-gate-verifier-20261111
+    paths:
+      - .github/workflows/release-gate-sourcefree-canary.yml
+permissions: {}
+jobs:
+  synthetic-contract-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Confirm isolated runner without checkout
+        env:
+          EXACT_HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REPOSITORY}" = 'atto-lang/atto-compilers-parity-testing'
+          [[ "${EXACT_HEAD}" =~ ^[a-f0-9]{40}$ ]]
+          node --version
+          echo 'SOURCE_FREE_CANARY no_checkout=true no_private_source=true'
+      - name: Execute independently authored synthetic policy invariants
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          const sha1=(bytes)=>createHash('sha1').update(Buffer.from('blob '+bytes.length+'\0')).update(bytes).digest('hex');
+          const decode=(content,sha)=>{
+            const packed=content.replace(/[\r\n]/g,'');
+            const bytes=Buffer.from(packed,'base64');
+            assert.equal(bytes.toString('base64'),packed);
+            assert.equal(sha1(bytes),sha);
+            assert.ok(bytes.every(x=>x===10||(x>=32&&x<=126)));
+            const lines=bytes.toString('ascii').split('\n').filter(x=>x&&!x.startsWith('#'));
+            return lines;
+          };
+          const sample=(raw)=>{const b=Buffer.from(raw); return decode(b.toString('base64'),sha1(b))};
+          assert.deepEqual(sample('# inactive\n# proposed/runner 123\n'),[]);
+          assert.deepEqual(sample('# proposed\nproposed/runner 123\n'),['proposed/runner 123']);
+          assert.deepEqual(sample(' # misleading comment\n'),[' # misleading comment']);
+          assert.throws(()=>sample('# bad\r\n'));
+          const kind=(job)=>!Array.isArray(job.steps)?'UNKNOWN':
+            job.steps.length===0?'ZERO_STEP':'STEP_LISTED_NOT_COMPILER_PROOF';
+          assert.equal(kind({conclusion:'failure',steps:[]}), 'ZERO_STEP');
+          assert.equal(kind({conclusion:'failure'}), 'UNKNOWN');
+          assert.equal(kind({conclusion:'success',steps:[{name:'synthetic'}]}),'STEP_LISTED_NOT_COMPILER_PROOF');
+          const readOnly=(method,uri)=>method==='GET' && /^\/repos\/[a-z-]+\/[a-z-]+\/branches\/main$/.test(uri);
+          assert.equal(readOnly('POST','/repos/fixture/actor/branches/main'),false);
+          assert.equal(readOnly('GET','/repos/fixture/actor/branches/main'),true);
+          assert.equal(readOnly('GET','/repos/fixture/actor/contents/private.ores'),false);
+          console.log('SYNTHETIC_POLICY_ASSERTIONS_PASSED=10');
+          NODE
+      - name: Emit no-source execution evidence
+        run: |
+          set -euo pipefail
+          echo 'SOURCE_FREE_VERIFIER_CANARY_PASS'
+          echo 'NO_SOURCE_OR_COMPILER_TRANSFER=true'
+          echo 'COMPILER_RUNTIME_TEST=NOT_EXECUTED'
+          echo "RUN_ID=${GITHUB_RUN_ID} ATTEMPT=${GITHUB_RUN_ATTEMPT} HEAD=${GITHUB_SHA}"
