@@ -29,7 +29,7 @@ jobs:
           test "$(git rev-parse 'HEAD:compiler/src/main/java')" = "$SOURCE_JAVA_TREE"
           test "$(git rev-parse 'HEAD:compiler/src/main/resources')" = "$SOURCE_RESOURCES_TREE"
           test "$(git rev-parse 'HEAD:compiler/stdlib')" = "$SOURCE_STDLIB_TREE"
-          test "$(git hash-object compiler/pom.xml)" = 4e970d68ddf84732c5ed5088254bddbb52713706 || {
+          test "$(git hash-object compiler/pom.xml)" = 2e566927d4b8e07884ce53b0c463d440201fe54c || {
             echo 'POM_MIRROR_MISMATCH: refresh source-head pom hash' >&2; exit 1;
           }
           count="$(git ls-tree -r --name-only HEAD:compiler/src/main/java | grep -c '\.java$')"
