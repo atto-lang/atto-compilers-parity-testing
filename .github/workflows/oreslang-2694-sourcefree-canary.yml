@@ -1,0 +1,89 @@
+name: Source-free Oreslang security negative canary
+on:
+  push:
+    branches:
+      - audit/oreslang-2694-sourcefree-negative-20261111
+    paths:
+      - '.github/workflows/oreslang-2694-sourcefree-canary.yml'
+permissions: {}
+jobs:
+  synthetic-no-checkout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Establish runner admission without checkout
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = 'atto-lang/atto-compilers-parity-testing'
+          echo "SOURCE_FREE_RUN HEAD=$GITHUB_SHA RUN_ID=$GITHUB_RUN_ID ATTEMPT=$GITHUB_RUN_ATTEMPT"
+      - name: Execute synthetic security-negative assertions
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          let count=0;
+          const check=(f)=>{f();count++;};
+          const hex='a'.repeat(40);
+          const sha=/^[a-f0-9]{40}$/;
+          const blob=(b)=>createHash('sha1').update('blob '+b.length+'\0').update(b).digest('hex');
+          const policy=(text,claimed)=>{
+            const bytes=Buffer.from(text,'utf8');
+            if(!bytes.length||bytes.length>16384||!bytes.every(n=>n===10||(n>=32&&n<=126)))throw Error('bad policy bytes');
+            if(blob(bytes)!==(claimed??blob(bytes)))throw Error('mismatched blob');
+            const entries=bytes.toString('ascii').split('\n').filter(line=>line&&!line.startsWith('#'));
+            if(entries.some(line=>!/^([A-Za-z0-9][A-Za-z0-9_.-]*\/[A-Za-z0-9][A-Za-z0-9_.-]*) ([1-9][0-9]*)$/.test(line)))throw Error('invalid row');
+            const normalized=entries.map(row=>row.toLowerCase().split(' ')[0]);
+            if(new Set(normalized).size!==normalized.length)throw Error('duplicate case alias');
+            return entries;
+          };
+          check(()=>assert.deepEqual(policy('# proposed\n# mock/safe 123\n'),[]));
+          check(()=>assert.equal(policy('# review\nmock/safe 123\n').length,1));
+          for(const x of [' # padded\n','# crlf\r\n','# bad\0\n','# café\n','\ufeff# bom\n','mock/safe 0\n','mock/safe 01\n','mock/a/b 123\n','mock/safe 123 # inline\n','mock/safe 123\nMOCK/SAFE 124\n'])
+            check(()=>assert.throws(()=>policy(x)));
+          check(()=>assert.throws(()=>policy('# good\n','f'.repeat(40))));
+          const canonical=(name,id)=>{
+            if(!/^[a-z0-9][a-z0-9_.-]*\/[a-z0-9][a-z0-9_.-]*$/.test(name.toLowerCase())||!Number.isSafeInteger(id)||id<1)throw Error('bad identity');
+            return name.toLowerCase()+':'+id;
+          };
+          check(()=>assert.equal(canonical('MOCK/SAFE',123),canonical('mock/safe',123)));
+          for(const x of ['evil/../safe','mock/a/b','mock/%2e','mock/space here','mock\\safe'])
+            check(()=>assert.throws(()=>canonical(x,123)));
+          const base={slug:'mock/safe',expectedSlug:'mock/safe',id:123,expectedId:123,private:true,visibility:'private',fork:false,archived:false,disabled:false,push:true,retention:true,quarantine:[]};
+          const candidate=(d)=>d.quarantine.some(x=>x===d.id||String(x).toLowerCase()===d.slug.toLowerCase())||canonical(d.slug,d.id)!==canonical(d.expectedSlug,d.expectedId)||d.private!==true||d.visibility!=='private'||d.fork!==false||d.archived!==false||d.disabled!==false||d.push!==true||d.retention!==true?'DENY':'CANDIDATE_ONLY';
+          check(()=>assert.equal(candidate(base),'CANDIDATE_ONLY'));
+          for(const [k,v] of [['id',124],['expectedSlug','mock/other'],['private',false],['visibility','public'],['fork',true],['archived',true],['disabled',true],['push',false],['retention',null],['retention',false],['quarantine',[123]],['quarantine',['MOCK/SAFE']]])
+            check(()=>assert.equal(candidate({...base,[k]:v}),'DENY'));
+          const gov={mainProtected:true,rulesetReadable:true,approvalHead:hex,sourceHead:hex,independent:true,incidentsClosed:true,policyMerged:true,provenance:true,retention:true};
+          const authorized=(p)=>p.mainProtected===true&&p.rulesetReadable===true&&p.approvalHead===p.sourceHead&&sha.test(p.sourceHead)&&p.independent===true&&p.incidentsClosed===true&&p.policyMerged===true&&p.provenance===true&&p.retention===true?'REVIEW_READY':'DENY';
+          check(()=>assert.equal(authorized(gov),'REVIEW_READY'));
+          for(const [k,v] of [['mainProtected',false],['rulesetReadable',null],['approvalHead','b'.repeat(40)],['independent',false],['incidentsClosed',false],['policyMerged',false],['provenance',false],['retention',null]])
+            check(()=>assert.equal(authorized({...gov,[k]:v}),'DENY'));
+          const classify=(job)=>!Array.isArray(job.steps)?'UNKNOWN':job.steps.length===0?(job.conclusion==='failure'?'ZERO_STEP_FAILURE':'ZERO_STEPS_UNVERIFIED'):job.steps.some(x=>x.status==='completed'&&x.conclusion==='success')?'EXECUTED_UNVERIFIED':'LISTED_UNVERIFIED';
+          check(()=>assert.equal(classify({steps:[],conclusion:'failure'}),'ZERO_STEP_FAILURE'));
+          check(()=>assert.equal(classify({conclusion:'failure'}),'UNKNOWN'));
+          check(()=>assert.equal(classify({steps:null,conclusion:'failure'}),'UNKNOWN'));
+          check(()=>assert.equal(classify({steps:[],conclusion:'success'}),'ZERO_STEPS_UNVERIFIED'));
+          check(()=>assert.equal(classify({steps:[{status:'queued'}]}),'LISTED_UNVERIFIED'));
+          check(()=>assert.equal(classify({steps:[{status:'completed',conclusion:'success'}],conclusion:'success'}),'EXECUTED_UNVERIFIED'));
+          const provenance=(x)=>x.head===x.checkout&&x.expected===x.head&&x.tree&&sha.test(x.tree)&&x.runAttempt===x.reportAttempt&&x.runner>0&&x.guestLogVerified===true&&x.testExit===0?'MODEL_ONLY':'DENY';
+          const good={head:hex,checkout:hex,expected:hex,tree:'b'.repeat(40),runAttempt:1,reportAttempt:1,runner:222,guestLogVerified:true,testExit:0};
+          check(()=>assert.equal(provenance(good),'MODEL_ONLY'));
+          for(const [k,v] of [['checkout','c'.repeat(40)],['tree',null],['runner',0],['runAttempt',2],['guestLogVerified',false],['testExit',3]])
+            check(()=>assert.equal(provenance({...good,[k]:v}),'DENY'));
+          const handoff=(late,rollback)=>late?{success:false,orphan:rollback===false}:{success:true,orphan:false};
+          check(()=>assert.equal(handoff(true,true).success,false));
+          check(()=>assert.equal(handoff(true,false).orphan,true));
+          check(()=>assert.notEqual(candidate(base),'AUTHORIZED_TRANSFER'));
+          check(()=>assert.notEqual(authorized(gov),'AUTHORIZED_TRANSFER'));
+          console.log('SYNTHETIC_ADVERSARIAL_ASSERTIONS='+count);
+          console.log('NO_CHECKOUT=true NO_PRIVATE_SOURCE=true NO_EXPORT=true');
+          console.log('COMPILER_RUNTIME_TEST=NOT_EXECUTED');
+          console.log('SOURCE_TRANSFER_AUTHORIZATION=DENY');
+          NODE
+      - name: Emit explicit non-certification
+        run: |
+          set -euo pipefail
+          echo 'NO_PRIVATE_ORESLANG_SOURCE=true'
+          echo 'EXACT_HEAD_COMPILER=NOT_EXECUTED'
+          echo 'TRANSFER_POLICY=DENY'
