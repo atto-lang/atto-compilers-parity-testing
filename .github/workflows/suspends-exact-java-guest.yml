@@ -1,0 +1,65 @@
+name: Atto suspends/await real Java guest (exact compiler source blobs)
+on:
+  push:
+    branches:
+      - ci/suspends-exact-java-guest-20261111
+permissions:
+  contents: read
+jobs:
+  java-guest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Checkout funded private mirror
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify all exact source blobs (no Python)
+        shell: bash
+        env:
+          EXPECTED_SOURCE_HEAD: 40121bf30f419ce2a7480d3cd644a75cbc6e4311
+          EXPECTED_SOURCE_TREE: 819bf10d9186193b6f84c90a3e3ae18790d32a6c
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          count=0
+          while IFS=' ' read -r expected path; do
+            test -n "$expected"
+            test -f "compiler/$path"
+            test ! -L "compiler/$path"
+            actual="$(git hash-object "compiler/$path")"
+            if test "$actual" != "$expected"; then
+              echo "GIT_BLOB_MISMATCH $path actual=$actual expected=$expected" >&2
+              exit 1
+            fi
+            count=$((count+1))
+          done < ci/suspends-exact-blobs.manifest
+          test "$count" -eq 268
+          echo "ATTO_SUSPENDS_SOURCE_EXACT_BLOBS_PASS|$EXPECTED_SOURCE_HEAD|$count"
+          echo "SOURCE_HEAD=$EXPECTED_SOURCE_HEAD SOURCE_TREE=$EXPECTED_SOURCE_TREE TEST_TREE=$(git rev-parse 'HEAD^{tree}')"
+      - name: Install GraalVM Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: graalvm
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: compiler/pom.xml
+      - name: Run actual Atto guest and runtime JUnit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          java -version
+          mvn -B -ntp -f compiler/pom.xml \
+            -Dtest=SuspendsAwaitExecutionContextGuestTest,SuspendsInlineContinuationGuestTest,SuspendsAwaitExecutionContextRuntimeTest \
+            -DfailIfNoTests=true test 2>&1 | tee ci/suspends-exact-guest.log
+          echo 'ATTO_SUSPENDS_JAVA_GUEST_TEST_STEP_FINISHED'
+      - name: Upload real JUnit reports and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atto-suspends-exact-java-guest
+          path: |
+            compiler/target/surefire-reports/
+            ci/suspends-exact-guest.log
+          if-no-files-found: ignore
