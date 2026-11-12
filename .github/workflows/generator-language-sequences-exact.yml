@@ -1,0 +1,72 @@
+name: Exact-source generator guest and async-sequence verification
+
+on:
+  push:
+    branches:
+      - ci/generator-language-sequences-641b846a-20261112
+
+permissions:
+  contents: read
+
+jobs:
+  generator-guest-and-streams:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: language
+            selectors: 'GeneratorCanonicalAdmissionTest,GeneratorLanguageTest'
+          - suite: streams
+            selectors: 'GeneratorAdmissionStickyAsyncTest,GeneratorTerminalFailureStickyTest,AsyncSequencesTest,AsyncSequenceCollectorsTest,AsyncRuntimeTest'
+    steps:
+      - name: Checkout local funded mirror
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Enforce exact original Java compiler/stdlib/test Git objects
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD:compiler/src/main)" = 570cc5399b7636ebb35f6de7a2df05b4d246dac9
+          test "$(git rev-parse HEAD:compiler/stdlib)" = 711c0751213039f6d047099aad9fa9e754eb8ce6
+          test "$(git hash-object compiler/pom.xml)" = 8cf5eb37b685834ba79860d2fb693efc319c51e3
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/GeneratorCanonicalAdmissionTest.java)" = c9ff9c8bce78928f03db7a8312ff20b8d11882d1
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/GeneratorLanguageTest.java)" = e52d422af8e1a02cc4679678e73d9be301c9dd49
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/GeneratorAdmissionStickyAsyncTest.java)" = 3a2f7156f0fc7486b8c43974bf72a136b139ab2b
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/GeneratorTerminalFailureStickyTest.java)" = 451fa0615ec8d6cef7c5330ec641bb39eabd55f1
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/AsyncSequencesTest.java)" = 9291e0051af713d69330d99062615933e1a2b846
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/AsyncSequenceCollectorsTest.java)" = ad71e0038dd4032ef9c07175778a49f772a87293
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/AsyncRuntimeTest.java)" = ab52152ce86ea52c25c30193f99b2f776d29555c
+          printf 'EXACT_SOURCE_HEAD=641b846a8a676f238a585324e8acb30ff8fde298 MIRROR_HEAD=%s JAVA_TREE=570cc5399b7636ebb35f6de7a2df05b4d246dac9\n' "$GITHUB_SHA"
+      - name: Set up GraalVM Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: graalvm
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: compiler/pom.xml
+      - name: Execute compiler guest/async-stream JUnit
+        shell: bash
+        env:
+          SUITE: ${{ matrix.suite }}
+          SELECTORS: ${{ matrix.selectors }}
+        run: |
+          set -euo pipefail
+          echo "START_GENERATOR_EXTENDED_SUITE=$SUITE"
+          timeout --signal=TERM --kill-after=20s 600s \
+            mvn -B -ntp -f compiler/pom.xml \
+              "-Dtest=$SELECTORS" -DfailIfNoTests=true -DtrimStackTrace=false test \
+            2>&1 | tee "generator-extended-$SUITE.log"
+          echo "PASS_GENERATOR_EXTENDED_SUITE=$SUITE"
+      - name: Preserve actual executed JUnit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generator-extended-${{ matrix.suite }}
+          path: |
+            compiler/target/surefire-reports/
+            generator-extended-*.log
+          if-no-files-found: ignore
