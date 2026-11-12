@@ -1,0 +1,22 @@
+// generator-v1 11: early close must suppress later yields and remain terminal
+pub gen* values(): Iterator<int> {
+  yield 20;
+  yield 99;
+  return;
+}
+
+pub fnc main(): int {
+  val Iterator<int> iter = values();
+  val IteratorResult<int> first = iter.next();
+  iter.close();
+  val IteratorResult<int> terminal = iter.next();
+  val IteratorResult<int> again = iter.next();
+  if terminal.done then
+    if again.done then
+      if terminal.value.is_none() then
+        return first.value.unwrap() + 22;
+      fi
+    fi
+  fi
+  return 1;
+}
