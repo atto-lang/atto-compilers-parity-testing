@@ -1,0 +1,62 @@
+name: Atto trace context standalone exact Java guest verification
+on:
+  push:
+    branches:
+      - ci/trace-context-exact-java-20261112
+permissions:
+  contents: read
+jobs:
+  trace-context-exact-java:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout exact private test mirror
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Verify standalone trace PR Git-object identity
+        shell: bash
+        env:
+          SOURCE_PR: '2990'
+          SOURCE_HEAD: '6d5a89e902081c3e99aa85e9edaf1ba66edbf558'
+          SOURCE_TREE: 'e98d743af2bd4844cedeb8bacf6ce319ed64ac65'
+          JAVA_TREE: '24537c30b91471497969d35deed82ca8de921194'
+          RESOURCES_TREE: '080bca4f997a736ea19f9961fc4ac95b5848150b'
+          STDLIB_TREE: '58624daeecbe848db51cdd40a9da7e309fe69bc5'
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse 'HEAD:compiler/src/main/java')" = "$JAVA_TREE"
+          test "$(git rev-parse 'HEAD:compiler/src/main/resources')" = "$RESOURCES_TREE"
+          test "$(git rev-parse 'HEAD:compiler/stdlib')" = "$STDLIB_TREE"
+          test "$(git hash-object compiler/pom.xml)" = 2e566927d4b8e07884ce53b0c463d440201fe54c
+          count="$(git ls-tree -r --name-only HEAD:compiler/src/main/java | grep -c '\.java$')"
+          test "$count" -eq 260
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/TraceContextSuspensionTest.java)" = f572e8ae680bdfb68831c5bb0a6a252d413a6268
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/UsingRequestBorrowScopeParserTest.java)" = 2cde253f25493516663864ce7ae47a2bd175eedb
+          echo "EXACT_TRACE_JAVA_TREE_PASS|SOURCE_PR=$SOURCE_PR|SOURCE_HEAD=$SOURCE_HEAD|SOURCE_TREE=$SOURCE_TREE|JAVA_FILES=$count|MIRROR_HEAD=$GITHUB_SHA"
+      - name: Set up GraalVM Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: graalvm
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: compiler/pom.xml
+      - name: Run standalone trace-context and cancellation JUnit guest tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          java -version
+          mvn -B -ntp -f compiler/pom.xml \
+            -Dtest=TraceContextSuspensionTest,SourceTaskCancelTest,SourceTaskContextTest,UsingRequestBorrowScopeParserTest \
+            -DfailIfNoTests=true test 2>&1 | tee trace-context-exact-java.log
+          echo 'TRACE_CONTEXT_STANDALONE_GUEST_EXECUTED'
+      - name: Upload test receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atto-trace-context-standalone
+          path: |
+            compiler/target/surefire-reports/
+            trace-context-exact-java.log
+          if-no-files-found: ignore
