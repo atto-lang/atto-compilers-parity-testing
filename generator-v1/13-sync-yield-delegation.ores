@@ -1,0 +1,19 @@
+// generator-v1 13: yield* preserves order and single consumer activation
+pub gen* inner(): Iterator<int> {
+  yield 20;
+  yield 22;
+  return;
+}
+
+pub gen* outer(): Iterator<int> {
+  yield* inner();
+  return;
+}
+
+pub fnc main(): int {
+  let int total = 0;
+  for const value of outer() {
+    total = total + value;
+  }
+  return total;
+}
