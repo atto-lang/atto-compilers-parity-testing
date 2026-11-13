@@ -1,0 +1,76 @@
+name: Atto gen-star current-main exact-source NativeAOT guest smoke
+
+on:
+  push:
+    branches:
+      - ci/generator-mainline-native-aot-ddee99ce-20261112
+
+permissions:
+  contents: read
+
+jobs:
+  generator-native-aot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout funded private exact-source mirror only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Fail closed if compiler, build inputs, or guest fixture drift
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          test "$(git rev-parse HEAD:compiler/src/main)" = 0c011ed986acab18dc7eb701271afbd2537bed10
+          test "$(git rev-parse HEAD:compiler/src/main/java)" = d44cde93c1931dee2ba88bccc98c9dbec77e07e6
+          test "$(git rev-parse HEAD:compiler/src/main/c)" = f611b88e349068e2fe1589a051a28e96b4178201
+          test "$(git rev-parse HEAD:compiler/src/main/resources)" = 080bca4f997a736ea19f9961fc4ac95b5848150b
+          test "$(git rev-parse HEAD:compiler/stdlib)" = 58624daeecbe848db51cdd40a9da7e309fe69bc5
+          test "$(git hash-object compiler/pom.xml)" = 2e566927d4b8e07884ce53b0c463d440201fe54c
+          test "$(git hash-object compiler/scripts/build-native-thread.sh)" = 13199140863e2a1995ad6cf613ee481e0f90d759
+          test "$(git hash-object compiler/examples/generator-v1.ores)" = 5cee82aefeb4fd09190b5242c9107ee0eab39b6e
+          test "$(git ls-tree -r --name-only HEAD:compiler/src/main/java | grep -c '\.java$')" -eq 260
+          echo "NATIVE_AOT_EXACT_SOURCE_ADMITTED=ddee99ce9bb71ab51cf486427279f42204de9636 MIRROR_SHA=$GITHUB_SHA"
+      - name: Install GraalVM JDK 25 and native-image
+        uses: actions/setup-java@v4
+        with:
+          distribution: graalvm
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: compiler/pom.xml
+      - name: Record exact native-image toolchain
+        run: |
+          java -version
+          native-image --version
+      - name: Build exact compiler with NativeAOT profile (no JVM-only substitution)
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 2100s \
+            mvn -B -ntp -f compiler/pom.xml -Pnative-aot -Dmaven.test.skip=true -DtrimStackTrace=false package \
+            2>&1 | tee generator-native-aot-build.log
+          test -x compiler/target/ores-aot
+          sha256sum compiler/target/ores-aot | tee generator-native-aot-binary.sha256
+          echo NATIVE_AOT_BINARY_BUILT=1
+      - name: Require native build-info and actual generator guest execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=10s 60s compiler/target/ores-aot --build-info | tee generator-native-aot-build-info.log
+          grep -F '"build_mode":"aot"' generator-native-aot-build-info.log
+          timeout --signal=TERM --kill-after=10s 90s compiler/target/ores-aot compiler/examples/generator-v1.ores \
+            2>&1 | tee generator-native-aot-guest.log
+          grep -F '42:42' generator-native-aot-guest.log
+          echo PASS_NATIVE_AOT_GUEST_GENERATORS=1
+      - name: Upload native build and guest receipts, including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generator-mainline-native-aot-receipts
+          path: |
+            generator-native-aot-*.log
+            generator-native-aot-binary.sha256
+          if-no-files-found: ignore
