@@ -1,0 +1,45 @@
+name: Current-main generator mirror fail-closed mutation controls
+
+on:
+  push:
+    branches:
+      - ci/generator-mainline-negative-ddee99ce-20261112
+
+permissions:
+  contents: read
+
+jobs:
+  source-and-test-mutation-denied:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout deliberately corrupted funded private mirror
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Prove source and test identities reject corrupted objects
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git hash-object compiler/src/main/java/dev/oreslang/runtime/GeneratorRuntime.java)" = d9919615a44359a4bef481871423bc6f62798d3e
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/GeneratorLanguageTest.java)" = 03d34a61b8f4d86571549340cb2efe2f459cfa62
+          test "$(git rev-parse HEAD:compiler/src/main)" = fe159e56dfb03ea34752192331040a7963f37e81
+          if test "$(git rev-parse HEAD:compiler/src/main)" = 0c011ed986acab18dc7eb701271afbd2537bed10; then
+            echo 'FAIL_OPEN: modified source tree passed identity' >&2
+            exit 1
+          fi
+          if test "$(git hash-object compiler/src/test/java/dev/oreslang/GeneratorLanguageTest.java)" = ed62edb5a020632d0b7fe188db67d703366e095d; then
+            echo 'FAIL_OPEN: modified JUnit source passed identity' >&2
+            exit 1
+          fi
+          # Check the precise positive predicates in isolated subshells.
+          if bash -c 'set -euo pipefail; test "$(git rev-parse HEAD:compiler/src/main)" = 0c011ed986acab18dc7eb701271afbd2537bed10; echo MAVEN_ADMITTED'; then
+            exit 1
+          fi
+          if bash -c 'set -euo pipefail; test "$(git hash-object compiler/src/test/java/dev/oreslang/GeneratorLanguageTest.java)" = ed62edb5a020632d0b7fe188db67d703366e095d; echo MAVEN_ADMITTED'; then
+            exit 1
+          fi
+          echo 'NEGATIVE_MAINLINE_SOURCE_REJECTED EXPECTED=0c011ed986acab18dc7eb701271afbd2537bed10 ACTUAL=fe159e56dfb03ea34752192331040a7963f37e81'
+          echo 'NEGATIVE_MAINLINE_TEST_REJECTED EXPECTED=ed62edb5a020632d0b7fe188db67d703366e095d ACTUAL=03d34a61b8f4d86571549340cb2efe2f459cfa62'
+          echo 'NO_MAVEN_EXECUTED_FOR_MUTATED_TREE'

@@ -510,3 +510,5 @@ public final class GeneratorRuntime {
         }
     }
 }
+
+// NEGATIVE_ADMISSION_MUTATION_ONLY_DO_NOT_EXECUTE

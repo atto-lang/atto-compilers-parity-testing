@@ -794,3 +794,5 @@ final class GeneratorLanguageTest {
         }
     }
 }
+
+// NEGATIVE_ADMISSION_MUTATION_ONLY_DO_NOT_EXECUTE
