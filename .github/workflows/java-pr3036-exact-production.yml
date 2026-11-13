@@ -1,0 +1,92 @@
+name: PR3036 exact production-source funded cancellation regression
+on:
+  push:
+    branches:
+      - ci/java-pr3036-exact-main-20261112
+permissions:
+  contents: read
+jobs:
+  pr3036-exact-guest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: queued-physical-exit
+            selectors: 'SchedulerQueuedCancellationQuiescenceTest'
+            expected: 1
+          - suite: source-race-one
+            selectors: 'SourceTaskCancelRaceTest'
+            expected: 1
+          - suite: source-race-two
+            selectors: 'SourceTaskCancelRaceTest'
+            expected: 1
+          - suite: scheduler-regressions
+            selectors: 'ActorPhysicalTurnGateTest,OresFutureTerminalNotificationRaceTest,CleanupAwareSchedulerCancellationTest,SourceCooperationQuantumTest,ActorFutureBlockingTest,OresFutureHostWaiterDetachmentTest'
+            expected: 47
+          - suite: non-parser-source
+            selectors: 'RuntimeCooperateLanguageTest,MemberSuspensionLanguageTest,SourceTaskCancelRaceTest,BorrowControlFlowHardeningTest,ValueMatchSuspensionTest,AsyncChannelBoundaryTest'
+            expected: 27
+    steps:
+      - name: Checkout funded-org local mirror (never source-org checkout)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Require actual PR3036 production tree and source-identical test inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          test "$(git rev-parse HEAD:compiler/src/main)" = 88125fc8b962f8aef57737bc6096eb9ab9c55065
+          test "$(git rev-parse HEAD:compiler/src/main/java)" = "$(git rev-parse HEAD:compiler/src/main/java)"
+          test "$(git rev-parse HEAD:compiler/stdlib)" = 58624daeecbe848db51cdd40a9da7e309fe69bc5
+          test "$(git hash-object compiler/pom.xml)" = 2e566927d4b8e07884ce53b0c463d440201fe54c
+          test "$(git hash-object compiler/src/main/java/dev/oreslang/runtime/OresScheduler.java)" = 7263a4517595d4bfd74c46f3c15da5d3f02985a1
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/SchedulerQueuedCancellationQuiescenceTest.java)" = dfdbf3bbe4efa5f89c2229eb0513e732ae7b3d8a
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/SourceTaskCancelRaceTest.java)" = ed4bb24f175451b0e38fb610b47ca012a7f81a96
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/RuntimeCooperateLanguageTest.java)" = 997f1baad30ccbac4c06133190baf1b5db062123
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/MemberSuspensionLanguageTest.java)" = 091d9a69cdb3b6552ddf0cc960a74f9c6713e493
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/BorrowControlFlowHardeningTest.java)" = 0012971039ae0790239689ad607de9fe4144af08
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/ValueMatchSuspensionTest.java)" = a516d0164ab4bfd1ec4f836fe949ec60e4d5a1ef
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/AsyncChannelBoundaryTest.java)" = b793325712f12ed4e6ccae62f7832ccf2bf9dc21
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/ActorPhysicalTurnGateTest.java)" = 5c3bd93cac1645e18c2cd2f73bf5a65494a2e5c2
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/OresFutureTerminalNotificationRaceTest.java)" = 9e5151f15890f3578f5e246cc70bc551ea9f2bf8
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/CleanupAwareSchedulerCancellationTest.java)" = a29c9df1dc6c84870c3350f4a9ed07b2b1bb5f7e
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/SourceCooperationQuantumTest.java)" = 1ac8b784ddd7e496fd6ad3b261cd610ab493d5f1
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/ActorFutureBlockingTest.java)" = 447899b358315e1657596a6e907a1c28ca6378e9
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/OresFutureHostWaiterDetachmentTest.java)" = 276846d7c67ff363d9e19920408498f9ed47af69
+          echo "SOURCE_PR=3036 SOURCE_PR_HEAD=c4291f5bd5a548d1e107a8a5d7712a1d58b3bd83 EXACT_PRODUCTION_TREE=88125fc8b962f8aef57737bc6096eb9ab9c55065 MIRROR_HEAD=$GITHUB_SHA"
+      - name: Install matching GraalVM CE 25.3.4.1
+        uses: graalvm/setup-graalvm@v1
+        with:
+          version: '25.3'
+          distribution: graalvm-community
+          java-version: '25.0.4.1'
+          cache: maven
+      - name: Execute real JUnit regression on exact source
+        shell: bash
+        env:
+          SUITE: ${{ matrix.suite }}
+          SELECTORS: ${{ matrix.selectors }}
+          EXPECTED: ${{ matrix.expected }}
+        run: |
+          set -euo pipefail
+          java -version
+          native-image --version | tee "pr3036-toolchain-$SUITE.log"
+          grep -F '25.3.4.1' "pr3036-toolchain-$SUITE.log"
+          timeout --signal=TERM --kill-after=20s 960s \
+            mvn -B -ntp -f compiler/pom.xml "-Dtest=$SELECTORS" -DfailIfNoTests=true -DtrimStackTrace=false test \
+            2>&1 | tee "pr3036-$SUITE.log"
+          grep -F "Tests run: $EXPECTED, Failures: 0, Errors: 0, Skipped: 0" "pr3036-$SUITE.log"
+          echo "PASS_PR3036_EXACT_SOURCE=$SUITE CASES=$EXPECTED"
+      - name: Save JUnit execution reports, including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr3036-exact-${{ matrix.suite }}
+          path: |
+            compiler/target/surefire-reports/
+            pr3036-*.log
+          if-no-files-found: ignore
