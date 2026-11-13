@@ -510,3 +510,5 @@ public final class GeneratorRuntime {
         }
     }
 }
+
+// NEGATIVE_IDENTITY_TEST_ONLY_DO_NOT_EXECUTE

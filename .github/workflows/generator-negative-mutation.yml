@@ -1,0 +1,38 @@
+name: Generator source mirror negative mutation admission check
+
+on:
+  push:
+    branches:
+      - ci/generator-negative-mutant-14a6676c-20261112
+
+permissions:
+  contents: read
+
+jobs:
+  reject-mutated-compiler-tree:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout deliberately corrupted funded mirror branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Require a real corrupted Git object and verify gate rejects it
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git hash-object compiler/src/main/java/dev/oreslang/runtime/GeneratorRuntime.java)" = d745200e14867760fe17dfb846693ed4f1280822
+          test "$(git rev-parse 'HEAD:compiler/src/main/java')" = 48a784883b4d0f3f217592f6d471f9ece0121697
+          test "$(git rev-parse 'HEAD:compiler/src/main')" = 2eec777c912ebd46f3f7e39cfe2c4b291d089b54
+          # Run precisely the positive mirror's main-tree admission predicate.
+          # It must terminate BEFORE the simulated compilation boundary.
+          if bash -c 'set -euo pipefail; test "$(git rev-parse HEAD:compiler/src/main)" = cf25489c1a8f7c50fa78d164967c857b69df0aa6; echo MAVEN_ADMITTED' > admission.log 2>&1; then
+            echo 'FAIL_OPEN: mutated compiler tree was admitted' >&2
+            exit 1
+          fi
+          if grep -Fq 'MAVEN_ADMITTED' admission.log; then
+            echo 'FAIL_OPEN: mutation advanced past admission gate' >&2
+            exit 1
+          fi
+          echo 'NEGATIVE_MUTATION_REJECTED|SOURCE_HEAD=14a6676c2401c46aba157be371c25d44963050ab|EXPECTED_MAIN_TREE=cf25489c1a8f7c50fa78d164967c857b69df0aa6|MUTATED_MAIN_TREE=2eec777c912ebd46f3f7e39cfe2c4b291d089b54'
