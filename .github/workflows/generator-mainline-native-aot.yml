@@ -34,17 +34,20 @@ jobs:
           test "$(git hash-object compiler/examples/generator-v1.ores)" = 5cee82aefeb4fd09190b5242c9107ee0eab39b6e
           test "$(git ls-tree -r --name-only HEAD:compiler/src/main/java | grep -c '\.java$')" -eq 260
           echo "NATIVE_AOT_EXACT_SOURCE_ADMITTED=ddee99ce9bb71ab51cf486427279f42204de9636 MIRROR_SHA=$GITHUB_SHA"
-      - name: Install GraalVM JDK 25 and native-image
-        uses: actions/setup-java@v4
+      - name: Install matching GraalVM 25.3.4.1 release with Native Image
+        uses: graalvm/setup-graalvm@v1
         with:
-          distribution: graalvm
-          java-version: '25'
+          version: '25.3'
+          distribution: graalvm-community
+          java-version: '25.0.4.1'
           cache: maven
-          cache-dependency-path: compiler/pom.xml
-      - name: Record exact native-image toolchain
+      - name: Reject a mismatched native-image toolchain
+        shell: bash
         run: |
+          set -euo pipefail
           java -version
-          native-image --version
+          native-image --version | tee generator-native-aot-toolchain.log
+          grep -F '25.3.4.1' generator-native-aot-toolchain.log
       - name: Build exact compiler with NativeAOT profile (no JVM-only substitution)
         shell: bash
         run: |
