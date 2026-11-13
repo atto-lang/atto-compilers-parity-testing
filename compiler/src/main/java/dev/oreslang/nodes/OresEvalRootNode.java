@@ -3634,36 +3634,19 @@ public final class OresEvalRootNode extends RootNode {
          * asynchronous; both await the SAME physical producer finalizer.
          */
         private final class SourceOwnedClose {
-            private final java.util.function.Supplier<OresFuture<Void>> releaseAsync;
+            private final Runnable release;
             private OresFuture<Void> closing;
 
             SourceOwnedClose(Runnable release) {
-                Objects.requireNonNull(release, "release");
-                this.releaseAsync = () -> {
-                    try {
-                        return context.asyncRuntime().submit(() -> {
-                            release.run();
-                            return null;
-                        });
-                    } catch (RuntimeException | Error failure) {
-                        return OresFuture.failed(failure);
-                    }
-                };
-            }
-
-            SourceOwnedClose(java.util.function.Supplier<OresFuture<Void>> releaseAsync) {
-                this.releaseAsync = Objects.requireNonNull(releaseAsync, "releaseAsync");
+                this.release = Objects.requireNonNull(release, "release");
             }
 
             synchronized OresFuture<Void> closeOnce() {
                 if (closing == null) {
-                    try {
-                        closing = Objects.requireNonNull(
-                                releaseAsync.get(),
-                                "async iterator close returned null Future");
-                    } catch (RuntimeException | Error failure) {
-                        closing = OresFuture.failed(failure);
-                    }
+                    closing = context.asyncRuntime().submit(() -> {
+                        release.run();
+                        return null;
+                    });
                 }
                 return closing;
             }
@@ -3673,8 +3656,7 @@ public final class OresEvalRootNode extends RootNode {
                 List<Ast.Stmt> body, java.util.function.BiConsumer<Env, Object> bind,
                 SourceFlowCont continuation) {
             GeneratorRuntime.AsyncGenerator<?> generator = sourceAsyncGenerator(value, env);
-            SourceOwnedClose closer = new SourceOwnedClose(
-                    (java.util.function.Supplier<OresFuture<Void>>) generator::closeAsync);
+            SourceOwnedClose closer = new SourceOwnedClose(generator::close);
             SourceCleanupFrame registered = task.registerSourceCleanup(
                     (owner, completed) -> finishAsyncForOf(owner, closer,
                             SourceFlow.throwing(owner.cancellationCause), completed));
@@ -5889,17 +5871,16 @@ public final class OresEvalRootNode extends RootNode {
                             "actor callables cannot expose generator activations across mailbox turns");
                 }
 
-                boolean asyncGeneratorProtocol = fn.async() || fn.suspends();
-                List<?> captured = asyncGeneratorProtocol
+                List<?> captured = fn.async()
                         ? detachAsyncArguments(normalized, fn.parameters())
                         : List.copyOf(normalized);
                 GeneratorRuntime.Producer<Object> producer = emitter -> {
-                    GeneratorRuntime.Emitter<Object> boundaryEmitter = asyncGeneratorProtocol
+                    GeneratorRuntime.Emitter<Object> boundaryEmitter = fn.async()
                             ? value -> emitter.emit(detachAsyncValue(value, new IdentityHashMap<>()))
                             : emitter;
                     callGeneratorBodyRaw(fn, captured, boundaryEmitter);
                 };
-                return asyncGeneratorProtocol
+                return fn.async()
                         ? GeneratorRuntime.asyncGenerator(context.asyncRuntime(), producer)
                         : GeneratorRuntime.generator(context.asyncRuntime(), producer);
             }
@@ -6221,7 +6202,7 @@ public final class OresEvalRootNode extends RootNode {
             GeneratorRuntime.Emitter<Object> previous = activeGeneratorEmitter.get();
             Boolean previousAsync = activeGeneratorAsync.get();
             activeGeneratorEmitter.set(emitter);
-            activeGeneratorAsync.set(fn.async() || fn.suspends());
+            activeGeneratorAsync.set(fn.async());
             try {
                 executeBlock(fn.body(), env);
             } catch (ReturnSignal signal) {
@@ -8689,7 +8670,7 @@ public final class OresEvalRootNode extends RootNode {
             if (receiver instanceof GeneratorRuntime.AsyncGenerator<?> generator) {
                 return switch (name) {
                     case "next" -> (Invokable) args -> { requireZero(args, "AsyncIterator.next"); return generator.nextStep(); };
-                    case "close" -> (Invokable) args -> { requireZero(args, "AsyncIterator.close"); return generator.closeAsync(); };
+                    case "close" -> (Invokable) args -> { requireZero(args, "AsyncIterator.close"); generator.close(); return null; };
                     default -> throw new IllegalArgumentException("unknown AsyncIterator member " + name);
                 };
             }
