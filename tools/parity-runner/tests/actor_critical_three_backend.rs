@@ -130,7 +130,12 @@ fn four_original_broker_pr_heads_are_declared_but_not_treated_as_execution() {
         assert!(observed.insert(repo));
         assert!(item["pr"].as_u64().unwrap() > 0);
         let sha = item["commit"].as_str().unwrap();
-        assert!(sha.len() == 40 && sha.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()));
+        assert!(
+            sha.len() == 40
+                && sha
+                    .bytes()
+                    .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+        );
     }
     assert_eq!(observed, expected);
     // These identities must be rechecked against GitHub at execution time.
