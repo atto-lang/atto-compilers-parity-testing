@@ -14,8 +14,24 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
           submodules: false
+      - name: Verify exact original source head, tree and actor contract blob
+        shell: bash
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_HEAD" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test -z "$(git status --porcelain)"
+          pos="contracts/atto-actor-critical-v1/fixtures/two-actor-snapshot-positive.atto"
+          sha="a6189d92c813426ecf54a09cf535c3874de45942"
+          test "$(git rev-parse "HEAD:$pos")" = "$sha"
+          test "$(git hash-object --no-filters "$pos")" = "$sha"
+          printf 'source_head=%s\\nsource_tree=%s\\npositive_guest_blob=%s\\ncompiler_guest_execution=NOT_EXECUTED\\n' \\
+            "$EXPECTED_HEAD" "$(git rev-parse 'HEAD^{tree}')" "$sha"
       - name: Install reviewed Rust toolchain
         run: rustup toolchain install 1.96.0 --profile minimal --component rustfmt,clippy
       - name: Format-check parity runner
