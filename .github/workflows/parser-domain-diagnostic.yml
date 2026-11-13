@@ -1,0 +1,61 @@
+name: Exact parser-diagnostic one-file regression
+on:
+  push:
+    branches:
+      - ci/parser-domain-diagnostic-e8d7-20261112
+permissions:
+  contents: read
+jobs:
+  parser-diagnostic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout only local funded private mirror
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Fail closed on one-file compiler override and exact test
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          test "$(git rev-parse HEAD^:compiler/src/main)" = 0c011ed986acab18dc7eb701271afbd2537bed10
+          test "$(git hash-object compiler/src/main/java/dev/oreslang/parser/Parser.java)" = d5afb198248758db07f8fec769ebdcbb3525823e
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/ParserTest.java)" = b23bf4a400285298c65a432a6e89e73d3c80d8f0
+          test "$(git hash-object compiler/pom.xml)" = 2e566927d4b8e07884ce53b0c463d440201fe54c
+          test "$(git rev-parse HEAD:compiler/stdlib)" = 58624daeecbe848db51cdd40a9da7e309fe69bc5
+          expected="$(printf '%s\n' '.github/workflows/parser-domain-diagnostic.yml' 'compiler/src/main/java/dev/oreslang/parser/Parser.java')"
+          actual="$(git diff --name-only HEAD^ HEAD | sort)"
+          test "$actual" = "$expected"
+          echo "DIAGNOSTIC_PR_HEAD=e8d7e91ee766c938188c0505ee6804fbd60f0bba ORIGINAL_GENERATOR_PR_HEAD=ddee99ce9bb71ab51cf486427279f42204de9636 SINGLE_COMPILER_SOURCE_OVERRIDE=TRUE"
+      - name: Set up GraalVM Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: graalvm
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: compiler/pom.xml
+      - name: Execute real ParserTest including reserved execution domains
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=20s 660s mvn -B -ntp -f compiler/pom.xml -Dtest=ParserTest -DfailIfNoTests=true test 2>&1 | tee parser-domain-diagnostic.log
+          f=compiler/target/surefire-reports/TEST-dev.oreslang.ParserTest.xml
+          test -f "$f"
+          grep -q '<testcase ' "$f"
+          grep -q 'failures="0"' "$f"
+          grep -q 'errors="0"' "$f"
+          grep -q 'skipped="0"' "$f"
+          grep -F 'Tests run: 41, Failures: 0, Errors: 0, Skipped: 0' parser-domain-diagnostic.log
+          echo "PASS_PARSER_DIAGNOSTIC_41_EXECUTED"
+      - name: Preserve diagnostic execution evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parser-domain-diagnostic
+          path: |
+            compiler/target/surefire-reports/
+            parser-domain-diagnostic.log
+          if-no-files-found: ignore
