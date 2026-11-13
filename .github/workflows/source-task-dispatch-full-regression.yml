@@ -1,0 +1,176 @@
+name: Atto generator parser and scheduler fix full 281-case exact-source
+on:
+  push:
+    branches:
+      - ci/source-task-cancel-dispatch-retirement-fix-20261112
+permissions:
+  contents: read
+jobs:
+  combined-generator-parser-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: queued-cancel-quiescence
+            selectors: 'SchedulerQueuedCancellationQuiescenceTest'
+            expected: 1
+            reports: 'dev.oreslang.runtime.SchedulerQueuedCancellationQuiescenceTest'
+          - suite: generator-core
+            selectors: 'GeneratorCancellationInterruptionTest,GeneratorRuntimeTest'
+            expected: 33
+            reports: 'dev.oreslang.runtime.GeneratorCancellationInterruptionTest dev.oreslang.runtime.GeneratorRuntimeTest'
+          - suite: generator-language
+            selectors: 'GeneratorCanonicalAdmissionTest,GeneratorLanguageTest'
+            expected: 37
+            reports: 'dev.oreslang.GeneratorCanonicalAdmissionTest dev.oreslang.GeneratorLanguageTest'
+          - suite: streams-futures
+            selectors: 'GeneratorAdmissionStickyAsyncTest,GeneratorTerminalFailureStickyTest,AsyncSequencesTest,AsyncSequenceCollectorsTest,AsyncRuntimeTest'
+            expected: 34
+            reports: 'dev.oreslang.runtime.GeneratorAdmissionStickyAsyncTest dev.oreslang.runtime.GeneratorTerminalFailureStickyTest dev.oreslang.runtime.AsyncSequencesTest dev.oreslang.runtime.AsyncSequenceCollectorsTest dev.oreslang.runtime.AsyncRuntimeTest'
+          - suite: ownership
+            selectors: 'PointerlessFncOwnershipTest,ProjectedBorrowOwnershipTest,TaskBorrowBoundaryV2Test'
+            expected: 47
+            reports: 'dev.oreslang.PointerlessFncOwnershipTest dev.oreslang.ProjectedBorrowOwnershipTest dev.oreslang.TaskBorrowBoundaryV2Test'
+          - suite: actor-async
+            selectors: 'AsyncAwaitLanguageTest,ActorAsyncFinalizationBarrierTest,ActorAsyncTeardownGateTest'
+            expected: 14
+            reports: 'dev.oreslang.AsyncAwaitLanguageTest dev.oreslang.runtime.ActorAsyncFinalizationBarrierTest dev.oreslang.runtime.ActorAsyncTeardownGateTest'
+          - suite: parser-source
+            selectors: 'ParserTest,RuntimeCooperateLanguageTest,MemberSuspensionLanguageTest,SourceTaskCancelRaceTest,BorrowControlFlowHardeningTest,ValueMatchSuspensionTest,AsyncChannelBoundaryTest'
+            expected: 68
+            reports: 'dev.oreslang.ParserTest dev.oreslang.RuntimeCooperateLanguageTest dev.oreslang.MemberSuspensionLanguageTest dev.oreslang.SourceTaskCancelRaceTest dev.oreslang.BorrowControlFlowHardeningTest dev.oreslang.ValueMatchSuspensionTest dev.oreslang.AsyncChannelBoundaryTest'
+          - suite: runtime-scheduler
+            selectors: 'ActorPhysicalTurnGateTest,OresFutureTerminalNotificationRaceTest,CleanupAwareSchedulerCancellationTest,SourceCooperationQuantumTest,ActorFutureBlockingTest,OresFutureHostWaiterDetachmentTest'
+            expected: 47
+            reports: 'dev.oreslang.runtime.ActorPhysicalTurnGateTest dev.oreslang.runtime.OresFutureTerminalNotificationRaceTest dev.oreslang.runtime.CleanupAwareSchedulerCancellationTest dev.oreslang.runtime.SourceCooperationQuantumTest dev.oreslang.runtime.ActorFutureBlockingTest dev.oreslang.runtime.OresFutureHostWaiterDetachmentTest'
+    steps:
+      - name: Checkout current local private mirror only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify integrated source plus parser diagnostic and all test blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          test "$(git rev-parse HEAD:compiler/src/main)" = a864b1b34c80301995e54ecf205d505801847df6
+          test "$(git rev-parse HEAD:compiler/src/main/java)" = dbb94dae60a5b96be3963b44c45ca2d66f42e54f
+          test "$(git hash-object compiler/src/main/java/dev/oreslang/parser/Parser.java)" = b3773fdf0536c88ddb8aafdb908ab551b6d69414
+          test "$(git hash-object compiler/src/main/java/dev/oreslang/runtime/OresScheduler.java)" = 7263a4517595d4bfd74c46f3c15da5d3f02985a1
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/SchedulerQueuedCancellationQuiescenceTest.java)" = dfdbf3bbe4efa5f89c2229eb0513e732ae7b3d8a
+          test "$(git rev-parse HEAD:compiler/src/main/c)" = f611b88e349068e2fe1589a051a28e96b4178201
+          test "$(git rev-parse HEAD:compiler/src/main/resources)" = 080bca4f997a736ea19f9961fc4ac95b5848150b
+          test "$(git rev-parse HEAD:compiler/stdlib)" = 58624daeecbe848db51cdd40a9da7e309fe69bc5
+          test "$(git rev-parse HEAD:compiler/src/test/java/dev/oreslang)" = 90898d31a680edb6ec599ae4c70bd0634e6412e5
+          test "$(git hash-object compiler/pom.xml)" = 2e566927d4b8e07884ce53b0c463d440201fe54c
+          test "$(git hash-object compiler/scripts/build-native-thread.sh)" = 13199140863e2a1995ad6cf613ee481e0f90d759
+          test "$(git ls-tree -r --name-only HEAD:compiler/src/main/java | grep -c '\.java$')" -eq 260
+          test "$(git ls-tree -r --name-only HEAD:compiler/src/test/java | grep -c '\.java
+          echo "COMBINED_COMPILER_ADMITTED JAVA_SOURCE_HEAD=ddee99ce9bb71ab51cf486427279f42204de9636 PARSER_PR_HEAD=affe76116283294904d2183bd0ea78c17e03ee67 MIRROR=$GITHUB_SHA"
+      - name: Install matching GraalVM CE 25.3.4.1
+        uses: graalvm/setup-graalvm@v1
+        with:
+          version: '25.3'
+          distribution: graalvm-community
+          java-version: '25.0.4.1'
+          cache: maven
+      - name: Execute and count real JUnit regressions
+        shell: bash
+        env:
+          SUITE: ${{ matrix.suite }}
+          SELECTORS: ${{ matrix.selectors }}
+          EXPECTED: ${{ matrix.expected }}
+          REPORTS: ${{ matrix.reports }}
+        run: |
+          set -euo pipefail
+          java -version
+          native-image --version | tee "generator-combined-toolchain-$SUITE.log"
+          grep -F '25.3.4.1' "generator-combined-toolchain-$SUITE.log"
+          timeout --signal=TERM --kill-after=20s 1000s \
+            mvn -B -ntp -f compiler/pom.xml "-Dtest=$SELECTORS" -DfailIfNoTests=true -DtrimStackTrace=false test \
+            2>&1 | tee "generator-combined-$SUITE.log"
+          if grep -Fiq 'version check failed' "generator-combined-$SUITE.log"; then
+            echo 'FAIL_INCOMPATIBLE_GRAALVM_RUNTIME' >&2
+            exit 1
+          fi
+          grep -F "Tests run: $EXPECTED, Failures: 0, Errors: 0, Skipped: 0" "generator-combined-$SUITE.log"
+          count=0
+          for named in $REPORTS; do
+            f="compiler/target/surefire-reports/TEST-$named.xml"
+            test -f "$f"
+            grep -Fq '<testcase ' "$f"
+            grep -Fq 'failures="0"' "$f"
+            grep -Fq 'errors="0"' "$f"
+            grep -Fq 'skipped="0"' "$f"
+            n="$(grep -c '<testcase ' "$f")"
+            test "$n" -gt 0
+            count=$((count+n))
+            echo "EXACT_JUNIT_REPORT=$named CASES=$n"
+          done
+          test "$count" -eq "$EXPECTED"
+          echo "PASS_COMBINED_GENERATOR_PARSER=$SUITE EXECUTED_CASES=$count"
+      - name: Save executed receipts even if a gate fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generator-combined-${{ matrix.suite }}
+          path: |
+            compiler/target/surefire-reports/
+            generator-combined-*.log
+          if-no-files-found: ignore
+)" -eq 29
+          echo "COMBINED_COMPILER_ADMITTED JAVA_SOURCE_HEAD=ddee99ce9bb71ab51cf486427279f42204de9636 PARSER_PR_HEAD=affe76116283294904d2183bd0ea78c17e03ee67 MIRROR=$GITHUB_SHA"
+      - name: Install matching GraalVM CE 25.3.4.1
+        uses: graalvm/setup-graalvm@v1
+        with:
+          version: '25.3'
+          distribution: graalvm-community
+          java-version: '25.0.4.1'
+          cache: maven
+      - name: Execute and count real JUnit regressions
+        shell: bash
+        env:
+          SUITE: ${{ matrix.suite }}
+          SELECTORS: ${{ matrix.selectors }}
+          EXPECTED: ${{ matrix.expected }}
+          REPORTS: ${{ matrix.reports }}
+        run: |
+          set -euo pipefail
+          java -version
+          native-image --version | tee "generator-combined-toolchain-$SUITE.log"
+          grep -F '25.3.4.1' "generator-combined-toolchain-$SUITE.log"
+          timeout --signal=TERM --kill-after=20s 1000s \
+            mvn -B -ntp -f compiler/pom.xml "-Dtest=$SELECTORS" -DfailIfNoTests=true -DtrimStackTrace=false test \
+            2>&1 | tee "generator-combined-$SUITE.log"
+          if grep -Fiq 'version check failed' "generator-combined-$SUITE.log"; then
+            echo 'FAIL_INCOMPATIBLE_GRAALVM_RUNTIME' >&2
+            exit 1
+          fi
+          grep -F "Tests run: $EXPECTED, Failures: 0, Errors: 0, Skipped: 0" "generator-combined-$SUITE.log"
+          count=0
+          for named in $REPORTS; do
+            f="compiler/target/surefire-reports/TEST-$named.xml"
+            test -f "$f"
+            grep -Fq '<testcase ' "$f"
+            grep -Fq 'failures="0"' "$f"
+            grep -Fq 'errors="0"' "$f"
+            grep -Fq 'skipped="0"' "$f"
+            n="$(grep -c '<testcase ' "$f")"
+            test "$n" -gt 0
+            count=$((count+n))
+            echo "EXACT_JUNIT_REPORT=$named CASES=$n"
+          done
+          test "$count" -eq "$EXPECTED"
+          echo "PASS_COMBINED_GENERATOR_PARSER=$SUITE EXECUTED_CASES=$count"
+      - name: Save executed receipts even if a gate fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generator-combined-${{ matrix.suite }}
+          path: |
+            compiler/target/surefire-reports/
+            generator-combined-*.log
+          if-no-files-found: ignore
