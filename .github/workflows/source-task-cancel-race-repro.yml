@@ -1,0 +1,55 @@
+name: Source task cancellation first-turn race exact-source reproduction
+on:
+  push:
+    branches:
+      - ci/source-task-cancel-race-isolate-20261112
+permissions:
+  contents: read
+jobs:
+  cancellation-race:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        run: [1, 2, 3]
+    steps:
+      - name: Checkout exact local mirror
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Reject compiler or regression source mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD:compiler/src/main)" = 64deaf84e343e255c835c50b88944aaffe4aed25
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/SourceTaskCancelRaceTest.java)" = ed4bb24f175451b0e38fb610b47ca012a7f81a96
+          test "$(git hash-object compiler/pom.xml)" = 2e566927d4b8e07884ce53b0c463d440201fe54c
+          echo "SOURCE_TASK_RACE_EXACT=TRUE RUN=${{ matrix.run }}"
+      - name: Install matching GraalVM CE 25.3.4.1
+        uses: graalvm/setup-graalvm@v1
+        with:
+          version: '25.3'
+          distribution: graalvm-community
+          java-version: '25.0.4.1'
+          cache: maven
+      - name: Execute 200 cancellation race trials, fail on context violation
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=20s 600s \
+            mvn -B -ntp -f compiler/pom.xml -Dtest=SourceTaskCancelRaceTest -DfailIfNoTests=true -DtrimStackTrace=false test \
+            2>&1 | tee cancellation-race-repro-${{ matrix.run }}.log
+          grep -F 'Tests run: 1, Failures: 0, Errors: 0, Skipped: 0' cancellation-race-repro-${{ matrix.run }}.log
+          test -f compiler/target/surefire-reports/TEST-dev.oreslang.SourceTaskCancelRaceTest.xml
+          echo "PASS_SOURCE_TASK_CANCEL_RACE=${{ matrix.run }}"
+      - name: Upload exact executed logs and reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-task-cancel-race-${{ matrix.run }}
+          path: |
+            compiler/target/surefire-reports/
+            cancellation-race-repro-*.log
+          if-no-files-found: ignore
