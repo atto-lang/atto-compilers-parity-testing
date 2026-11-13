@@ -1,0 +1,120 @@
+name: Atto gen-star current-main exact-source matching GraalVM 25.3 JVM suites
+on:
+  push:
+    branches:
+      - ci/generator-mainline-matched-jvm-ddee99ce-20261112
+permissions:
+  contents: read
+jobs:
+  matched-graalvm-guest-and-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: generator-core
+            selectors: 'GeneratorCancellationInterruptionTest,GeneratorRuntimeTest'
+            expected: 33
+            reports: 'dev.oreslang.runtime.GeneratorCancellationInterruptionTest dev.oreslang.runtime.GeneratorRuntimeTest'
+          - suite: generator-language
+            selectors: 'GeneratorCanonicalAdmissionTest,GeneratorLanguageTest'
+            expected: 37
+            reports: 'dev.oreslang.GeneratorCanonicalAdmissionTest dev.oreslang.GeneratorLanguageTest'
+          - suite: streams-futures
+            selectors: 'GeneratorAdmissionStickyAsyncTest,GeneratorTerminalFailureStickyTest,AsyncSequencesTest,AsyncSequenceCollectorsTest,AsyncRuntimeTest'
+            expected: 34
+            reports: 'dev.oreslang.runtime.GeneratorAdmissionStickyAsyncTest dev.oreslang.runtime.GeneratorTerminalFailureStickyTest dev.oreslang.runtime.AsyncSequencesTest dev.oreslang.runtime.AsyncSequenceCollectorsTest dev.oreslang.runtime.AsyncRuntimeTest'
+          - suite: ownership
+            selectors: 'PointerlessFncOwnershipTest,ProjectedBorrowOwnershipTest,TaskBorrowBoundaryV2Test'
+            expected: 47
+            reports: 'dev.oreslang.PointerlessFncOwnershipTest dev.oreslang.ProjectedBorrowOwnershipTest dev.oreslang.TaskBorrowBoundaryV2Test'
+          - suite: actor-async
+            selectors: 'AsyncAwaitLanguageTest,ActorAsyncFinalizationBarrierTest,ActorAsyncTeardownGateTest'
+            expected: 14
+            reports: 'dev.oreslang.AsyncAwaitLanguageTest dev.oreslang.runtime.ActorAsyncFinalizationBarrierTest dev.oreslang.runtime.ActorAsyncTeardownGateTest'
+    steps:
+      - name: Checkout private local mirror only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify compiler and all exercised JUnit input blobs fail-closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          test "$(git rev-parse HEAD:compiler/src/main)" = 0c011ed986acab18dc7eb701271afbd2537bed10
+          test "$(git rev-parse HEAD:compiler/src/main/java)" = d44cde93c1931dee2ba88bccc98c9dbec77e07e6
+          test "$(git rev-parse HEAD:compiler/src/main/c)" = f611b88e349068e2fe1589a051a28e96b4178201
+          test "$(git rev-parse HEAD:compiler/src/main/resources)" = 080bca4f997a736ea19f9961fc4ac95b5848150b
+          test "$(git rev-parse HEAD:compiler/stdlib)" = 58624daeecbe848db51cdd40a9da7e309fe69bc5
+          test "$(git hash-object compiler/pom.xml)" = 2e566927d4b8e07884ce53b0c463d440201fe54c
+          test "$(git hash-object compiler/scripts/build-native-thread.sh)" = 13199140863e2a1995ad6cf613ee481e0f90d759
+          test "$(git ls-tree -r --name-only HEAD:compiler/src/main/java | grep -c '\.java$')" -eq 260
+          while read -r file expected; do
+            test "$(git hash-object "compiler/src/test/java/dev/oreslang/$file")" = "$expected"
+          done <<'BLOBS'
+          GeneratorCanonicalAdmissionTest.java c9ff9c8bce78928f03db7a8312ff20b8d11882d1
+          GeneratorLanguageTest.java ed62edb5a020632d0b7fe188db67d703366e095d
+          runtime/GeneratorCancellationInterruptionTest.java ff7818fe865261a95df8ee4958c78567892d9a33
+          runtime/GeneratorRuntimeTest.java 268638397d448261082bebbcf3c01661497c2c48
+          runtime/GeneratorAdmissionStickyAsyncTest.java 3a2f7156f0fc7486b8c43974bf72a136b139ab2b
+          runtime/GeneratorTerminalFailureStickyTest.java 451fa0615ec8d6cef7c5330ec641bb39eabd55f1
+          runtime/AsyncSequencesTest.java 2c177fc6e1e15090c9f8e833c1b23004984839e7
+          runtime/AsyncSequenceCollectorsTest.java ad71e0038dd4032ef9c07175778a49f772a87293
+          runtime/AsyncRuntimeTest.java f5e44085a3e97b973ec3172db8b6b459b7ebf666
+          PointerlessFncOwnershipTest.java 07fd0a372573e745a3a48431ff683a0f91fe049f
+          ProjectedBorrowOwnershipTest.java b6d7a54d7f714f1e7d9ebc548088f6e94ba89eb7
+          TaskBorrowBoundaryV2Test.java b882f61d7d6b87dfe797d7cc5460721c71ce1c92
+          AsyncAwaitLanguageTest.java 2ea62437755111c669a50f4422bfbb70b98c3cba
+          runtime/ActorAsyncFinalizationBarrierTest.java 2c34d2a2ea0c31b97de4bfca17be919e55977093
+          runtime/ActorAsyncTeardownGateTest.java a1239851ba0c8bf95dfca5530bf81f34796bed73
+          BLOBS
+          echo "EXACT_MATCHED_JVM_SOURCE_HEAD=ddee99ce9bb71ab51cf486427279f42204de9636 MIRROR_HEAD=$GITHUB_SHA"
+      - name: Install compatible GraalVM 25.3.4.1
+        uses: graalvm/setup-graalvm@v1
+        with:
+          version: '25.3'
+          distribution: graalvm-community
+          java-version: '25.0.4.1'
+          cache: maven
+      - name: Run matching-toolchain compiler and guest JUnit suite
+        shell: bash
+        env:
+          SUITE: ${{ matrix.suite }}
+          SELECTORS: ${{ matrix.selectors }}
+          EXPECTED: ${{ matrix.expected }}
+          REPORTS: ${{ matrix.reports }}
+        run: |
+          set -euo pipefail
+          java -version
+          native-image --version | tee generator-matched-toolchain.log
+          grep -F '25.3.4.1' generator-matched-toolchain.log
+          timeout --signal=TERM --kill-after=20s 900s \
+            mvn -B -ntp -f compiler/pom.xml "-Dtest=$SELECTORS" -DfailIfNoTests=true -DtrimStackTrace=false test \
+            2>&1 | tee "generator-matched-$SUITE.log"
+          grep -F "Tests run: $EXPECTED, Failures: 0, Errors: 0, Skipped: 0" "generator-matched-$SUITE.log"
+          if grep -Fiq 'version check failed' "generator-matched-$SUITE.log"; then
+            echo 'FAIL_INCOMPATIBLE_GRAALVM_RUNTIME' >&2
+            exit 1
+          fi
+          for named in $REPORTS; do
+            f="compiler/target/surefire-reports/TEST-$named.xml"
+            test -f "$f"
+            grep -Fq '<testcase ' "$f"
+            grep -Fq 'failures="0"' "$f"
+            grep -Fq 'errors="0"' "$f"
+            grep -Fq 'skipped="0"' "$f"
+            echo "MATCHED_JUNIT_EXECUTED=$named"
+          done
+          echo "PASS_MATCHED_GRAALVM_SUITE=$SUITE TESTS=$EXPECTED"
+      - name: Upload exact executed JUnit and runtime receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generator-matched-${{ matrix.suite }}
+          path: |
+            compiler/target/surefire-reports/
+            generator-matched-*.log
+          if-no-files-found: ignore
