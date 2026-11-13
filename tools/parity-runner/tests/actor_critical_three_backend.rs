@@ -46,7 +46,7 @@ fn actor_critical_contract_is_staged_not_false_certified() {
     let actual: BTreeSet<&str> = required.iter().map(|v| v.as_str().unwrap()).collect();
     assert_eq!(actual, BTreeSet::from(["java", "llvm", "dotnet"]));
     for backend in &actual {
-        assert_eq!(c["backend_results"][backend], "NOT_EXECUTED");
+        assert_eq!(c["backend_results"][*backend], "NOT_EXECUTED");
     }
     assert_eq!(c["performance_gate"]["status"], "NOT_BENCHMARKED");
     assert_eq!(c["performance_gate"]["minimum_median_ratio"], 0.70);
@@ -56,7 +56,7 @@ fn actor_critical_contract_is_staged_not_false_certified() {
     for gate in ["actual_parser_type_and_borrow_checker", "executed_guest_output",
                  "targeted_semantic_diagnostic_not_generic_parse_error",
                  "nonzero_runner_and_steps", "no_backend_substitution"] {
-        assert!(required_proofs.iter().any(|item| item == gate), "missing {gate}");
+        assert!(required_proofs.iter().any(|item| item.as_str() == Some(gate)), "missing {gate}");
     }
 }
 
