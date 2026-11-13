@@ -1,0 +1,80 @@
+name: Source task cancel physical admission fix exact-source verification
+on:
+  push:
+    branches:
+      - ci/source-task-cancel-dispatch-retirement-fix-20261112
+permissions:
+  contents: read
+jobs:
+  cancellation-admission:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: deterministic
+            selector: SchedulerQueuedCancellationQuiescenceTest
+            expected: 1
+          - suite: race-one
+            selector: SourceTaskCancelRaceTest
+            expected: 1
+          - suite: race-two
+            selector: SourceTaskCancelRaceTest
+            expected: 1
+          - suite: scheduler-regressions
+            selector: ActorPhysicalTurnGateTest,OresFutureTerminalNotificationRaceTest,CleanupAwareSchedulerCancellationTest,SourceCooperationQuantumTest,ActorFutureBlockingTest,OresFutureHostWaiterDetachmentTest
+            expected: 47
+          - suite: parser-source
+            selector: ParserTest,RuntimeCooperateLanguageTest,MemberSuspensionLanguageTest,SourceTaskCancelRaceTest,BorrowControlFlowHardeningTest,ValueMatchSuspensionTest,AsyncChannelBoundaryTest
+            expected: 68
+    steps:
+      - name: Checkout only funded private local mirror
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify exact source and regression blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          test "$(git rev-parse HEAD:compiler/src/main)" = a864b1b34c80301995e54ecf205d505801847df6
+          test "$(git hash-object compiler/src/main/java/dev/oreslang/runtime/OresScheduler.java)" = 7263a4517595d4bfd74c46f3c15da5d3f02985a1
+          test "$(git hash-object compiler/src/main/java/dev/oreslang/parser/Parser.java)" = b3773fdf0536c88ddb8aafdb908ab551b6d69414
+          test "$(git rev-parse HEAD:compiler/stdlib)" = 58624daeecbe848db51cdd40a9da7e309fe69bc5
+          test "$(git rev-parse HEAD:compiler/src/test/java/dev/oreslang)" = 90898d31a680edb6ec599ae4c70bd0634e6412e5
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/SchedulerQueuedCancellationQuiescenceTest.java)" = dfdbf3bbe4efa5f89c2229eb0513e732ae7b3d8a
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/SourceTaskCancelRaceTest.java)" = ed4bb24f175451b0e38fb610b47ca012a7f81a96
+          test "$(git hash-object compiler/pom.xml)" = 2e566927d4b8e07884ce53b0c463d440201fe54c
+          echo "EXACT_SCHEDULER_DISPATCH_FIX_ADMITTED=$GITHUB_SHA"
+      - name: Install matching GraalVM 25.3.4.1
+        uses: graalvm/setup-graalvm@v1
+        with:
+          version: '25.3'
+          distribution: graalvm-community
+          java-version: '25.0.4.1'
+          cache: maven
+      - name: Execute cancellation and scheduler regressions
+        shell: bash
+        env:
+          SELECTOR: ${{ matrix.selector }}
+          EXPECTED: ${{ matrix.expected }}
+          SUITE: ${{ matrix.suite }}
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=20s 920s \
+            mvn -B -ntp -f compiler/pom.xml "-Dtest=$SELECTOR" -DfailIfNoTests=true -DtrimStackTrace=false test \
+            2>&1 | tee "dispatch-fix-$SUITE.log"
+          grep -F "Tests run: $EXPECTED, Failures: 0, Errors: 0, Skipped: 0" "dispatch-fix-$SUITE.log"
+          if grep -Fiq 'version check failed' "dispatch-fix-$SUITE.log"; then exit 1; fi
+          echo "PASS_DISPATCH_CANCEL_FIX=$SUITE TESTS=$EXPECTED"
+      - name: Upload executed logs and JUnit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dispatch-cancel-fix-${{ matrix.suite }}
+          path: |
+            compiler/target/surefire-reports/
+            dispatch-fix-*.log
+          if-no-files-found: ignore
