@@ -1,0 +1,84 @@
+name: Current-main generator adjacent ownership and actor regression
+
+on:
+  push:
+    branches:
+      - ci/generator-mainline-adjacent-ddee99ce-20261112
+
+permissions:
+  contents: read
+
+jobs:
+  adjacent-compiler-contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: ownership
+            selectors: 'PointerlessFncOwnershipTest,ProjectedBorrowOwnershipTest,TaskBorrowBoundaryV2Test'
+            expected_reports: 'dev.oreslang.PointerlessFncOwnershipTest dev.oreslang.ProjectedBorrowOwnershipTest dev.oreslang.TaskBorrowBoundaryV2Test'
+          - suite: actor-async
+            selectors: 'AsyncAwaitLanguageTest,ActorAsyncFinalizationBarrierTest,ActorAsyncTeardownGateTest'
+            expected_reports: 'dev.oreslang.AsyncAwaitLanguageTest dev.oreslang.runtime.ActorAsyncFinalizationBarrierTest dev.oreslang.runtime.ActorAsyncTeardownGateTest'
+    steps:
+      - name: Checkout funded private mirror
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Reject mutated integrated compiler or adjacent fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD:compiler/src/main)" = 0c011ed986acab18dc7eb701271afbd2537bed10
+          test "$(git rev-parse HEAD:compiler/src/main/java)" = d44cde93c1931dee2ba88bccc98c9dbec77e07e6
+          test "$(git rev-parse HEAD:compiler/stdlib)" = 58624daeecbe848db51cdd40a9da7e309fe69bc5
+          test "$(git hash-object compiler/pom.xml)" = 2e566927d4b8e07884ce53b0c463d440201fe54c
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/PointerlessFncOwnershipTest.java)" = 07fd0a372573e745a3a48431ff683a0f91fe049f
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/ProjectedBorrowOwnershipTest.java)" = b6d7a54d7f714f1e7d9ebc548088f6e94ba89eb7
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/TaskBorrowBoundaryV2Test.java)" = b882f61d7d6b87dfe797d7cc5460721c71ce1c92
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/AsyncAwaitLanguageTest.java)" = 2ea62437755111c669a50f4422bfbb70b98c3cba
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/ActorAsyncFinalizationBarrierTest.java)" = 2c34d2a2ea0c31b97de4bfca17be919e55977093
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/ActorAsyncTeardownGateTest.java)" = a1239851ba0c8bf95dfca5530bf81f34796bed73
+          echo 'EXACT_MAINLINE_ADJACENT_INPUTS SOURCE_HEAD=ddee99ce9bb71ab51cf486427279f42204de9636'
+      - name: Set up GraalVM Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: graalvm
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: compiler/pom.xml
+      - name: Run bounded adjacent JUnit classes and require execution reports
+        shell: bash
+        env:
+          SUITE: ${{ matrix.suite }}
+          SELECTORS: ${{ matrix.selectors }}
+          REPORTS: ${{ matrix.expected_reports }}
+        run: |
+          set -euo pipefail
+          echo "START_MAINLINE_ADJACENT_SUITE=$SUITE"
+          timeout --signal=TERM --kill-after=20s 600s \
+            mvn -B -ntp -f compiler/pom.xml \
+              "-Dtest=$SELECTORS" -DfailIfNoTests=true -DtrimStackTrace=false test \
+              2>&1 | tee "generator-adjacent-$SUITE.log"
+          for named in $REPORTS; do
+            f="compiler/target/surefire-reports/TEST-$named.xml"
+            test -f "$f"
+            grep -q '<testcase ' "$f"
+            grep -q 'failures="0"' "$f"
+            grep -q 'errors="0"' "$f"
+            grep -q 'skipped="0"' "$f"
+            echo "ADJACENT_JUNIT_EXECUTED=$named"
+          done
+          echo "PASS_MAINLINE_ADJACENT_SUITE=$SUITE"
+      - name: Preserve both success and failure receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generator-adjacent-${{ matrix.suite }}
+          path: |
+            compiler/target/surefire-reports/
+            generator-adjacent-*.log
+          if-no-files-found: ignore
