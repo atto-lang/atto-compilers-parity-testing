@@ -1,0 +1,96 @@
+name: Atto gen-star current-main integration exact-source
+
+on:
+  push:
+    branches:
+      - ci/generator-mainline-integration-ddee99ce-20261112
+
+permissions:
+  contents: read
+
+jobs:
+  exact-mainline-generator:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: core
+            selectors: 'GeneratorCancellationInterruptionTest,GeneratorRuntimeTest'
+            expected: 33
+          - suite: language
+            selectors: 'GeneratorCanonicalAdmissionTest,GeneratorLanguageTest'
+            expected: 37
+          - suite: streams
+            selectors: 'GeneratorAdmissionStickyAsyncTest,GeneratorTerminalFailureStickyTest,AsyncSequencesTest,AsyncSequenceCollectorsTest,AsyncRuntimeTest'
+            expected: 34
+    steps:
+      - name: Checkout funded private local mirror only
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Fail closed on any compiler source, test, build-input mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          test "$(git rev-parse HEAD:compiler/src/main)" = 0c011ed986acab18dc7eb701271afbd2537bed10
+          test "$(git rev-parse HEAD:compiler/src/main/java)" = d44cde93c1931dee2ba88bccc98c9dbec77e07e6
+          test "$(git rev-parse HEAD:compiler/src/main/c)" = f611b88e349068e2fe1589a051a28e96b4178201
+          test "$(git rev-parse HEAD:compiler/src/main/resources)" = 080bca4f997a736ea19f9961fc4ac95b5848150b
+          test "$(git rev-parse HEAD:compiler/stdlib)" = 58624daeecbe848db51cdd40a9da7e309fe69bc5
+          test "$(git hash-object compiler/pom.xml)" = 2e566927d4b8e07884ce53b0c463d440201fe54c
+          test "$(git hash-object compiler/scripts/build-native-thread.sh)" = 13199140863e2a1995ad6cf613ee481e0f90d759
+          test "$(git hash-object compiler/scripts/VerifyGeneratorCloseReports.java)" = fd4f37c6744fe68b2565c80d0408745191a7f5da
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/GeneratorCanonicalAdmissionTest.java)" = c9ff9c8bce78928f03db7a8312ff20b8d11882d1
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/GeneratorLanguageTest.java)" = ed62edb5a020632d0b7fe188db67d703366e095d
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/GeneratorCancellationInterruptionTest.java)" = ff7818fe865261a95df8ee4958c78567892d9a33
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/GeneratorRuntimeTest.java)" = 268638397d448261082bebbcf3c01661497c2c48
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/GeneratorAdmissionStickyAsyncTest.java)" = 3a2f7156f0fc7486b8c43974bf72a136b139ab2b
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/GeneratorTerminalFailureStickyTest.java)" = 451fa0615ec8d6cef7c5330ec641bb39eabd55f1
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/AsyncSequencesTest.java)" = 2c177fc6e1e15090c9f8e833c1b23004984839e7
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/AsyncSequenceCollectorsTest.java)" = ad71e0038dd4032ef9c07175778a49f772a87293
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/AsyncRuntimeTest.java)" = f5e44085a3e97b973ec3172db8b6b459b7ebf666
+          count="$(git ls-tree -r --name-only HEAD:compiler/src/main/java | grep -c '\.java$')"
+          test "$count" -eq 260
+          printf 'EXACT_INTEGRATION_HEAD=ddee99ce9bb71ab51cf486427279f42204de9636 MAIN_TREE=0c011ed986acab18dc7eb701271afbd2537bed10 MIRROR_HEAD=%s JAVA_FILES=%s\n' "$GITHUB_SHA" "$count"
+      - name: Install GraalVM Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: graalvm
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: compiler/pom.xml
+      - name: Execute bounded current-main integration JUnit suites
+        shell: bash
+        env:
+          SUITE: ${{ matrix.suite }}
+          SELECTORS: ${{ matrix.selectors }}
+          EXPECTED: ${{ matrix.expected }}
+        run: |
+          set -euo pipefail
+          java -version
+          java compiler/scripts/VerifyGeneratorCloseReports.java --selftest
+          echo "START_MAINLINE_GENERATOR_SUITE=$SUITE"
+          timeout --signal=TERM --kill-after=20s 660s \
+            mvn -B -ntp -f compiler/pom.xml \
+              "-Dtest=$SELECTORS" -DfailIfNoTests=true -DtrimStackTrace=false test \
+              2>&1 | tee "generator-mainline-$SUITE.log"
+          if [ "$SUITE" = "core" ]; then
+            java compiler/scripts/VerifyGeneratorCloseReports.java \
+              compiler/target/surefire-reports/TEST-dev.oreslang.runtime.GeneratorCancellationInterruptionTest.xml \
+              compiler/target/surefire-reports/TEST-dev.oreslang.runtime.GeneratorRuntimeTest.xml
+          fi
+          grep -F "Tests run: $EXPECTED, Failures: 0, Errors: 0, Skipped: 0" "generator-mainline-$SUITE.log"
+          echo "PASS_MAINLINE_GENERATOR_SUITE=$SUITE TESTS=$EXPECTED"
+      - name: Upload executed logs and Surefire receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generator-mainline-${{ matrix.suite }}
+          path: |
+            compiler/target/surefire-reports/
+            generator-mainline-*.log
+          if-no-files-found: ignore

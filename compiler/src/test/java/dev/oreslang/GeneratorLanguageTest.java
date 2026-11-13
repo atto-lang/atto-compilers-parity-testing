@@ -492,7 +492,7 @@ final class GeneratorLanguageTest {
                   pub val int value = 1;
                 end
 
-                generator fnc bad(&Box box): int {
+                generator fnc bad(borrow Box box): int {
                   yield box.value;
                   return;
                 }
