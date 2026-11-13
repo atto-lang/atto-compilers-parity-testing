@@ -1,0 +1,50 @@
+name: Exact queued source task cancellation physical admission regression
+on:
+  push:
+    branches:
+      - ci/source-task-cancel-race-isolate-20261112
+permissions:
+  contents: read
+jobs:
+  queued-cancellation-quiescence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout private exact source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify source and deterministic regression blob
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD:compiler/src/main)" = 64deaf84e343e255c835c50b88944aaffe4aed25
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/SchedulerQueuedCancellationQuiescenceTest.java)" = dfdbf3bbe4efa5f89c2229eb0513e732ae7b3d8a
+          test "$(git hash-object compiler/pom.xml)" = 2e566927d4b8e07884ce53b0c463d440201fe54c
+          echo "EXACT_QUEUED_CANCEL_SOURCE=64deaf84e343e255c835c50b88944aaffe4aed25"
+      - name: Install matching GraalVM 25.3.4.1
+        uses: graalvm/setup-graalvm@v1
+        with:
+          version: '25.3'
+          distribution: graalvm-community
+          java-version: '25.0.4.1'
+          cache: maven
+      - name: Verify cancellation physical-exit ordering
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=20s 600s \
+            mvn -B -ntp -f compiler/pom.xml -Dtest=SchedulerQueuedCancellationQuiescenceTest -DfailIfNoTests=true -DtrimStackTrace=false test \
+            2>&1 | tee queued-cancel-quiescence.log
+          grep -F 'Tests run: 1, Failures: 0, Errors: 0, Skipped: 0' queued-cancel-quiescence.log
+          echo PASS_QUEUED_CANCEL_QUIESCENCE=1
+      - name: Upload JUnit and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: queued-cancel-quiescence
+          path: |
+            compiler/target/surefire-reports/
+            queued-cancel-quiescence.log
+          if-no-files-found: ignore
