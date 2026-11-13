@@ -30,8 +30,10 @@ jobs:
           sha="a6189d92c813426ecf54a09cf535c3874de45942"
           test "$(git rev-parse "HEAD:$pos")" = "$sha"
           test "$(git hash-object --no-filters "$pos")" = "$sha"
-          printf 'source_head=%s\\nsource_tree=%s\\npositive_guest_blob=%s\\ncompiler_guest_execution=NOT_EXECUTED\\n' \\
-            "$EXPECTED_HEAD" "$(git rev-parse 'HEAD^{tree}')" "$sha"
+          echo "source_head=$EXPECTED_HEAD"
+          echo "source_tree=$(git rev-parse 'HEAD^{tree}')"
+          echo "positive_guest_blob=$sha"
+          echo "compiler_guest_execution=NOT_EXECUTED"
       - name: Install reviewed Rust toolchain
         run: rustup toolchain install 1.96.0 --profile minimal --component rustfmt,clippy
       - name: Format-check parity runner
