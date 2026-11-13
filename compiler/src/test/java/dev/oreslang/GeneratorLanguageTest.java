@@ -507,8 +507,8 @@ final class GeneratorLanguageTest {
                         define class Box as
                           pub val int value = 1;
                         end
-                        fnc gen* bad(Box box): Iterator<borrow Box> {
-                          yield rt borrow box;
+                        fnc gen* bad(Box box): Iterator<&Box> {
+                          yield &box;
                           return;
                         }
                         """));
@@ -521,7 +521,7 @@ final class GeneratorLanguageTest {
                         define class Box as
                           pub val int value = 1;
                         end
-                        fnc gen* bad(Iterator<borrow Box> source): Iterator<borrow Box> {
+                        fnc gen* bad(Iterator<&Box> source): Iterator<&Box> {
                           yield* source;
                           return;
                         }
@@ -560,7 +560,7 @@ final class GeneratorLanguageTest {
                 end
                 async fnc bad(): void {
                   val Box box = new Box();
-                  val borrow Box borrowed = rt borrow box;
+                  val &Box borrowed = &box;
                   for await const value of [1, 2] { stdio.stdout.write(value); }
                   stdio.stdout.write(borrowed.value);
                   return;

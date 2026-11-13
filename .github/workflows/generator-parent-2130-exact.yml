@@ -1,0 +1,80 @@
+name: Parent gen-star exact-head characterization
+
+on:
+  push:
+    branches:
+      - ci/generator-parent-2130-cdad9104-20261112
+
+permissions:
+  contents: read
+
+jobs:
+  parent-characterization:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: language
+            test_selector: 'GeneratorCanonicalAdmissionTest,GeneratorLanguageTest'
+            expected: 37
+          - suite: streams
+            test_selector: 'GeneratorAdmissionStickyAsyncTest,GeneratorTerminalFailureStickyTest,AsyncSequencesTest,AsyncSequenceCollectorsTest,AsyncRuntimeTest'
+            expected: 34
+          - suite: runtime-no-known-hang
+            test_selector: 'GeneratorRuntimeTest#closeAtYieldWaitsForTheProducerToLeaveItsGuestTurn+terminalPullWaitsForTheProducerToLeaveItsGuestTurn+rejectedBackingGuestTurnFailsThePullInsteadOfParkingForever+producerSubmissionRejectionIsStickyAndNeverRunsGuestBody+asyncPullOnClosedSchedulerReturnsFailedOresFuture+terminalPullRemainsCompletedAfterSchedulerShutdown+asyncPullDuringPendingProducerExitReturnsPromptly+asyncPullsUseOresFutureIncludingTerminalPulls+closeUnblocksAnInFlightPullAndInterruptsProducer+concurrentSyncPullIsRejectedInsteadOfQueueingAnotherConsumer+cancelledAsyncPullBeforeEngineAdmissionReleasesGateImmediately+cancelledAsyncPullKeepsSingleFlightGateUntilEnginePullUnwinds+asyncCloseIsMemoizedAndWaitsOffCallerForCleanup+asyncCloseRacingOutstandingPullWaitsForPhysicalProducerExit+asyncCloseReceiptSurvivesConcurrentRuntimeShutdown+concurrentAsyncPullIsRejectedBeforeAnotherPullTaskIsAdmitted+syncClosePreservesCleanupFailureAfterPhysicalExit+asyncCloseReceiptPreservesCleanupFailureAfterPhysicalExit+asyncCloseBeforeFirstPullNeverStartsProducer+asyncClosePreservesCleanupFailureAfterPhysicalExit+closeAtYieldDoesNotResumeGuestBody+syncGeneratorReturnsOneStableIteratorView+closeInvalidatesPrefetchedSyncYield'
+            expected: 23
+    steps:
+      - name: Checkout funded local Git mirror
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Verify parent source exact Git objects before execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD:compiler/src/main)" = d16466466cb4c2e67e104fa196b2830950a04761
+          test "$(git rev-parse HEAD:compiler/src/main/java)" = 59ae5aca06894ba02e5d1174b35065f1d9beea60
+          test "$(git rev-parse HEAD:compiler/stdlib)" = 711c0751213039f6d047099aad9fa9e754eb8ce6
+          test "$(git hash-object compiler/pom.xml)" = 8cf5eb37b685834ba79860d2fb693efc319c51e3
+          test "$(git hash-object compiler/src/main/java/dev/oreslang/runtime/GeneratorRuntime.java)" = 898db2ea73b4ce62a55bab50b5bc5ac49124a3ca
+          test "$(git hash-object compiler/src/main/java/dev/oreslang/types/OwnershipChecker.java)" = 608063ae9de771c4ffa402f9c46be68fbc46102d
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/GeneratorLanguageTest.java)" = e52d422af8e1a02cc4679678e73d9be301c9dd49
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/GeneratorCanonicalAdmissionTest.java)" = c9ff9c8bce78928f03db7a8312ff20b8d11882d1
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/GeneratorRuntimeTest.java)" = 423cd02f63ece65de40f4449fc3d05f654b549dc
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/AsyncRuntimeTest.java)" = ab52152ce86ea52c25c30193f99b2f776d29555c
+          test "$(git hash-object compiler/src/test/java/dev/oreslang/runtime/AsyncSequencesTest.java)" = 9291e0051af713d69330d99062615933e1a2b846
+          printf 'EXACT_PARENT_SOURCE_HEAD=cdad91045ba39e16bc350cc52091cab00b129f7a MAIN_TREE=d16466466cb4c2e67e104fa196b2830950a04761 MIRROR_HEAD=%s\n' "$GITHUB_SHA"
+      - name: Install GraalVM Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: graalvm
+          java-version: '25'
+          cache: maven
+          cache-dependency-path: compiler/pom.xml
+      - name: Run bounded parent exact-head JUnit characterization
+        shell: bash
+        env:
+          SELECTOR: ${{ matrix.test_selector }}
+          SUITE: ${{ matrix.suite }}
+          EXPECTED: ${{ matrix.expected }}
+        run: |
+          set -euo pipefail
+          echo "PARENT_GENERATOR_SUITE_START=$SUITE"
+          timeout --signal=TERM --kill-after=15s 240s \
+            mvn -B -ntp -f compiler/pom.xml \
+            "-Dtest=$SELECTOR" -DfailIfNoTests=true -DtrimStackTrace=false test \
+            2>&1 | tee "parent-$SUITE.log"
+          grep -F "Tests run: $EXPECTED, Failures: 0, Errors: 0, Skipped: 0" "parent-$SUITE.log"
+          echo "PARENT_GENERATOR_SUITE_PASS=$SUITE TESTS=$EXPECTED"
+      - name: Upload JUnit logs and reports on any outcome
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parent-gen-star-${{ matrix.suite }}
+          path: |
+            compiler/target/surefire-reports/
+            parent-*.log
+          if-no-files-found: ignore

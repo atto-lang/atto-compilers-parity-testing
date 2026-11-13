@@ -51,33 +51,39 @@ public final class GeneratorRuntime {
 
     public static final class Generator<T> implements Iterable<T>, AutoCloseable {
         private final Engine<T> engine;
-        // Both the direct nextStep() API and the Iterator view consume ONE
-        // activation. A hasNext() prefetch must never be skipped by a direct
-        // pull, or an item can be reordered/lost across public read paths.
-        // The CAS gate covers both buffer access and the engine's blocking
-        // turn; overlapping calls fail rather than parking another consumer.
         private final AtomicBoolean pullInFlight = new AtomicBoolean();
-        private Step<T> buffered;
         private final Iterator<T> iteratorView;
 
         private Generator(Engine<T> engine) {
             this.engine = engine;
             this.iteratorView = new Iterator<>() {
+                private Step<T> buffered;
+
                 @Override
                 public synchronized boolean hasNext() {
-                    return !readStep(true).done();
+                    if (Generator.this.engine.isClosed()) {
+                        buffered = null;
+                        return false;
+                    }
+                    if (buffered == null) buffered = nextStep();
+                    if (Generator.this.engine.isClosed()) {
+                        buffered = null;
+                        return false;
+                    }
+                    return !buffered.done();
                 }
 
                 @Override
                 public synchronized T next() {
-                    Step<T> step = readStep(false);
-                    if (step.done()) throw new NoSuchElementException();
-                    return step.value();
+                    if (!hasNext()) throw new NoSuchElementException();
+                    T value = buffered.value();
+                    buffered = null;
+                    return value;
                 }
             };
         }
 
-        private Step<T> readStep(boolean peek) {
+        public Step<T> nextStep() {
             if (ActorRuntime.inActorExecution()) {
                 throw new IllegalStateException(
                         "synchronous generator iteration cannot park an actor carrier; "
@@ -88,27 +94,10 @@ public final class GeneratorRuntime {
                         "concurrent Iterator.next() is not permitted; finish the outstanding pull first");
             }
             try {
-                if (engine.isClosed()) {
-                    buffered = null;
-                    return Step.doneStep();
-                }
-                if (buffered == null) buffered = engine.next();
-                // Close can invalidate a prefetched item while another thread
-                // is holding this read gate. Never deliver it after shutdown.
-                if (engine.isClosed()) {
-                    buffered = null;
-                    return Step.doneStep();
-                }
-                Step<T> result = buffered;
-                if (!peek) buffered = null;
-                return result;
+                return engine.next();
             } finally {
                 pullInFlight.set(false);
             }
-        }
-
-        public Step<T> nextStep() {
-            return readStep(false);
         }
 
         @Override
@@ -164,14 +153,11 @@ public final class GeneratorRuntime {
             // An async pull always returns an OresFuture, including when
             // scheduler admission itself rejects before any guest work starts.
             try {
-                // A cancelled pull that has entered engine.next() may have
-                // consumed a yielded item that the caller will never observe.
-                // Fail closed: revoke the producer activation on that path,
-                // including when cancellation wins after engine.next() returns.
-                // A pull cancelled *before* entry owns no activation and does
-                // not close an otherwise usable generator.
-                // 0=pending, 1=entered, 2=exited after entry, 3=denied entry.
-                AtomicInteger pullState = new AtomicInteger();
+                // Future cancellation settles before AsyncRuntime's backing task
+                // necessarily leaves engine.next(). Arbitrate task entry against
+                // early completion so cancellation cannot reopen pull admission
+                // while the cancelled consumer still owns the activation.
+                AtomicInteger pullState = new AtomicInteger(); // 0=pending, 1=inside engine.next, 2=released
                 OresFuture<Step<T>> pull = runtime.submit(() -> {
                     if (!pullState.compareAndSet(0, 1)) {
                         throw new CancellationException(
@@ -180,31 +166,16 @@ public final class GeneratorRuntime {
                     try {
                         return engine.next();
                     } finally {
-                        // Engine return is not Future settlement. A yield
-                        // may still be unobserved until the backing task's
-                        // context-exit fence and Future completion run.
                         pullState.set(2);
+                        pullInFlight.set(false);
                     }
                 });
                 pull.whenCompleteRuntime((value, failure) -> {
-                    // Completion/cancellation before entry cannot have
-                    // consumed a yield and releases admission immediately.
-                    if (pullState.compareAndSet(0, 3)) {
-                        pullInFlight.set(false);
-                    } else if (pull.isCancelled()) {
-                        // An admitted pull has no remaining observer. Revoke
-                        // producer authority without parking the callback,
-                        // then retain single-flight ownership until the
-                        // consumer's *physical* task exit. Logical Future
-                        // cancellation alone is not an exit receipt.
-                        engine.requestClose();
-                        runtime.taskExitReceipt(pull).whenCompleteRuntime(
-                                (ignored, exitFailure) -> pullInFlight.set(false));
-                    } else {
-                        // Successful/failed Future settlement means the
-                        // uncancelled backing turn has finished engine.next().
-                        // Prevent a second pull from observing an unclaimed
-                        // yield between engine return and Future settlement.
+                    // Admission/turn failure or cancellation before the task
+                    // entered engine.next() has no physical pull to unwind.
+                    // If engine.next() is already running, its finally owns the
+                    // release and this callback must leave the gate closed.
+                    if (pullState.compareAndSet(0, 2)) {
                         pullInFlight.set(false);
                     }
                 });
@@ -338,18 +309,6 @@ public final class GeneratorRuntime {
                             publish(new DoneEvent<>());
                         } catch (CancellationException cancelled) {
                             if (!closed.get()) publish(new FailedEvent<>(cancelled));
-                        } catch (InterruptedException interrupted) {
-                            // Closing an active generator interrupts its producer.
-                            // That is a requested shutdown, not a failed finally
-                            // block. Preserve an unsolicited interruption as a
-                            // sticky terminal error when close was NOT requested.
-                            // Genuine cleanup failures still reach the Throwable
-                            // branch below and remain visible on close receipts.
-                            try {
-                                if (!closed.get()) publish(new FailedEvent<>(interrupted));
-                            } finally {
-                                Thread.currentThread().interrupt();
-                            }
                         } catch (Throwable failure) {
                             if (!closed.get()) publish(new FailedEvent<>(failure));
                             else closeFailure.compareAndSet(null, failure);

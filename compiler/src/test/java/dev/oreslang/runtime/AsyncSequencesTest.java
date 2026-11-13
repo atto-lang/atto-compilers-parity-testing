@@ -76,8 +76,7 @@ public class AsyncSequencesTest {
         assertEquals(0, channel.pendingRegistrations());
         assertFalse(channel.isClosed());
         assertTrue(channel.tryWrite(5));
-        assertEquals(5, channel.readAsync().join(),
-                "Channel.readAsync returns the element; only cursor.nextAsync wraps it in Optional");
+        assertEquals(Optional.of(5), channel.readAsync().join());
         assertEquals(Optional.empty(), cursor.nextAsync().join());
     }
 
