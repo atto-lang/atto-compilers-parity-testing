@@ -68,60 +68,7 @@ jobs:
           test "$(git hash-object compiler/pom.xml)" = 2e566927d4b8e07884ce53b0c463d440201fe54c
           test "$(git hash-object compiler/scripts/build-native-thread.sh)" = 13199140863e2a1995ad6cf613ee481e0f90d759
           test "$(git ls-tree -r --name-only HEAD:compiler/src/main/java | grep -c '\.java$')" -eq 260
-          test "$(git ls-tree -r --name-only HEAD:compiler/src/test/java | grep -c '\.java
-          echo "COMBINED_COMPILER_ADMITTED JAVA_SOURCE_HEAD=ddee99ce9bb71ab51cf486427279f42204de9636 PARSER_PR_HEAD=affe76116283294904d2183bd0ea78c17e03ee67 MIRROR=$GITHUB_SHA"
-      - name: Install matching GraalVM CE 25.3.4.1
-        uses: graalvm/setup-graalvm@v1
-        with:
-          version: '25.3'
-          distribution: graalvm-community
-          java-version: '25.0.4.1'
-          cache: maven
-      - name: Execute and count real JUnit regressions
-        shell: bash
-        env:
-          SUITE: ${{ matrix.suite }}
-          SELECTORS: ${{ matrix.selectors }}
-          EXPECTED: ${{ matrix.expected }}
-          REPORTS: ${{ matrix.reports }}
-        run: |
-          set -euo pipefail
-          java -version
-          native-image --version | tee "generator-combined-toolchain-$SUITE.log"
-          grep -F '25.3.4.1' "generator-combined-toolchain-$SUITE.log"
-          timeout --signal=TERM --kill-after=20s 1000s \
-            mvn -B -ntp -f compiler/pom.xml "-Dtest=$SELECTORS" -DfailIfNoTests=true -DtrimStackTrace=false test \
-            2>&1 | tee "generator-combined-$SUITE.log"
-          if grep -Fiq 'version check failed' "generator-combined-$SUITE.log"; then
-            echo 'FAIL_INCOMPATIBLE_GRAALVM_RUNTIME' >&2
-            exit 1
-          fi
-          grep -F "Tests run: $EXPECTED, Failures: 0, Errors: 0, Skipped: 0" "generator-combined-$SUITE.log"
-          count=0
-          for named in $REPORTS; do
-            f="compiler/target/surefire-reports/TEST-$named.xml"
-            test -f "$f"
-            grep -Fq '<testcase ' "$f"
-            grep -Fq 'failures="0"' "$f"
-            grep -Fq 'errors="0"' "$f"
-            grep -Fq 'skipped="0"' "$f"
-            n="$(grep -c '<testcase ' "$f")"
-            test "$n" -gt 0
-            count=$((count+n))
-            echo "EXACT_JUNIT_REPORT=$named CASES=$n"
-          done
-          test "$count" -eq "$EXPECTED"
-          echo "PASS_COMBINED_GENERATOR_PARSER=$SUITE EXECUTED_CASES=$count"
-      - name: Save executed receipts even if a gate fails
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: generator-combined-${{ matrix.suite }}
-          path: |
-            compiler/target/surefire-reports/
-            generator-combined-*.log
-          if-no-files-found: ignore
-)" -eq 29
+          test "$(git ls-tree -r --name-only HEAD:compiler/src/test/java | grep -c '\.java$')" -eq 29
           echo "COMBINED_COMPILER_ADMITTED JAVA_SOURCE_HEAD=ddee99ce9bb71ab51cf486427279f42204de9636 PARSER_PR_HEAD=affe76116283294904d2183bd0ea78c17e03ee67 MIRROR=$GITHUB_SHA"
       - name: Install matching GraalVM CE 25.3.4.1
         uses: graalvm/setup-graalvm@v1
