@@ -3,7 +3,7 @@
 //! Signers must be independently governed and must verify the execution
 //! before signing; a valid signature alone does NOT certify guest execution.
 use crate::artifact_receipt::sha256_hex;
-use std::{fs::{self,File,OpenOptions},io::Write,path::{Path,PathBuf},
+use std::{fs::{self,OpenOptions},io::Write,path::PathBuf,
     process::{Command,Stdio},sync::atomic::{AtomicU64,Ordering}};
 const MAX_KEY:usize=8192;
 const MAX_STATEMENT:usize=4096;
