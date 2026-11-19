@@ -76,9 +76,9 @@ done < <(tail -n +2 "$manifest" | cut -f1)
 
 [[ "$processed" -eq 83 ]] || fail "Expected 83 source repositories, found $processed"
 if command -v shasum >/dev/null 2>&1; then
-  find "$destination" -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 shasum -a 256 > "$destination/SHA256SUMS"
+  find "$destination" -type f ! -name SHA256SUMS -print0 | xargs -0 shasum -a 256 > "$destination/SHA256SUMS"
 elif command -v sha256sum >/dev/null 2>&1; then
-  find "$destination" -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > "$destination/SHA256SUMS"
+  find "$destination" -type f ! -name SHA256SUMS -print0 | xargs -0 sha256sum > "$destination/SHA256SUMS"
 else
   fail 'No SHA-256 tool for verifiable metadata receipts.'
 fi
