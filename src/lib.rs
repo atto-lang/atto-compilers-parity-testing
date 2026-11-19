@@ -70,12 +70,7 @@ impl<'de> Deserialize<'de> for Unique {
 /// A successful parse only means that a JSON value satisfies a draft contract;
 /// it does not authorize an action or establish runtime conformance.
 pub fn decode_and_validate(raw: &[u8], schema: &Value) -> Result<Value, String> {
-    if raw.len() > MAX_WIRE_BYTES {
-        return Err("wire payload exceeds one MiB".into());
-    }
-    let mut decoder = serde_json::Deserializer::from_slice(raw);
-    let value = Unique::deserialize(&mut decoder).map_err(|e| e.to_string())?.0;
-    decoder.end().map_err(|e| e.to_string())?;
+    let value = decode_strict_json(raw)?;
     if !value.is_object() {
         return Err("expected top-level JSON object".into());
     }
@@ -84,6 +79,19 @@ pub fn decode_and_validate(raw: &[u8], schema: &Value) -> Result<Value, String> 
         .build(schema)
         .map_err(|e| e.to_string())?;
     validator.validate(&value).map_err(|e| e.to_string())?;
+    Ok(value)
+}
+
+/// Decode untrusted JSON with duplicate-key, malformed UTF-8, float-syntax and
+/// size rejection at every nesting level. Unlike contract ingress, GitHub
+/// collection endpoints may return arrays at the top level.
+pub fn decode_strict_json(raw: &[u8]) -> Result<Value, String> {
+    if raw.len() > MAX_WIRE_BYTES {
+        return Err("JSON payload exceeds one MiB".into());
+    }
+    let mut decoder = serde_json::Deserializer::from_slice(raw);
+    let value = Unique::deserialize(&mut decoder).map_err(|e| e.to_string())?.0;
+    decoder.end().map_err(|e| e.to_string())?;
     Ok(value)
 }
 

@@ -1,5 +1,5 @@
 use atto_evidence_contract_conformance::artifact_receipt::{
-    ArtifactPolicy,ProvenanceVerifier,ReplayFence,validate_archive,validate_signed,sha256_hex,MAX_ARCHIVE_BYTES
+    ArtifactPolicy,ProvenanceVerifier,ReplayFence,DurableReplayFence,validate_archive,validate_signed,sha256_hex,MAX_ARCHIVE_BYTES
 };
 use serde_json::{json,Value};
 use std::io::{Cursor,Write};
@@ -94,4 +94,89 @@ fn acceptable(r:&Value,stdout:&[u8])->bool{
     let bytes=archive(&receipt(),&vec![0u8;1024*1024+1]);
     let d=format!("sha256:{}",sha256_hex(&bytes));
     assert!(validate_archive(&bytes,&policy(&d)).is_err());
+}
+
+fn archive_raw(receipt:&[u8],stdout:&[u8],fixture:Option<&[u8]>)->Vec<u8>{
+    let mut w=ZipWriter::new(Cursor::new(Vec::new()));
+    let options=SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
+    w.start_file("guest-receipt.json",options).unwrap();
+    w.write_all(receipt).unwrap();
+    w.start_file("guest-stdout.bin",options).unwrap();
+    w.write_all(stdout).unwrap();
+    if let Some(bytes)=fixture {
+        w.start_file("fixture-set.json",options).unwrap();
+        w.write_all(bytes).unwrap();
+    }
+    w.finish().unwrap().into_inner()
+}
+
+#[test]
+fn rejects_duplicate_guest_receipt_fields_even_if_all_other_data_matches(){
+    let raw=receipt().to_string();
+    let duplicates=format!("{},\"nonce\":\"{}\"}}",
+        raw.trim_end_matches('}'),NONCE);
+    let bytes=archive_raw(duplicates.as_bytes(),b"7 cases executed\n",None);
+    let d=format!("sha256:{}",sha256_hex(&bytes));
+    assert!(validate_archive(&bytes,&policy(&d)).is_err());
+}
+#[test]
+fn binds_optional_fixture_bytes_to_trusted_hash_and_executed_count(){
+    let fixtures=br#"[{"id":1},{"id":2},{"id":3},{"id":4},{"id":5},{"id":6},{"id":7}]"#;
+    let hash=sha256_hex(fixtures);
+    let mut r=receipt();
+    r["case_sha256"]=json!(&hash);
+    let zip=archive_raw(r.to_string().as_bytes(),b"7 cases executed\n",Some(fixtures));
+    let d=format!("sha256:{}",sha256_hex(&zip));
+    let mut p=policy(&d);
+    p.case_sha256=&hash;
+    assert!(validate_archive(&zip,&p).unwrap().fixture_bytes_verified);
+    let legacy=archive(&r,b"7 cases executed\n");
+    let legacy_digest=format!("sha256:{}",sha256_hex(&legacy));
+    let mut old_policy=policy(&legacy_digest);
+    old_policy.case_sha256=&hash;
+    assert!(!validate_archive(&legacy,&old_policy).unwrap().fixture_bytes_verified);
+    let tampered=archive_raw(r.to_string().as_bytes(),
+        b"7 cases executed\n",Some(br#"[{"id":1}]"#));
+    assert!(validate_archive(&tampered,&policy(&format!("sha256:{}",sha256_hex(&tampered)))).is_err());
+    let mut bad=r.clone();bad["executed"]=json!(6);
+    let wrong=archive_raw(bad.to_string().as_bytes(),b"7 cases executed\n",Some(fixtures));
+    let wrong_digest=format!("sha256:{}",sha256_hex(&wrong));
+    let mut wrong_policy=policy(&wrong_digest);
+    wrong_policy.case_sha256=&hash;
+    assert!(validate_archive(&wrong,&wrong_policy).is_err());
+}
+
+#[test]
+fn durable_replay_journal_survives_separate_verifier_instances(){
+    use std::fs;
+    let nonce=std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+    let root=std::env::temp_dir().join(
+        format!("atto-durable-fence-{}-{nonce}",std::process::id()));
+    fs::create_dir(&root).unwrap();
+    #[cfg(unix)] {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&root,fs::Permissions::from_mode(0o700)).unwrap();
+    }
+    let zip=archive(&receipt(),b"7 cases executed\n");
+    let d=format!("sha256:{}",sha256_hex(&zip));
+    let checked=validate_archive(&zip,&policy(&d)).unwrap();
+    let first=DurableReplayFence::open(&root).unwrap();
+    assert!(first.admit(&checked).is_ok());
+    // A freshly constructed verifier must see the earlier process' marker.
+    let second=DurableReplayFence::open(&root).unwrap();
+    assert!(second.admit(&checked).is_err());
+    let persisted:Vec<_>=fs::read_dir(&root).unwrap().map(Result::unwrap).collect();
+    assert_eq!(persisted.len(),1);
+    #[cfg(unix)] {
+        use std::os::unix::fs::{symlink,PermissionsExt};
+        let private_link=root.with_extension("symlink");
+        symlink(&root,&private_link).unwrap();
+        assert!(DurableReplayFence::open(&private_link).is_err());
+        fs::remove_file(private_link).unwrap();
+        fs::set_permissions(&root,fs::Permissions::from_mode(0o777)).unwrap();
+        assert!(DurableReplayFence::open(&root).is_err());
+        fs::set_permissions(&root,fs::Permissions::from_mode(0o700)).unwrap();
+    }
+    fs::remove_dir_all(root).unwrap();
 }

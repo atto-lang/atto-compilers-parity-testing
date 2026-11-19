@@ -28,7 +28,7 @@ fn fixture()->Mock{
         "path":".github/workflows/conformance.yml","status":"completed","conclusion":"success"}));
     v.insert(key("actions/runs/42/jobs?per_page=100"),json!({"total_count":1,
         "jobs":[{"id":123,"run_id":42,"run_attempt":2,"head_sha":SOURCE,"name":"guest-tests",
-            "status":"completed","conclusion":"success",
+            "status":"completed","conclusion":"success","runner_name":"GitHub Actions 1",
             "steps":[{"name":STEP,"status":"completed","conclusion":"success"}]}]}));
     v.insert(key("pulls/5/reviews?per_page=100"),json!([
         {"id":321,"user":{"login":"ORESoftware"},"state":"APPROVED","commit_id":SOURCE}
@@ -39,7 +39,8 @@ fn fixture()->Mock{
     }));
     v.insert(key("actions/runs/42/artifacts?per_page=100"),json!({"total_count":1,
         "artifacts":[{"id":400,"name":"guest-receipt","expired":false,
-            "workflow_run":{"id":42},"digest":format!("sha256:{DIGEST}")}]}));
+            "size_in_bytes":2048,"workflow_run":{"id":42,"head_sha":SOURCE},
+            "digest":format!("sha256:{DIGEST}")}]}));
     Mock{values:v}
 }
 fn ok(m:&Mock)->bool{probe_github_metadata(m,&spec()).is_ok()}
@@ -102,4 +103,46 @@ fn change(f:impl FnOnce(&mut Value),path:&str)->bool{
         let p=ProbeSpec{repository:bad,..spec()};
         assert!(probe_github_metadata(&fixture(),&p).is_err());
     }
+}
+
+#[test]
+fn rejects_superseded_approval_and_other_reviewers_blocking_changes() {
+    let path="pulls/5/reviews?per_page=100";
+    assert!(!change(|v| v.as_array_mut().unwrap().push(json!({
+        "id":322,"user":{"login":"ORESoftware"},
+        "state":"DISMISSED","commit_id":SOURCE
+    })),path));
+    assert!(!change(|v| v.as_array_mut().unwrap().push(json!({
+        "id":322,"user":{"login":"ORESoftware"},
+        "state":"COMMENTED","commit_id":SOURCE
+    })),path));
+    assert!(!change(|v| v.as_array_mut().unwrap().push(json!({
+        "id":322,"user":{"login":"security-reviewer"},
+        "state":"CHANGES_REQUESTED","commit_id":SOURCE
+    })),path));
+    assert!(!change(|v| v.as_array_mut().unwrap().push(json!({
+        "id":321,"user":{"login":"another-user"},
+        "state":"APPROVED","commit_id":SOURCE
+    })),path)); // duplicate review ID
+    assert!(!change(|v| v[0]["id"]=json!(0),path));
+}
+#[test]
+fn rejects_missing_runner_stale_artifact_and_empty_download() {
+    let job="actions/runs/42/jobs?per_page=100";
+    assert!(!change(|v| v["jobs"][0]["runner_name"]=json!(""),job));
+    assert!(!change(|v| { v["jobs"][0].as_object_mut().unwrap().remove("runner_name"); },job));
+    let artifact="actions/runs/42/artifacts?per_page=100";
+    assert!(!change(|v| v["artifacts"][0]["size_in_bytes"]=json!(0),artifact));
+    assert!(!change(|v| v["artifacts"][0]["workflow_run"]["head_sha"]=json!("f".repeat(40)),artifact));
+}
+#[test]
+fn strict_json_rejects_ambiguous_nested_github_api_properties() {
+    for raw in [br#"{"jobs":[{"id":1,"id":2}]}"#.as_slice(),
+        br#"{"run_attempt":1,"run_attempt":2}"#,
+        br#"{"id":1.0}"#, b"{}\n{}", b"\xff",
+        br#"{"id":"\ud800"}"#] {
+        assert!(atto_evidence_contract_conformance::decode_strict_json(raw).is_err(),"{raw:?}");
+    }
+    assert!(atto_evidence_contract_conformance::decode_strict_json(
+        br#"[{"id":1}]"#).unwrap().is_array());
 }

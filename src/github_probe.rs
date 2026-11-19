@@ -3,7 +3,9 @@
 //! claim to release evidence solely because the GitHub metadata looks valid.
 use serde::Serialize;
 use serde_json::Value;
-use std::process::Command;
+use std::io::Read;
+use std::process::{Command, Stdio};
+use std::collections::{BTreeMap, BTreeSet};
 
 pub trait GithubReadOnly {
     fn get_json(&self, path: &str) -> Result<Value, String>;
@@ -20,21 +22,25 @@ impl GithubReadOnly for GhCli {
         {
             return Err("unapproved GitHub API path".into());
         }
-        let out = Command::new("gh")
-            .arg("api")
-            .arg("--hostname").arg("github.com")
+        // Enforce a one-MiB streaming bound before JSON parsing.
+        let mut child=Command::new("gh")
+            .arg("api").arg("--hostname").arg("github.com")
             .arg("-X").arg("GET")
             .arg("-H").arg("Accept: application/vnd.github+json")
-            .arg(path)
-            .env("GH_PROMPT_DISABLED", "1")
-            .output().map_err(|e| format!("cannot execute gh api: {e}"))?;
-        if !out.status.success() {
-            return Err(format!("read-only GitHub API rejected path ({})", out.status));
+            .arg(path).env("GH_PROMPT_DISABLED","1")
+            .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null())
+            .spawn().map_err(|_|"cannot run read-only GitHub client")?;
+        let mut bytes=Vec::new();
+        let read=child.stdout.take().ok_or("GitHub stdout missing")?
+            .take(1_048_577).read_to_end(&mut bytes);
+        if read.is_err() || bytes.len()>1_048_576 {
+            let _=child.kill(); let _=child.wait();
+            return Err("GitHub API JSON exceeds one MiB or failed to read".into());
         }
-        if out.stdout.len() > 2_097_152 {
-            return Err("GitHub response exceeds two MiB".into());
+        if !child.wait().map_err(|_|"GitHub process failed")?.success() {
+            return Err("read-only GitHub GET failed or was denied".into());
         }
-        serde_json::from_slice(&out.stdout).map_err(|e| format!("invalid GitHub response: {e}"))
+        crate::decode_strict_json(&bytes)
     }
 }
 
@@ -151,7 +157,9 @@ pub fn probe_github_metadata<A: GithubReadOnly>(
     let matches:Vec<_>=list.iter().filter(|j|str_field(j,&["name"])==s.job_name).collect();
     require(matches.len()==1,"expected exactly one designated evidence job")?;
     let job=matches[0];
-    require(num_field(job,&["id"])>0 && num_field(job,&["run_id"])==s.run_id
+    require(num_field(job,&["id"])>0
+        && !str_field(job,&["runner_name"]).is_empty()
+        && num_field(job,&["run_id"])==s.run_id
         && num_field(job,&["run_attempt"])==attempt
         && str_field(job,&["head_sha"])==s.source_sha
         && str_field(job,&["status"])=="completed"
@@ -169,12 +177,28 @@ pub fn probe_github_metadata<A: GithubReadOnly>(
         &format!("pulls/{}/reviews?per_page=100",s.pr_number))?;
     let reviews=reviews.as_array().ok_or("invalid reviews listing")?;
     require(reviews.len()<100,"review page truncated; pagination required")?;
-    require(reviews.iter().any(|v| {
-        str_field(v,&["user","login"]).eq_ignore_ascii_case(s.approved_reviewer)
-            && str_field(v,&["state"])=="APPROVED"
-            && str_field(v,&["commit_id"])==s.source_sha
-            && num_field(v,&["id"])>0
-    }),"independent approval on exact PR head is absent")?;
+    // Use the latest review from each reviewer: older approvals can be
+    // dismissed or replaced by a later changes-requested decision.
+    let mut latest: BTreeMap<String,(u64,String,String)>=BTreeMap::new();
+    let mut seen=BTreeSet::new();
+    for v in reviews {
+        let id=num_field(v,&["id"]);
+        let user=str_field(v,&["user","login"]).to_ascii_lowercase();
+        let state=str_field(v,&["state"]).to_string();
+        let sha=str_field(v,&["commit_id"]).to_string();
+        require(id>0 && seen.insert(id) && !user.is_empty()
+            && valid_sha(&sha,40), "malformed or repeated review ID")?;
+        if latest.get(&user).is_none_or(|(older,_,_)|id>*older) {
+            latest.insert(user,(id,state,sha));
+        }
+    }
+    let reviewer=s.approved_reviewer.to_ascii_lowercase();
+    require(latest.get(&reviewer)
+        .is_some_and(|(_,state,sha)|state=="APPROVED" && sha==s.source_sha),
+        "current-head independent approval missing or superseded")?;
+    require(!latest.values().any(|(_,state,sha)|
+        state=="CHANGES_REQUESTED" && sha==s.source_sha),
+        "outstanding current-head changes-requested review")?;
 
     // Github's protected-branch endpoint requires admin permissions.
     // Any 403, 404, incomplete response or weak policy MUST reject.
@@ -193,6 +217,8 @@ pub fn probe_github_metadata<A: GithubReadOnly>(
     let matches:Vec<_>=list.iter().filter(|a|str_field(a,&["name"])==s.artifact_name
         && a["expired"]==false
         && num_field(a,&["workflow_run","id"])==s.run_id
+        && str_field(a,&["workflow_run","head_sha"])==s.source_sha
+        && num_field(a,&["size_in_bytes"])>0
         && str_field(a,&["digest"]).starts_with("sha256:")
         && valid_sha(str_field(a,&["digest"]).trim_start_matches("sha256:"),64)
         && num_field(a,&["id"])>0).collect();
