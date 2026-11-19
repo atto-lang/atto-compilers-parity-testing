@@ -6,7 +6,7 @@ use atto_evidence_contract_conformance::{
     artifact_receipt::{sha256_hex,MAX_ARCHIVE_BYTES},
     private_signature::{ApprovedKey,SigningContext,verify_detached},
 };
-use std::{env,fs,path::Path,time::{SystemTime,UNIX_EPOCH}};
+use std::{env,fs,time::{SystemTime,UNIX_EPOCH}};
 fn read_bounded(path:&str,cap:u64)->Result<Vec<u8>,String>{
     let m=fs::symlink_metadata(path).map_err(|_|"evidence file missing")?;
     if !m.file_type().is_file()||m.len()==0||m.len()>cap{
