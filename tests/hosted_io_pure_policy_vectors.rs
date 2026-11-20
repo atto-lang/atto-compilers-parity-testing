@@ -28,7 +28,7 @@ fn reference(op: &str, a: &[i64]) -> Option<bool> {
                 bytes <= file_limit && bytes <= available),
         ("fs_text_range_admissible", &[offset, len, size]) =>
             Some(offset >= 0 && len >= 0 && size >= 0 &&
-                offset <= size && len <= size - offset.max(0).min(size)),
+                offset <= size && len <= size - offset),
         ("fs_text_replacement_admissible", &[old, new, used, total]) => {
             if old < 0 || new < 0 || used < 0 || total < 0 ||
                 old > used || used > total || new > total {
@@ -59,13 +59,14 @@ fn contract_ok(v: &Value) -> bool {
         let Some(args) = case["args"].as_array() else { return false; };
         let Some(expected) = case["expected"].as_bool() else { return false; };
         if !id.starts_with(&format!("{op}.")) || !unique.insert(id) ||
-            !OPS.contains(&op) || !seen_ops.insert(op) && !OPS.contains(&op) ||
+            !OPS.contains(&op) ||
             case.as_object().is_none_or(|obj| obj.len() != 4) {
             return false;
         }
         let parsed = args.iter().map(|x| x.as_str().and_then(|s|s.parse::<i64>().ok()))
             .collect::<Option<Vec<_>>>();
         let Some(values) = parsed else { return false; };
+        seen_ops.insert(op);
         if reference(op, &values) != Some(expected) { return false; }
     }
     seen_ops.len() == OPS.len()
