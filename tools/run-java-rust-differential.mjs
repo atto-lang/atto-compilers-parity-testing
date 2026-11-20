@@ -3,6 +3,7 @@
 import {createHash} from 'node:crypto';
 import {readFileSync, writeFileSync, mkdtempSync, lstatSync, realpathSync, existsSync, rmSync, readdirSync} from 'node:fs';
 import {canonicalI64, classifyCompileNegative, classifyUnsupported, classifyUndecidedCompile, classifyGuest, assertObservationReport} from './java-rust-observation-policy.mjs';
+import {validateWasmAdapterShape} from './guest/validate-wasm-adapter.mjs';
 import {spawnSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {resolve, join, relative, isAbsolute} from 'node:path';
@@ -92,6 +93,11 @@ function checkAdapter(a,b,cases){
     for(const id of a.unsupported_cases)if(typeof a.unsupported_needles[id]!=='string'||!/^E_UNSUPPORTED(?:_[A-Z0-9_]+)?$/.test(a.unsupported_needles[id]))fail('bad unsupported diagnostic');
   }
   if(a.diagnostic_needles!==undefined)fail('free-form diagnostic needles are unsafe; use fixture category codes');
+  if(b==='rust-wasm'){
+    const w=validateWasmAdapterShape(a);
+    if(hash(readFileSync(regular(w.guest_runner_script)))!==w.guest_runner_script_sha256)
+      fail('wasm guest host script hash mismatch');
+  }
   return a;
 }
 function invoke(argv,c){
