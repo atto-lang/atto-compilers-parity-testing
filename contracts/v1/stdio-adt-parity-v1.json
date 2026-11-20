@@ -1,0 +1,103 @@
+{
+  "schema": "atto.feature.parity.stdio.is_adt.v1",
+  "feature_id": "stdio.checked_string_adt_is_pattern",
+  "version": 1,
+  "status": "ALL_NOT_EXECUTED",
+  "normative_spec": "atto-lang/atto-spec/language/adt-is-variant-patterns-v1.md",
+  "source_contract": "atto-lang/atto-platform-conformance/contracts/stdio-channel-endpoints-v1.json",
+  "runner": "tools/run-stdio-conformance.mjs",
+  "guest_required": true,
+  "allow_host_only_as_pass": false,
+  "require_exact_source_head": true,
+  "require_unmodified_fixture_head": true,
+  "accepted_is_adt_aliases": [
+    "on is Ok<_>",
+    "on is Ok<line>",
+    "on is Some<item>",
+    "on is Err<error>",
+    "on is None"
+  ],
+  "required_guest_fixtures": [
+    "checked_echo",
+    "checked_echo_readch_alias",
+    "checked_echo_is_variants",
+    "checked_echo_is_variants_readch"
+  ],
+  "additional_compile_fixtures": [
+    "stdio_is_pattern_fallback"
+  ],
+  "security_negative_gates": [
+    "is_unknown_extractor",
+    "is_none_payload",
+    "is_void_ok_bound",
+    "is_missing_ok_payload",
+    "is_wrong_variant_family",
+    "is_nested_extractor",
+    "is_multi_payload",
+    "is_duplicate_arm",
+    "unchecked_read_payload",
+    "wrong_read_direction",
+    "wrong_write_direction",
+    "read_without_suspend",
+    "stream_and_readch_conflict"
+  ],
+  "wasi_profile": "injected host only; default deny, broker grants per tenant generation",
+  "hdl_profile": "must compile-reject stdio with E_UNSUPPORTED_PROFILE; no guest",
+  "backends": [
+    {
+      "backend": "java",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "llvm",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "forge",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "net",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "wasm",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "rs",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "js",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "cranelift",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "atto",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "hdl",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "realtime",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    }
+  ]
+}
