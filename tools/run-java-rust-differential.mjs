@@ -2,7 +2,7 @@
 // Opt-in AttoLang Java/Rust candidate observations; NEVER a guest attestation.
 import {createHash} from 'node:crypto';
 import {readFileSync, writeFileSync, mkdtempSync, lstatSync, realpathSync, existsSync, rmSync, readdirSync} from 'node:fs';
-import {classifyCompileNegative, classifyUnsupported, classifyGuest, assertObservationReport} from './java-rust-observation-policy.mjs';
+import {canonicalI64, classifyCompileNegative, classifyUnsupported, classifyGuest, assertObservationReport} from './java-rust-observation-policy.mjs';
 import {spawnSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {resolve, join, relative, isAbsolute} from 'node:path';
@@ -39,7 +39,7 @@ export function loadManifest(){
     if(!['canonical','candidate','decision_required'].includes(c.authority)||!['value','stdout','reject','trap','observe'].includes(c.kind))fail('bad oracle');
     if((c.kind==='observe')!==(c.authority==='decision_required'))fail('unreviewed oracle');
     if(!hex64.test(c.sha256)||hash(readFileSync(sourcePath(c.path)))!==c.sha256)fail('fixture hash mismatch: '+c.id);
-    if(c.kind==='value'&&!Number.isSafeInteger(c.expected_value))fail('missing integer oracle');
+    if(c.kind==='value'&&canonicalI64(c.expected_value)===null)fail('missing/invalid i64 oracle');
     if(['reject','trap'].includes(c.kind)&&!/^[A-Z][A-Z0-9_]+$/.test(c.expected_diagnostic||''))fail('missing targeted diagnostic');
     if(c.kind==='stdout'&&(typeof c.expected_stdout!=='string'||!Number.isInteger(c.expected_exit)))fail('missing stdout oracle');
   }

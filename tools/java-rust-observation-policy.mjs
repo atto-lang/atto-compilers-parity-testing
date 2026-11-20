@@ -1,6 +1,15 @@
 // Local differential observations are not compiler attestation.
 // Pure classification helpers: no shell, file access, network, or execution.
 const EXPECTED = new Set(['OBSERVED_UNVERIFIED','OBSERVATION_ONLY','MISMATCH','UNSUPPORTED','INFRASTRUCTURE_FAILURE']);
+const I64_MIN = -(1n << 63n);
+const I64_MAX = (1n << 63n) - 1n;
+
+export function canonicalI64(value) {
+  if (typeof value === 'number' && Number.isSafeInteger(value)) return BigInt(value);
+  if (typeof value !== 'string' || !/^-?(0|[1-9][0-9]*)$/.test(value)) return null;
+  const parsed = BigInt(value);
+  return parsed >= I64_MIN && parsed <= I64_MAX ? parsed : null;
+}
 
 export function hasDiagnostic(output, code) {
   if (typeof output !== 'string' || typeof code !== 'string' ||
@@ -33,15 +42,15 @@ export function classifyGuest(fixture, guest, valueMode) {
     if (valueMode === 'stdout_i64') {
       const str = guest.stdout;
       const match = typeof str === 'string' && /^-?(0|[1-9][0-9]*)\n?$/.test(str);
-      correct = guest.exit_code === 0 && match &&
-        BigInt(str.trim()) === BigInt(fixture.expected_value);
+      const expected = canonicalI64(fixture.expected_value);
+      correct = guest.exit_code === 0 && match && expected !== null &&
+        BigInt(str.trim()) === expected;
     } else if (valueMode === 'exit_code') {
       correct = Number.isInteger(fixture.expected_value) && fixture.expected_value >= 0 &&
         fixture.expected_value <= 255 && guest.exit_code === fixture.expected_value;
     }
   } else if (fixture.kind === 'trap') {
-    const text = (guest.stdout || '') + '\n' + (guest.stderr || '');
-    correct = guest.exit_code !== 0 && hasDiagnostic(text, fixture.expected_diagnostic);
+    correct = guest.exit_code !== 0 && hasDiagnostic(guest.stderr || '', fixture.expected_diagnostic);
   }
   return correct ? 'OBSERVED_UNVERIFIED' : 'MISMATCH';
 }

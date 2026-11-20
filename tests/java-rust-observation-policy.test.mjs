@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {hasDiagnostic, classifyCompileNegative, classifyUnsupported, classifyGuest, assertObservationReport} from '../tools/java-rust-observation-policy.mjs';
+import {hasDiagnostic, classifyCompileNegative, classifyUnsupported, classifyGuest, assertObservationReport, canonicalI64} from '../tools/java-rust-observation-policy.mjs';
 const exit = (code, stderr='', stdout='') => ({exit_code:code, signal:null,error:null,stderr,stdout});
 test('diagnostic codes must be exact category tokens, not substrings',()=>{
  assert.equal(hasDiagnostic('E_CONST_OVERFLOW: arithmetic failure','E_CONST_OVERFLOW'),true);
@@ -28,12 +28,18 @@ test('stdout integer matching requires exit zero and full exact i64',()=>{
  assert.equal(classifyGuest(t,exit(1,'','42\n'),'stdout_i64'),'MISMATCH');
  assert.equal(classifyGuest(t,exit(0,'','42\nextra'),'stdout_i64'),'MISMATCH');
  assert.equal(classifyGuest(t,exit(42,'',''),'exit_code'),'OBSERVED_UNVERIFIED');
- assert.equal(classifyGuest({...t, expected_value:9223372036854776000},exit(0,'','9223372036854776000'),'stdout_i64'),'MISMATCH');
+ assert.equal(classifyGuest({...t, expected_value:'9223372036854775807'},exit(0,'','9223372036854775807\n'),'stdout_i64'),'OBSERVED_UNVERIFIED');
+ assert.equal(classifyGuest({...t, expected_value:'-9223372036854775808'},exit(0,'','-9223372036854775808\n'),'stdout_i64'),'OBSERVED_UNVERIFIED');
+ assert.equal(canonicalI64('9223372036854775808'),null);
+ assert.equal(canonicalI64('9223372036854776000'),null);
+ assert.equal(canonicalI64(9223372036854775807),null);
+ assert.equal(classifyGuest({...t, expected_value:'9223372036854775807'},exit(0,'','9223372036854775806'),'stdout_i64'),'MISMATCH');
 });
 test('signals are not silently interpreted as overflow semantics',()=>{
  const t={kind:'trap',expected_diagnostic:'INTEGER_OVERFLOW'};
  assert.equal(classifyGuest(t,exit(2,'INTEGER_OVERFLOW'),'stdout_i64'),'OBSERVED_UNVERIFIED');
  assert.equal(classifyGuest(t,exit(2,'panic: unrelated'),'stdout_i64'),'MISMATCH');
+ assert.equal(classifyGuest(t,exit(2,'','INTEGER_OVERFLOW'),'stdout_i64'),'MISMATCH');
  assert.equal(classifyGuest(t,{...exit(null),signal:'SIGILL'},'stdout_i64'),'INFRASTRUCTURE_FAILURE');
 });
 test('three undecided cases remain observations; nobody can fabricate PASS',()=>{
