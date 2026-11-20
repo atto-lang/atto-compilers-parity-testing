@@ -111,16 +111,41 @@ export function parseSuiteManifest(s) {
     'missing backend or forged completion');
   const cases=c.required_cases;
   assert(Array.isArray(cases)&&cases.length>=15,'incomplete stdio case coverage');
-  const ids=new Set();
+  const ids=new Set(),byId=new Map();
   for(const item of cases) {
     assert(typeof item.id==='string'&&!ids.has(item.id),'duplicate suite case');
-    ids.add(item.id);
+    ids.add(item.id);byId.set(item.id,item);
     assert(['guest-pass','compile-fail','source-compile-pass','compile-or-runtime-deny'].includes(item.kind),
       'unsupported case type');
+    if(item.kind==='compile-fail')
+      assert(/^E_[A-Z_]+$/.test(item.expected_error)&&item.no_guest_artifact===true,
+        'compile-fail must require exact diagnostic and zero artifact');
   }
-  for(const id of ['checked_echo','checked_echo_readch_alias',
-    'checked_echo_is_variants','checked_echo_is_variants_readch',
-    'stdio_is_pattern_fallback'])assert(ids.has(id),'missing required '+id);
+  const guests=['checked_echo','checked_echo_readch_alias',
+    'checked_echo_is_variants','checked_echo_is_variants_readch'];
+  const negatives=['unchecked_read_payload','wrong_read_direction',
+    'wrong_write_direction','read_without_suspend','stream_and_readch_conflict',
+    'is_unknown_extractor','is_none_payload','is_void_ok_bound',
+    'is_missing_ok_payload','is_wrong_variant_family','is_nested_extractor',
+    'is_multi_payload','is_duplicate_arm'];
+  for(const id of guests)assert(byId.get(id)?.kind==='guest-pass','missing checked guest '+id);
+  for(const id of negatives) {
+    const kind=id==='stream_and_readch_conflict'?'compile-or-runtime-deny':'compile-fail';
+    assert(byId.get(id)?.kind===kind,'missing or weakened negative '+id);
+  }
+  assert(byId.get('stdio_is_pattern_fallback')?.kind==='source-compile-pass',
+    'missing source-only nested string fallback');
+  assert(cases.length===guests.length+negatives.length+1,'extra or missing stdio scenarios');
+  const baseline=JSON.stringify(byId.get('checked_echo').runs);
+  for(const id of guests) {
+    const item=byId.get(id);
+    assert(JSON.stringify(item.runs)===baseline,'stdio echo aliases must have identical byte witnesses');
+    assert(Array.isArray(item.runs)&&item.runs.length===7,'all seven exact stdin scenarios required');
+    for(const witness of item.runs)
+      assert(typeof witness.stdin==='string'&&typeof witness.stdout==='string'&&
+        typeof witness.stderr==='string'&&Number.isSafeInteger(witness.exit),
+        'incomplete per-guest byte witness');
+  }
   return c;
 }
 function checkExit(result,kind,expected) {
