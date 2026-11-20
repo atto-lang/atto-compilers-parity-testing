@@ -2,7 +2,7 @@
 // Opt-in AttoLang Java/Rust candidate observations; NEVER a guest attestation.
 import {createHash} from 'node:crypto';
 import {readFileSync, writeFileSync, mkdtempSync, lstatSync, realpathSync, existsSync, rmSync, readdirSync} from 'node:fs';
-import {canonicalI64, classifyCompileNegative, classifyUnsupported, classifyGuest, assertObservationReport} from './java-rust-observation-policy.mjs';
+import {canonicalI64, classifyCompileNegative, classifyUnsupported, classifyUndecidedCompile, classifyGuest, assertObservationReport} from './java-rust-observation-policy.mjs';
 import {spawnSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {resolve, join, relative, isAbsolute} from 'node:path';
@@ -89,7 +89,7 @@ function checkAdapter(a,b,cases){
   if(a.unsupported_cases!==undefined&&(!Array.isArray(a.unsupported_cases)||new Set(a.unsupported_cases).size!==a.unsupported_cases.length||a.unsupported_cases.some(x=>!names.has(x))))fail('bad unsupported list');
   if(a.unsupported_cases?.length){
     if(!a.unsupported_needles||typeof a.unsupported_needles!=='object'||Array.isArray(a.unsupported_needles))fail('missing unsupported diagnostic map');
-    for(const id of a.unsupported_cases)if(typeof a.unsupported_needles[id]!=='string'||!/^[A-Z][A-Z0-9_]{2,79}$/.test(a.unsupported_needles[id]))fail('bad unsupported diagnostic');
+    for(const id of a.unsupported_cases)if(typeof a.unsupported_needles[id]!=='string'||!/^E_UNSUPPORTED(?:_[A-Z0-9_]+)?$/.test(a.unsupported_needles[id]))fail('bad unsupported diagnostic');
   }
   if(a.diagnostic_needles!==undefined)fail('free-form diagnostic needles are unsafe; use fixture category codes');
   return a;
@@ -113,7 +113,10 @@ function runCase(t,a){
         :classifyCompileNegative(compile,absent,t.expected_diagnostic);
       return {status,compile,artifact_absent:absent};
     }
-    if(t.kind==='observe'&&(compile.exit_code!==0||!existsSync(c.artifact)))return {status:'OBSERVATION_ONLY',compile,reason:'rejected or unsupported source; semantic decision still pending'};
+    if(t.kind==='observe') {
+      const state=classifyUndecidedCompile(compile,existsSync(c.artifact),readdirSync(c.workdir).length>0);
+      if(state!==null)return {status:state,compile,reason:'unresolved source form compilation outcome'};
+    }
     if(compile.exit_code!==0||!existsSync(c.artifact))return {status:'MISMATCH',compile,reason:'compiler did not produce guest artifact'};
     const artifact_sha256=hash(readFileSync(regular(c.artifact)));
     const guest=invoke(a.run_argv,c);

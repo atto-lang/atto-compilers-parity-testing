@@ -55,3 +55,7 @@ Independent of this repository's HTTP/FS #19, stdio/ADT #23 and evidence verifie
 The workflow java-rust-differential-audit.yml deliberately executes **metadata and harness tests only**. An empty/zero-step CI job is NOT_EXECUTED, not a successful guest validation. No PR merge is authorized by this corpus.
 
 Signed-i64 oracles may be canonical decimal strings to preserve all 64 bits (up to 9223372036854775807 and down to -9223372036854775808). A guest stdout_i64 result requires a zero exit code; overflow/trap markers must be emitted on stderr and accompanied by nonzero exit. A compiler or guest crash is infrastructure failure, never a checked-overflow success.
+
+## Classifier hardening checkpoint (2026-11-20)
+
+The exact diagnostic code required for an UNSUPPORTED observation must be `E_UNSUPPORTED` or a namespaced `E_UNSUPPORTED_...` code. A generic parser, syntax, type or overflow failure cannot be relabeled unsupported by a user-supplied adapter. An undecided-language observation may record an actual compile-time rejection only when no partial artifact files were written; successful compilation without the requested artifact is a MISMATCH, never OBSERVATION_ONLY. Compilers and guests remain unexecuted until true source-owned or independently authorized runner receipts exist.

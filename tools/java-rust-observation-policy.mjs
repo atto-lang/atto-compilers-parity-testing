@@ -27,9 +27,19 @@ export function classifyCompileNegative(compile, artifactAbsent, expectedCode) {
 
 export function classifyUnsupported(compile, artifactAbsent, expectedCode) {
   if (compile.error || compile.signal || compile.exit_code === null) return 'INFRASTRUCTURE_FAILURE';
+  if (typeof expectedCode !== 'string' || !/^E_UNSUPPORTED(?:_[A-Z0-9_]+)?$/.test(expectedCode)) return 'MISMATCH';
   const diagnostic = (compile.stdout || '') + '\n' + (compile.stderr || '');
   return compile.exit_code !== 0 && artifactAbsent && hasDiagnostic(diagnostic, expectedCode)
     ? 'UNSUPPORTED' : 'MISMATCH';
+}
+
+// An undecided language surface remains an observation only when the
+// compiler *actually rejects* it without a partial artifact. A tool claiming
+// success without an artifact is not a semantic decision.
+export function classifyUndecidedCompile(compile, hasArtifact, hasAnyOutput) {
+  if (compile.error || compile.signal || compile.exit_code === null) return 'INFRASTRUCTURE_FAILURE';
+  if (compile.exit_code !== 0) return hasAnyOutput ? 'MISMATCH' : 'OBSERVATION_ONLY';
+  return hasArtifact ? null : 'MISMATCH';
 }
 
 export function classifyGuest(fixture, guest, valueMode) {

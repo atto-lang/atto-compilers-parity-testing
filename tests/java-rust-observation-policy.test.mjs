@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {hasDiagnostic, classifyCompileNegative, classifyUnsupported, classifyGuest, assertObservationReport, canonicalI64} from '../tools/java-rust-observation-policy.mjs';
+import {hasDiagnostic, classifyCompileNegative, classifyUnsupported, classifyGuest, assertObservationReport, canonicalI64, classifyUndecidedCompile} from '../tools/java-rust-observation-policy.mjs';
 const exit = (code, stderr='', stdout='') => ({exit_code:code, signal:null,error:null,stderr,stdout});
 test('diagnostic codes must be exact category tokens, not substrings',()=>{
  assert.equal(hasDiagnostic('E_CONST_OVERFLOW: arithmetic failure','E_CONST_OVERFLOW'),true);
@@ -21,6 +21,8 @@ test('unsupported cannot be supplied by adapter without compiler evidence',()=>{
  assert.equal(classifyUnsupported(exit(0,'E_UNSUPPORTED_ACTOR'),true,'E_UNSUPPORTED_ACTOR'),'MISMATCH');
  assert.equal(classifyUnsupported(exit(1,'syntax error'),true,'E_UNSUPPORTED_ACTOR'),'MISMATCH');
  assert.equal(classifyUnsupported(exit(1,'E_UNSUPPORTED_ACTOR'),false,'E_UNSUPPORTED_ACTOR'),'MISMATCH');
+ assert.equal(classifyUnsupported(exit(1,'E_PARSE'),true,'E_PARSE'),'MISMATCH');
+ assert.equal(classifyUnsupported(exit(1,'E_CONST_OVERFLOW'),true,'E_CONST_OVERFLOW'),'MISMATCH');
 });
 test('stdout integer matching requires exit zero and full exact i64',()=>{
  const t={kind:'value', expected_value:42};
@@ -48,4 +50,12 @@ test('three undecided cases remain observations; nobody can fabricate PASS',()=>
  assert.throws(()=>assertObservationReport({guest_parity_certified:false,records:[{status:'PASSED'}]}));
  assert.throws(()=>assertObservationReport({guest_parity_certified:false,records:[{status:'UNSUPPORTED'}]}));
  assertObservationReport({guest_parity_certified:false,records:[{status:'UNSUPPORTED',compile:exit(1,'E_UNSUPPORTED')} ]});
+});
+
+test('undecided candidate never hides successful compile without artifact or partial files',()=>{
+ assert.equal(classifyUndecidedCompile(exit(1,'syntax error'),false,false),'OBSERVATION_ONLY');
+ assert.equal(classifyUndecidedCompile(exit(1,'syntax error'),false,true),'MISMATCH');
+ assert.equal(classifyUndecidedCompile(exit(0),false,false),'MISMATCH');
+ assert.equal(classifyUndecidedCompile(exit(0),true,true),null);
+ assert.equal(classifyUndecidedCompile({...exit(null),signal:'SIGILL'},false,false),'INFRASTRUCTURE_FAILURE');
 });
