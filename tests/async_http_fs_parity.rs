@@ -87,7 +87,7 @@ fn tampering_with_backend_rows_tests_or_status_fails_closed() {
     host_only["guest_required"] = json!(false);
     assert!(!checked_matrix(&host_only));
     let mut no_file_check = original.clone();
-    no_file_check["required_guest_checks"].as_array_mut().unwrap().retain(|x| x != "file_bytes_equal_body");
+    no_file_check["required_guest_checks"].as_array_mut().unwrap().retain(|x| x.as_str() != Some("file_bytes_equal_body"));
     assert!(!checked_matrix(&no_file_check));
 }
 
