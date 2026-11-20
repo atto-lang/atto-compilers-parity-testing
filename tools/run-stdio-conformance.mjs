@@ -4,7 +4,7 @@
 // Configuration is an explicit, trusted local file; no shell is involved.
 import {readFileSync, existsSync, mkdtempSync, rmSync, statSync, realpathSync} from 'node:fs';
 import {spawn, spawnSync} from 'node:child_process';
-import {resolve, join, relative, sep, isAbsolute} from 'node:path';
+import {resolve, join, sep, isAbsolute} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
 
@@ -17,8 +17,9 @@ const error=(message)=>{throw Error(message)};
 const assert=(condition,message)=>{if(!condition)error(message)};
 const sourcePath=(root,path)=>{
   assert(typeof path==='string'&&path.endsWith('.atto'),'invalid .atto fixture path');
-  const full=resolve(root,path);
-  assert(full.startsWith(realpathSync(root)+sep),'fixture escaped conformance root');
+  const base=realpathSync(root);
+  const full=realpathSync(resolve(base,path));
+  assert(full.startsWith(base+sep),'fixture escaped conformance root');
   return full;
 };
 export function validateConfig(config) {
@@ -143,7 +144,10 @@ export async function runSuite(config) {
   const suiteFile=readFileSync(join(suiteRoot,'contracts/stdio-channel-endpoints-v1.json'));
   const suite=parseSuiteManifest(suiteFile.toString('utf8'));
   const hasher=createHash('sha256');hasher.update(suiteFile);
-  for(const path of suite.required_cases.map(x=>x.path).sort())hasher.update(readFileSync(sourcePath(suiteRoot,path)));
+  for(const path of suite.required_cases.map(x=>x.path).sort()){
+    hasher.update(path);hasher.update(Buffer.from([0]));
+    hasher.update(readFileSync(sourcePath(suiteRoot,path)));
+  }
   const temp=mkdtempSync(join(tmpdir(),'atto-stdio-guest-'));
   const checks=[];
   try{
