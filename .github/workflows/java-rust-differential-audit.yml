@@ -1,10 +1,20 @@
 name: Java Rust differential candidate audit (not guest)
 on:
+  push:
+    branches:
+      - "feat/java-rust-semantic-differential-v1-20261120"
+    paths:
+      - "contracts/java-rust-conflicts-v1/**"
+      - "tools/run-java-rust-differential.mjs"
+      - "tools/java-rust-observation-policy.mjs"
+      - "tests/java-rust-*.test.mjs"
+      - "docs/JAVA_RUST_DIFFERENTIAL_V1.md"
+      - ".github/workflows/java-rust-differential-audit.yml"
   pull_request:
     paths:
       - "contracts/java-rust-conflicts-v1/**"
       - "tools/run-java-rust-differential.mjs"
-      - "tests/java-rust-differential*.test.mjs"
+      - "tests/java-rust-*.test.mjs"
       - "tools/java-rust-observation-policy.mjs"
       - "docs/JAVA_RUST_DIFFERENTIAL_V1.md"
       - ".github/workflows/java-rust-differential-audit.yml"
@@ -34,7 +44,7 @@ jobs:
           while IFS= read -r -d '' f; do
             test ! -L "$f"
             test "$(git hash-object "$f")" = "$(git rev-parse "HEAD:$f")"
-          done < <(git ls-files -z -- contracts/java-rust-conflicts-v1 tools/run-java-rust-differential.mjs tests/java-rust-differential.test.mjs)
+          done < <(git ls-files -z -- contracts/java-rust-conflicts-v1 tools/run-java-rust-differential.mjs tools/java-rust-observation-policy.mjs tests/java-rust-differential.test.mjs tests/java-rust-observation-policy.test.mjs docs/JAVA_RUST_DIFFERENTIAL_V1.md .github/workflows/java-rust-differential-audit.yml)
       - name: Setup Node 22
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
