@@ -58,8 +58,8 @@ test('inspect a source-free C-compiled static ELF without executing guest code',
     const src=join(dir,'sample.c'),exe=join(dir,'sample');
     writeFileSync(src,'int main(void) {return 42;}\n');
     const cc=spawnSync('cc',['-static',src,'-o',exe],{encoding:'utf8',timeout:20_000});
-    if(cc.error?.code==='ENOENT')return;
-    // A missing system static CRT is an environmental limitation, not a test pass.
+    assert.ifError(cc.error);
+    // Missing static system CRT is a failed test, not an implicit pass.
     assert.equal(cc.status,0,cc.stderr);
     assert.equal(validateStaticElfArtifact(exe),true);
     const alias=join(dir,'alias');symlinkSync(exe,alias);
@@ -74,7 +74,7 @@ test('reject dynamic ELF with PT_INTERP and rejects malformed file',()=>{
     const src=join(dir,'sample.c'),exe=join(dir,'dynamic');
     writeFileSync(src,'int main(void) {return 42;}\n');
     const cc=spawnSync('cc',[src,'-o',exe],{encoding:'utf8',timeout:20_000});
-    if(cc.error?.code==='ENOENT')return;
+    assert.ifError(cc.error);
     assert.equal(cc.status,0,cc.stderr);
     assert.throws(()=>validateStaticElfArtifact(exe),/NATIVE_ELF64_STATIC_EXEC_REQUIRED|NATIVE_ELF_DYNAMIC_LOADER_DENIED/);
     writeFileSync(exe,'NOT_ELF'.padEnd(64,'x'));
