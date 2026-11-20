@@ -1,0 +1,522 @@
+{
+  "schema": "atto.stdlib.hosted_io_pure_policy_vectors.v1",
+  "status": "REFERENCE_ORACLE_NOT_COMPILED",
+  "source_blobs": {
+    "stdlib/std/http_response_policy.atto": "22757dafe89bc9601d04c8726a09ddf676206c7e",
+    "stdlib/std/fs_text_policy.atto": "0cd53216e91ef8de1a764ba5b80ce85c5796c1f2"
+  },
+  "backend_guest_status": "NOT_EXECUTED",
+  "scalar_type": "signed-i64-decimal-string",
+  "cases": [
+    {
+      "id": "http_status_valid.below",
+      "operation": "http_status_valid",
+      "args": [
+        "99"
+      ],
+      "expected": false
+    },
+    {
+      "id": "http_status_valid.first",
+      "operation": "http_status_valid",
+      "args": [
+        "100"
+      ],
+      "expected": true
+    },
+    {
+      "id": "http_status_valid.last",
+      "operation": "http_status_valid",
+      "args": [
+        "599"
+      ],
+      "expected": true
+    },
+    {
+      "id": "http_status_valid.above",
+      "operation": "http_status_valid",
+      "args": [
+        "600"
+      ],
+      "expected": false
+    },
+    {
+      "id": "http_status_success.below",
+      "operation": "http_status_success",
+      "args": [
+        "199"
+      ],
+      "expected": false
+    },
+    {
+      "id": "http_status_success.first",
+      "operation": "http_status_success",
+      "args": [
+        "200"
+      ],
+      "expected": true
+    },
+    {
+      "id": "http_status_success.last",
+      "operation": "http_status_success",
+      "args": [
+        "299"
+      ],
+      "expected": true
+    },
+    {
+      "id": "http_status_success.above",
+      "operation": "http_status_success",
+      "args": [
+        "300"
+      ],
+      "expected": false
+    },
+    {
+      "id": "http_status_redirect.below",
+      "operation": "http_status_redirect",
+      "args": [
+        "299"
+      ],
+      "expected": false
+    },
+    {
+      "id": "http_status_redirect.first",
+      "operation": "http_status_redirect",
+      "args": [
+        "300"
+      ],
+      "expected": true
+    },
+    {
+      "id": "http_status_redirect.last",
+      "operation": "http_status_redirect",
+      "args": [
+        "399"
+      ],
+      "expected": true
+    },
+    {
+      "id": "http_status_redirect.above",
+      "operation": "http_status_redirect",
+      "args": [
+        "400"
+      ],
+      "expected": false
+    },
+    {
+      "id": "http_status_client_error.below",
+      "operation": "http_status_client_error",
+      "args": [
+        "399"
+      ],
+      "expected": false
+    },
+    {
+      "id": "http_status_client_error.first",
+      "operation": "http_status_client_error",
+      "args": [
+        "400"
+      ],
+      "expected": true
+    },
+    {
+      "id": "http_status_client_error.last",
+      "operation": "http_status_client_error",
+      "args": [
+        "499"
+      ],
+      "expected": true
+    },
+    {
+      "id": "http_status_client_error.above",
+      "operation": "http_status_client_error",
+      "args": [
+        "500"
+      ],
+      "expected": false
+    },
+    {
+      "id": "http_status_server_error.below",
+      "operation": "http_status_server_error",
+      "args": [
+        "499"
+      ],
+      "expected": false
+    },
+    {
+      "id": "http_status_server_error.first",
+      "operation": "http_status_server_error",
+      "args": [
+        "500"
+      ],
+      "expected": true
+    },
+    {
+      "id": "http_status_server_error.last",
+      "operation": "http_status_server_error",
+      "args": [
+        "599"
+      ],
+      "expected": true
+    },
+    {
+      "id": "http_status_server_error.above",
+      "operation": "http_status_server_error",
+      "args": [
+        "600"
+      ],
+      "expected": false
+    },
+    {
+      "id": "http_get_status_may_have_body.invalid-low",
+      "operation": "http_get_status_may_have_body",
+      "args": [
+        "99"
+      ],
+      "expected": false
+    },
+    {
+      "id": "http_get_status_may_have_body.informational",
+      "operation": "http_get_status_may_have_body",
+      "args": [
+        "101"
+      ],
+      "expected": false
+    },
+    {
+      "id": "http_get_status_may_have_body.success",
+      "operation": "http_get_status_may_have_body",
+      "args": [
+        "200"
+      ],
+      "expected": true
+    },
+    {
+      "id": "http_get_status_may_have_body.no-content",
+      "operation": "http_get_status_may_have_body",
+      "args": [
+        "204"
+      ],
+      "expected": false
+    },
+    {
+      "id": "http_get_status_may_have_body.reset-content",
+      "operation": "http_get_status_may_have_body",
+      "args": [
+        "205"
+      ],
+      "expected": false
+    },
+    {
+      "id": "http_get_status_may_have_body.partial",
+      "operation": "http_get_status_may_have_body",
+      "args": [
+        "206"
+      ],
+      "expected": true
+    },
+    {
+      "id": "http_get_status_may_have_body.not-modified",
+      "operation": "http_get_status_may_have_body",
+      "args": [
+        "304"
+      ],
+      "expected": false
+    },
+    {
+      "id": "http_get_status_may_have_body.not-found",
+      "operation": "http_get_status_may_have_body",
+      "args": [
+        "404"
+      ],
+      "expected": true
+    },
+    {
+      "id": "http_get_status_may_have_body.server-error",
+      "operation": "http_get_status_may_have_body",
+      "args": [
+        "500"
+      ],
+      "expected": true
+    },
+    {
+      "id": "http_get_status_may_have_body.invalid-high",
+      "operation": "http_get_status_may_have_body",
+      "args": [
+        "600"
+      ],
+      "expected": false
+    },
+    {
+      "id": "fs_text_size_admissible.zero",
+      "operation": "fs_text_size_admissible",
+      "args": [
+        "0",
+        "0",
+        "0"
+      ],
+      "expected": true
+    },
+    {
+      "id": "fs_text_size_admissible.fits",
+      "operation": "fs_text_size_admissible",
+      "args": [
+        "1",
+        "1",
+        "1"
+      ],
+      "expected": true
+    },
+    {
+      "id": "fs_text_size_admissible.above-file",
+      "operation": "fs_text_size_admissible",
+      "args": [
+        "2",
+        "1",
+        "3"
+      ],
+      "expected": false
+    },
+    {
+      "id": "fs_text_size_admissible.negative-payload",
+      "operation": "fs_text_size_admissible",
+      "args": [
+        "-1",
+        "10",
+        "10"
+      ],
+      "expected": false
+    },
+    {
+      "id": "fs_text_size_admissible.negative-limit",
+      "operation": "fs_text_size_admissible",
+      "args": [
+        "1",
+        "-1",
+        "2"
+      ],
+      "expected": false
+    },
+    {
+      "id": "fs_text_size_admissible.negative-quota",
+      "operation": "fs_text_size_admissible",
+      "args": [
+        "1",
+        "5",
+        "-1"
+      ],
+      "expected": false
+    },
+    {
+      "id": "fs_text_size_admissible.i64-max",
+      "operation": "fs_text_size_admissible",
+      "args": [
+        "9223372036854775807",
+        "9223372036854775807",
+        "9223372036854775807"
+      ],
+      "expected": true
+    },
+    {
+      "id": "fs_text_range_admissible.empty",
+      "operation": "fs_text_range_admissible",
+      "args": [
+        "0",
+        "0",
+        "0"
+      ],
+      "expected": true
+    },
+    {
+      "id": "fs_text_range_admissible.zero-tail",
+      "operation": "fs_text_range_admissible",
+      "args": [
+        "10",
+        "0",
+        "10"
+      ],
+      "expected": true
+    },
+    {
+      "id": "fs_text_range_admissible.overrun",
+      "operation": "fs_text_range_admissible",
+      "args": [
+        "9",
+        "2",
+        "10"
+      ],
+      "expected": false
+    },
+    {
+      "id": "fs_text_range_admissible.offset-past",
+      "operation": "fs_text_range_admissible",
+      "args": [
+        "11",
+        "0",
+        "10"
+      ],
+      "expected": false
+    },
+    {
+      "id": "fs_text_range_admissible.negative-offset",
+      "operation": "fs_text_range_admissible",
+      "args": [
+        "-1",
+        "1",
+        "10"
+      ],
+      "expected": false
+    },
+    {
+      "id": "fs_text_range_admissible.negative-length",
+      "operation": "fs_text_range_admissible",
+      "args": [
+        "0",
+        "-1",
+        "10"
+      ],
+      "expected": false
+    },
+    {
+      "id": "fs_text_range_admissible.negative-size",
+      "operation": "fs_text_range_admissible",
+      "args": [
+        "0",
+        "0",
+        "-1"
+      ],
+      "expected": false
+    },
+    {
+      "id": "fs_text_range_admissible.max-tail",
+      "operation": "fs_text_range_admissible",
+      "args": [
+        "9223372036854775806",
+        "1",
+        "9223372036854775807"
+      ],
+      "expected": true
+    },
+    {
+      "id": "fs_text_range_admissible.overflow-hazard",
+      "operation": "fs_text_range_admissible",
+      "args": [
+        "9223372036854775806",
+        "2",
+        "9223372036854775807"
+      ],
+      "expected": false
+    },
+    {
+      "id": "fs_text_replacement_admissible.empty-new",
+      "operation": "fs_text_replacement_admissible",
+      "args": [
+        "0",
+        "5",
+        "0",
+        "5"
+      ],
+      "expected": true
+    },
+    {
+      "id": "fs_text_replacement_admissible.exact",
+      "operation": "fs_text_replacement_admissible",
+      "args": [
+        "5",
+        "5",
+        "5",
+        "5"
+      ],
+      "expected": true
+    },
+    {
+      "id": "fs_text_replacement_admissible.within",
+      "operation": "fs_text_replacement_admissible",
+      "args": [
+        "4",
+        "7",
+        "5",
+        "8"
+      ],
+      "expected": true
+    },
+    {
+      "id": "fs_text_replacement_admissible.over-budget",
+      "operation": "fs_text_replacement_admissible",
+      "args": [
+        "4",
+        "8",
+        "5",
+        "8"
+      ],
+      "expected": false
+    },
+    {
+      "id": "fs_text_replacement_admissible.bad-old",
+      "operation": "fs_text_replacement_admissible",
+      "args": [
+        "6",
+        "1",
+        "5",
+        "10"
+      ],
+      "expected": false
+    },
+    {
+      "id": "fs_text_replacement_admissible.already-over-quota",
+      "operation": "fs_text_replacement_admissible",
+      "args": [
+        "1",
+        "1",
+        "11",
+        "10"
+      ],
+      "expected": false
+    },
+    {
+      "id": "fs_text_replacement_admissible.negative-old",
+      "operation": "fs_text_replacement_admissible",
+      "args": [
+        "-1",
+        "1",
+        "1",
+        "10"
+      ],
+      "expected": false
+    },
+    {
+      "id": "fs_text_replacement_admissible.negative-new",
+      "operation": "fs_text_replacement_admissible",
+      "args": [
+        "1",
+        "-1",
+        "1",
+        "10"
+      ],
+      "expected": false
+    },
+    {
+      "id": "fs_text_replacement_admissible.max-exact",
+      "operation": "fs_text_replacement_admissible",
+      "args": [
+        "9223372036854775807",
+        "9223372036854775807",
+        "9223372036854775807",
+        "9223372036854775807"
+      ],
+      "expected": true
+    },
+    {
+      "id": "fs_text_replacement_admissible.max-over",
+      "operation": "fs_text_replacement_admissible",
+      "args": [
+        "9223372036854775806",
+        "9223372036854775807",
+        "9223372036854775807",
+        "9223372036854775807"
+      ],
+      "expected": false
+    }
+  ]
+}
