@@ -1,0 +1,32 @@
+// 30: actor-critical-integrated
+// Canonical public actor: message-only API; all mutable state changes use handle_state.
+define pub actor Counter as
+  state {
+    count: int = 0;
+  }
+
+  receive(ActorMail<String> mail): void {
+    const next = self.handle_state(critical |s| -> {
+      s.count = s.count + 1;
+      return s.count;
+    });
+    self.send(next);
+    if (next == 3) {
+      self.end();
+    } fi
+    return;
+  }
+end
+
+pub async fnc main(): int {
+  const worker = spawn Counter();
+  await worker.get_ready();
+  worker.send("first");
+  worker.send("second");
+  worker.send("third");
+  const a = (await worker.outputs.next()).value.unwrap();
+  const b = (await worker.outputs.next()).value.unwrap();
+  const c = (await worker.outputs.next()).value.unwrap();
+  await worker.get_done();
+  return a.value + b.value + c.value + 36;
+}

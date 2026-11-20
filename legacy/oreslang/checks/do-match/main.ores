@@ -1,0 +1,31 @@
+import fnc plain_match from "./plain.ores";
+import fnc procedural_match from "./procedural.ores";
+import fnc guarded_match from "./guarded.ores";
+
+fnc assert_eq_int(String label, int actual, int expected): void {
+  if actual != expected then
+    stdio.stdout.write("PARITY_FAIL|do-match|");
+    stdio.stdout.write(label);
+    stdio.stdout.write("|actual=");
+    stdio.stdout.write(actual);
+    stdio.stdout.write("|expected=");
+    stdio.stdout.println(expected);
+    val Result<bool, String> failure = Err(label);
+    failure.expect("cross-compiler parity assertion failed");
+  fi
+  return;
+}
+
+fnc parity_ok(int checksum): void {
+  stdio.stdout.write("PARITY_OK|do-match|");
+  stdio.stdout.println(checksum);
+  return;
+}
+
+pub fnc main(): void {
+  assert_eq_int("plain", plain_match(Some(41)), 42);
+  assert_eq_int("do", procedural_match(Some(41)), 42);
+  assert_eq_int("guarded", guarded_match(42), 42);
+  parity_ok(126);
+  return;
+}

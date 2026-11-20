@@ -1,0 +1,6 @@
+pub fnc lambda_order_case(): int {
+  const fnc mixed = |int tens, ones: int| -> {
+    return tens * 10 + ones;
+  };
+  return mixed(4, 2);
+}

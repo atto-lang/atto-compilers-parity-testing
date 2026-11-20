@@ -1,0 +1,41 @@
+import actor Counter from "./counter.ores";
+import actor Echo from "./echo.ores";
+import fnc actor_oracle from "./oracle.ores";
+
+fnc assert_eq_int(String label, int actual, int expected): void {
+  if actual != expected then
+    stdio.stdout.write("PARITY_FAIL|actor-system|");
+    stdio.stdout.write(label);
+    stdio.stdout.write("|actual=");
+    stdio.stdout.write(actual);
+    stdio.stdout.write("|expected=");
+    stdio.stdout.println(expected);
+    val Result<bool, String> failure = Err(label);
+    failure.expect("cross-compiler parity assertion failed");
+  fi
+  return;
+}
+
+fnc parity_ok(int checksum): void {
+  stdio.stdout.write("PARITY_OK|actor-system|");
+  stdio.stdout.println(checksum);
+  return;
+}
+
+pub async routine main(): void {
+  val counter = spawn Counter();
+  val echo = spawn Echo();
+  await counter.get_ready();
+  await echo.get_ready();
+  counter.send(1);
+  echo.send(7);
+  val counter_out = (await counter.outputs.next()).value.unwrap();
+  val echo_out = (await echo.outputs.next()).value.unwrap();
+  assert_eq_int("counter-state", counter_out.value, 1);
+  assert_eq_int("echo", echo_out.value, 14);
+  assert_eq_int("oracle", counter_out.value + echo_out.value, actor_oracle());
+  await counter.get_done();
+  await echo.get_done();
+  parity_ok(actor_oracle());
+  return;
+}

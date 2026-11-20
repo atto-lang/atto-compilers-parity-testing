@@ -1,0 +1,31 @@
+import fnc precedence_case from "./precedence.ores";
+import fnc associativity_case from "./associativity.ores";
+import fnc grouping_case from "./grouping.ores";
+
+fnc assert_eq_int(String label, int actual, int expected): void {
+  if actual != expected then
+    stdio.stdout.write("PARITY_FAIL|order-of-operations|");
+    stdio.stdout.write(label);
+    stdio.stdout.write("|actual=");
+    stdio.stdout.write(actual);
+    stdio.stdout.write("|expected=");
+    stdio.stdout.println(expected);
+    val Result<bool, String> failure = Err(label);
+    failure.expect("cross-compiler parity assertion failed");
+  fi
+  return;
+}
+
+fnc parity_ok(int checksum): void {
+  stdio.stdout.write("PARITY_OK|order-of-operations|");
+  stdio.stdout.println(checksum);
+  return;
+}
+
+pub fnc main(): void {
+  assert_eq_int("precedence", precedence_case(), 9);
+  assert_eq_int("left-associativity", associativity_case(), 12);
+  assert_eq_int("grouping", grouping_case(), 15);
+  parity_ok(precedence_case() + associativity_case() + grouping_case());
+  return;
+}

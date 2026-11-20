@@ -1,0 +1,6 @@
+pub define interface Coded as
+  fnc code() => int;
+end
+pub define class CodeBox implements Coded as
+  pub code(): int { return 13; }
+end

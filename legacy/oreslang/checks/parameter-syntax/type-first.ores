@@ -1,0 +1,3 @@
+pub fnc type_first_case(int tens, int ones): int {
+  return tens * 10 + ones;
+}

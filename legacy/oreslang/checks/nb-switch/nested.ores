@@ -1,0 +1,8 @@
+async fnc delayed_selector(int value): int { return value; }
+pub async fnc await_before_switch(): int {
+  val int selector = await delayed_selector(2);
+  switch selector
+    case 2 -> { return 42; }
+    default -> { return 0; }
+  end
+}
