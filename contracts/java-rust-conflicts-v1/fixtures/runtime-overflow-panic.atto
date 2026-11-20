@@ -1,0 +1,7 @@
+// Dynamic checked arithmetic: must not silently wrap or return a value.
+fnc add_one(int value) -> int {
+    return value + 1;
+}
+pub fnc main() -> int {
+    return add_one(9223372036854775807);
+}

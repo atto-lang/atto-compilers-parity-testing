@@ -1,0 +1,6 @@
+// OBSERVATION ONLY: Java/Rust differ on binding a void call's result.
+fnc noop() -> void { return; }
+pub fnc main() -> int {
+    val value = noop();
+    return 42;
+}

@@ -1,0 +1,14 @@
+// Normative &&/||: a side-effectful RHS must not run when short circuited.
+fnc side_effect() -> bool {
+    stdio.println(999);
+    return true;
+}
+pub fnc main() -> int {
+    if false && side_effect() then
+        return 1;
+    fi
+    if true || side_effect() then
+        stdio.println(42);
+    fi
+    return 0;
+}

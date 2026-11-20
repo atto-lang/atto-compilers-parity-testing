@@ -1,0 +1,4 @@
+// Candidate: atto-spec PR #143; single leading caret returns, double caret XORs int.
+pub fnc main() -> int {
+    ^ (40 ^^ 2);
+}

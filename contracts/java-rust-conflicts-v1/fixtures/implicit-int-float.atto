@@ -1,0 +1,7 @@
+// OBSERVATION ONLY: Java may widen int to float; browser Rust may reject.
+fnc identity_float(float value) -> float { return value; }
+pub fnc main() -> int {
+    val value: float = 3;
+    identity_float(value);
+    return 42;
+}
