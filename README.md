@@ -43,3 +43,7 @@ This README records the intended role of this repository; it is not a claim of f
 AttoLang is the canonical project name; new source, examples and documentation use `.atto` and the `atto-lang` repository organization. This README defines scope, not feature readiness.
 
 **Acceptance:** name the exact source SHA/tree, runtime/toolchain, positive and negative checks and execution receipt before claiming support. Host-only tests and empty CI steps do not prove guest execution.
+
+## Checked stdio and nominal ADT pattern parity (draft)
+
+The draft [stdio/on-is parity contract](docs/stdio-adt-is-parity.md) defines the 11-backend target matrix (`contracts/v1/stdio-adt-parity-v1.json`), Rust anti-forgery tests (`tests/stdio_adt_parity.rs`), and a fail-closed **actual compiler + compiled guest** runner (`tools/run-stdio-conformance.mjs`). Run `node --test tests/stdio-conformance-runner.test.mjs` to validate the runner's guardrails; this **does not run a guest**. Real per-backend conformance requires an explicit compiler/runtime configuration and exact pinned Git heads. All eleven backends remain `NOT_EXECUTED` until independently verified target-specific source-compiled execution or an explicit HDL unsupported-profile receipt exists.
