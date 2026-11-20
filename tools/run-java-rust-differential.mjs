@@ -3,7 +3,7 @@
 import {createHash} from 'node:crypto';
 import {readFileSync, writeFileSync, mkdtempSync, lstatSync, realpathSync, existsSync, rmSync, readdirSync} from 'node:fs';
 import {canonicalI64, classifyCompileNegative, classifyUnsupported, classifyUndecidedCompile, classifyGuest, assertObservationReport} from './java-rust-observation-policy.mjs';
-import {validateWasmAdapterShape} from './guest/validate-wasm-adapter.mjs';
+import {validateWasmAdapterShape, supportsWasmOracle} from './guest/validate-wasm-adapter.mjs';
 import {spawnSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {resolve, join, relative, isAbsolute} from 'node:path';
@@ -119,6 +119,9 @@ function runCase(t,a){
         :classifyCompileNegative(compile,absent,t.expected_diagnostic);
       return {status,compile,artifact_absent:absent};
     }
+    if(a.backend==='rust-wasm' && !supportsWasmOracle(t.kind))
+      return {status:'INFRASTRUCTURE_FAILURE',compile,
+        reason:'WASM_HOST_CANNOT_VERIFY_STDOUT_OR_TYPED_TRAP'};
     if(t.kind==='observe') {
       const state=classifyUndecidedCompile(compile,existsSync(c.artifact),readdirSync(c.workdir).length>0);
       if(state!==null)return {status:state,compile,reason:'unresolved source form compilation outcome'};

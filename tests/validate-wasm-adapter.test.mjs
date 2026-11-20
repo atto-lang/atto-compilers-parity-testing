@@ -20,3 +20,9 @@ test('accept only pinned attoc CLI and canonical embedded wasm guest host',()=>{
   {...base(),value_mode:'exit_code'}
  ]) assert.throws(()=>validateWasmAdapterShape(bad));
 });
+
+test('synthetic host return values cannot spoof stdout or typed trap evidence',async()=>{
+ const {supportsWasmOracle}=await import('../tools/guest/validate-wasm-adapter.mjs');
+ for(const kind of ['value','reject','observe'])assert.equal(supportsWasmOracle(kind),true);
+ for(const kind of ['stdout','trap','anything-else'])assert.equal(supportsWasmOracle(kind),false);
+});

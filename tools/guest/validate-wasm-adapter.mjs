@@ -17,3 +17,8 @@ export function validateWasmAdapterShape(a) {
   return {guest_runner_script:HOST,guest_runner_script_sha256:a.guest_runner_script_sha256};
 }
 export const expectedWasmHostPath=HOST;
+// The host prints a main() result; that is NOT guest stdout. It also has
+// no source-backed trap-category bridge. Never conflate either with parity.
+export function supportsWasmOracle(kind) {
+  return kind === 'value' || kind === 'reject' || kind === 'observe';
+}
