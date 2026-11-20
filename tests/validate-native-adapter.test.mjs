@@ -45,8 +45,8 @@ test('rejects native execution without isolated bubblewrap command',()=>{
     {...base(),backend:'rust-wasm'}])assert.throws(()=>validateNativeAdapterShape(bad));
 });
 test('only small exit-code value oracle can be observed by this native ABI',()=>{
-  for(const expected_value of [0,42,125,'42'])assert.equal(supportsNativeOracle({kind:'value',expected_value}),true);
-  for(const expected_value of [-1,126,139,255,256,'9223372036854775807',null])assert.equal(supportsNativeOracle({kind:'value',expected_value}),false);
+  for(const expected_value of [0,42,125])assert.equal(supportsNativeOracle({kind:'value',expected_value}),true);
+  for(const expected_value of [-1,126,139,255,256,'42','9223372036854775807',null])assert.equal(supportsNativeOracle({kind:'value',expected_value}),false);
   assert.equal(supportsNativeOracle({kind:'reject'}),true);
   assert.equal(supportsNativeOracle({kind:'observe'}),true);
   assert.equal(supportsNativeOracle({kind:'stdout'}),false);

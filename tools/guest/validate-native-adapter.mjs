@@ -35,7 +35,7 @@ export function supportsNativeOracle(fixture) {
   if(fixture?.kind==='reject'||fixture?.kind==='observe')return true;
   if(fixture?.kind!=='value')return false;
   const i64=canonicalI64(fixture.expected_value);
-  return i64!==null&&i64>=0n&&i64<=125n;
+  return typeof fixture.expected_value==='number'&&i64!==null&&i64>=0n&&i64<=125n;
 }
 
 // Reject forged dynamic/shared objects before any native execution. Static

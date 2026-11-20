@@ -4,6 +4,7 @@ import {createHash} from 'node:crypto';
 import {readFileSync, writeFileSync, mkdtempSync, lstatSync, realpathSync, existsSync, rmSync, readdirSync} from 'node:fs';
 import {canonicalI64, classifyCompileNegative, classifyUnsupported, classifyUndecidedCompile, classifyGuest, assertObservationReport} from './java-rust-observation-policy.mjs';
 import {validateWasmAdapterShape, supportsWasmOracle} from './guest/validate-wasm-adapter.mjs';
+import {validateNativeAdapterShape, supportsNativeOracle, validateStaticElfArtifact} from './guest/validate-native-adapter.mjs';
 import {spawnSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {resolve, join, relative, isAbsolute} from 'node:path';
@@ -83,8 +84,18 @@ function checkAdapter(a,b,cases){
   if(a.backend!==b||!hex40.test(a.compiler_commit)||!hex40.test(a.compiler_tree))fail('unpinned compiler commit/tree');
   if(!hex64.test(a.compiler_sha256)||hash(readFileSync(regular(a.compiler_executable)))!==a.compiler_sha256)fail('compiler binary hash mismatch');
   if(!hex64.test(a.guest_runner_sha256)||hash(readFileSync(regular(a.guest_runner_executable)))!==a.guest_runner_sha256)fail('guest runner hash mismatch');
-  checkCommand(a.compile_argv,a.compiler_executable,true);
-  checkCommand(a.run_argv,a.guest_runner_executable,false);
+  if(b==='rust-cranelift'){
+    const native=validateNativeAdapterShape(a);
+    if(!hex64.test(native.linker_sha256) ||
+       hash(readFileSync(regular(native.linker_executable)))!==native.linker_sha256)
+      fail('native linker binary hash mismatch');
+    if(!hex64.test(native.sandbox_sha256) ||
+       hash(readFileSync(regular(native.sandbox_executable)))!==native.sandbox_sha256)
+      fail('native sandbox binary hash mismatch');
+  } else {
+    checkCommand(a.compile_argv,a.compiler_executable,true);
+    checkCommand(a.run_argv,a.guest_runner_executable,false);
+  }
   if(!['exit_code','stdout_i64'].includes(a.value_mode))fail('unapproved value extraction');
   const names=new Set(cases.map(c=>c.id));
   if(a.unsupported_cases!==undefined&&(!Array.isArray(a.unsupported_cases)||new Set(a.unsupported_cases).size!==a.unsupported_cases.length||a.unsupported_cases.some(x=>!names.has(x))))fail('bad unsupported list');
@@ -100,16 +111,20 @@ function checkAdapter(a,b,cases){
   }
   return a;
 }
-function invoke(argv,c){
-  const args=argv.map(s=>s.replaceAll('{source}',c.source).replaceAll('{artifact}',c.artifact).replaceAll('{workdir}',c.workdir));
-  const p=spawnSync(args[0],args.slice(1),{cwd:c.workdir,shell:false,encoding:'utf8',timeout:15000,maxBuffer:1024*1024,windowsHide:true});
+function invoke(argv,c,native=false){
+  const args=argv.map(s=>s.replaceAll('{source}',c.source).replaceAll('{artifact}',c.artifact).replaceAll('{object}',c.object).replaceAll('{workdir}',c.workdir));
+  const env=native?{PATH:'/usr/bin:/bin',HOME:'/nonexistent',LANG:'C',TZ:'UTC',TMPDIR:'/tmp'}:process.env;
+  const p=spawnSync(args[0],args.slice(1),{cwd:c.workdir,shell:false,encoding:'utf8',timeout:15000,maxBuffer:1024*1024,windowsHide:true,env});
   return {exit_code:p.status,signal:p.signal,stdout:(p.stdout||'').slice(0,4096),stderr:(p.stderr||'').slice(0,4096),error:p.error?.code||null};
 }
 function runCase(t,a){
   const tmp=mkdtempSync(join(tmpdir(),'atto-diff-'));
-  const c={source:sourcePath(t.path),artifact:join(tmp,'guest-artifact'),workdir:tmp};
+  const c={source:sourcePath(t.path),artifact:join(tmp,'guest-artifact'),object:join(tmp,'native-object.o'),workdir:tmp};
   try{
-    const compile=invoke(a.compile_argv,c);
+    const native=a.backend==='rust-cranelift';
+    if(native&&!supportsNativeOracle(t))
+      return {status:'INFRASTRUCTURE_FAILURE',reason:'NATIVE_EXIT_ABI_CANNOT_VERIFY_ORACLE'};
+    const compile=invoke(a.compile_argv,c,native);
     if(compile.error||compile.signal)return {status:'INFRASTRUCTURE_FAILURE',compile};
     if(t.kind==='reject'||(a.unsupported_cases||[]).includes(t.id)){
       const absent=readdirSync(c.workdir).length===0;
@@ -123,14 +138,32 @@ function runCase(t,a){
       return {status:'INFRASTRUCTURE_FAILURE',compile,
         reason:'WASM_HOST_CANNOT_VERIFY_STDOUT_OR_TYPED_TRAP'};
     if(t.kind==='observe') {
-      const state=classifyUndecidedCompile(compile,existsSync(c.artifact),readdirSync(c.workdir).length>0);
+      const state=classifyUndecidedCompile(compile,existsSync(native?c.object:c.artifact),readdirSync(c.workdir).length>0);
       if(state!==null)return {status:state,compile,reason:'unresolved source form compilation outcome'};
+    }
+    let link=null,object_sha256=null;
+    if(native){
+      if(compile.exit_code!==0||!existsSync(c.object))
+        return {status:'MISMATCH',compile,reason:'native compiler failed to emit object'};
+      const stat=lstatSync(c.object);
+      if(stat.size===0||stat.size>128*1024*1024)
+        return {status:'INFRASTRUCTURE_FAILURE',compile,reason:'native object outside size budget'};
+      object_sha256=hash(readFileSync(regular(c.object)));
+      link=invoke(a.link_argv,c,true);
+      if(link.error||link.signal||link.exit_code!==0||!existsSync(c.artifact))
+        return {status:'INFRASTRUCTURE_FAILURE',compile,link,object_sha256,reason:'native static linking failed'};
+      if(hash(readFileSync(regular(c.object)))!==object_sha256)
+        return {status:'INFRASTRUCTURE_FAILURE',compile,link,reason:'native object mutated during linking'};
+      validateStaticElfArtifact(c.artifact);
     }
     if(compile.exit_code!==0||!existsSync(c.artifact))return {status:'MISMATCH',compile,reason:'compiler did not produce guest artifact'};
     const artifact_sha256=hash(readFileSync(regular(c.artifact)));
-    const guest=invoke(a.run_argv,c);
+    const guest=invoke(a.run_argv,c,native);
+    if(native&&(guest.stdout!==''||guest.stderr!==''))
+      return {status:'INFRASTRUCTURE_FAILURE',compile,link,guest,object_sha256,artifact_sha256,
+        reason:'native guest emitted output or sandbox diagnostics'};
     if(guest.error||guest.signal||hash(readFileSync(regular(c.artifact)))!==artifact_sha256)return {status:'INFRASTRUCTURE_FAILURE',compile,guest};
-    return {status:classifyGuest(t,guest,a.value_mode),compile,guest,artifact_sha256};
+    return {status:classifyGuest(t,guest,a.value_mode),compile,link,guest,object_sha256,artifact_sha256};
   } finally{rmSync(tmp,{recursive:true,force:true});}
 }
 export function main(args){

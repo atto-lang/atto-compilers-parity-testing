@@ -11,6 +11,7 @@ on:
       - "tools/guest/**"
       - "tests/run-wasm-i64.test.mjs"
       - "tests/validate-wasm-adapter.test.mjs"
+      - "tests/validate-native-adapter.test.mjs"
       - "docs/JAVA_RUST_DIFFERENTIAL_V1.md"
       - ".github/workflows/java-rust-differential-audit.yml"
   pull_request:
@@ -50,7 +51,7 @@ jobs:
           while IFS= read -r -d '' f; do
             test ! -L "$f"
             test "$(git hash-object "$f")" = "$(git rev-parse "HEAD:$f")"
-          done < <(git ls-files -z -- contracts/java-rust-conflicts-v1 tools/run-java-rust-differential.mjs tools/java-rust-observation-policy.mjs tests/java-rust-differential.test.mjs tests/java-rust-observation-policy.test.mjs docs/JAVA_RUST_DIFFERENTIAL_V1.md tools/guest/run-wasm-i64.mjs tools/guest/validate-wasm-adapter.mjs tests/run-wasm-i64.test.mjs tests/validate-wasm-adapter.test.mjs .github/workflows/java-rust-differential-audit.yml)
+          done < <(git ls-files -z -- contracts/java-rust-conflicts-v1 tools/run-java-rust-differential.mjs tools/java-rust-observation-policy.mjs tests/java-rust-differential.test.mjs tests/java-rust-observation-policy.test.mjs docs/JAVA_RUST_DIFFERENTIAL_V1.md tools/guest/run-wasm-i64.mjs tools/guest/validate-wasm-adapter.mjs tests/run-wasm-i64.test.mjs tests/validate-wasm-adapter.test.mjs tools/guest/validate-native-adapter.mjs tests/validate-native-adapter.test.mjs .github/workflows/java-rust-differential-audit.yml)
       - name: Setup Node 22
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
@@ -61,6 +62,8 @@ jobs:
         run: node --test tests/java-rust-observation-policy.test.mjs
       - name: Test source-free strict WebAssembly guest host and pinned argv
         run: node --test tests/run-wasm-i64.test.mjs tests/validate-wasm-adapter.test.mjs
+      - name: Test source-free native ELF/link/sandbox admission
+        run: node --test tests/validate-native-adapter.test.mjs
       - name: Assert thirty untouched NOT_EXECUTED cells
         run: |
           node tools/run-java-rust-differential.mjs --audit > /tmp/atto-java-rust-audit.json
