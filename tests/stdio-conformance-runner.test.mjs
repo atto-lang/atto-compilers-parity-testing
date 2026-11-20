@@ -14,18 +14,31 @@ function config() {
   };
 }
 function manifest() {
-  const ids=['checked_echo','checked_echo_readch_alias',
-    'checked_echo_is_variants','checked_echo_is_variants_readch',
-    'stdio_is_pattern_fallback'];
+  const guests=['checked_echo','checked_echo_readch_alias',
+    'checked_echo_is_variants','checked_echo_is_variants_readch'];
+  const negativeCodes={
+    unchecked_read_payload:'E_IO_PAYLOAD_TYPE',
+    wrong_read_direction:'E_IO_READABLE',wrong_write_direction:'E_IO_WRITABLE',
+    read_without_suspend:'E_SUSPENDS_REQUIRED',
+    stream_and_readch_conflict:'E_IO_CONSUMER_CONFLICT',
+    is_unknown_extractor:'E_PATTERN',is_none_payload:'E_ARITY',
+    is_void_ok_bound:'E_ARITY',is_missing_ok_payload:'E_ARITY',
+    is_wrong_variant_family:'E_TYPE',is_nested_extractor:'E_SYNTAX',
+    is_multi_payload:'E_SYNTAX',is_duplicate_arm:'E_MATCH',
+  };
+  const witness={id:'echo',stdin:'hello\\n',stdout:'hello',stderr:'',exit:0};
+  const runs=Array.from({length:7},(_,i)=>({...witness,id:'case_'+i}));
   return {
     schema:'atto.stdio.channel.endpoints.v1',
     status:'TARGET_NOT_EXECUTED',
     backend_status:Object.fromEntries(BACKENDS.map(name=>[name,'NOT_EXECUTED'])),
     required_cases:[
-      ...ids.map(id=>({id,kind:id==='stdio_is_pattern_fallback'?
-        'source-compile-pass':'guest-pass'})),
-      ...Array.from({length:13},(_,i)=>({
-        id:'negative_'+i,kind:'compile-fail'
+      ...guests.map(id=>({id,kind:'guest-pass',runs})),
+      {id:'stdio_is_pattern_fallback',kind:'source-compile-pass'},
+      ...Object.entries(negativeCodes).map(([id,expected_error])=>({
+        id,kind:id==='stream_and_readch_conflict'?
+          'compile-or-runtime-deny':'compile-fail',
+        expected_error,no_guest_artifact:id!=='stream_and_readch_conflict',
       })),
     ],
   };
