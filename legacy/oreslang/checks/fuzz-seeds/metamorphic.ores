@@ -1,0 +1,6 @@
+pub fnc affine_identity(int x): int {
+  val int left = ((x + 7) * 3) - 21;
+  val int right = x * 3;
+  if left == right then return 1; fi
+  return 0;
+}

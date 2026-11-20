@@ -1,0 +1,7 @@
+async fnc delayed_int(int value): int { return value; }
+pub async fnc await_subject_case(): int {
+  return match<int> await delayed_int(5) over
+    on 5 -> { return 42; }
+    on _ -> { return 0; }
+  end;
+}

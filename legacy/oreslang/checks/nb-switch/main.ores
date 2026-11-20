@@ -1,0 +1,31 @@
+import fnc await_switch_arm from "./arm.ores";
+import fnc await_before_switch from "./nested.ores";
+import fnc do_switch_await_arm from "./procedural.ores";
+
+fnc assert_eq_int(String label, int actual, int expected): void {
+  if actual != expected then
+    stdio.stdout.write("PARITY_FAIL|nb-switch|");
+    stdio.stdout.write(label);
+    stdio.stdout.write("|actual=");
+    stdio.stdout.write(actual);
+    stdio.stdout.write("|expected=");
+    stdio.stdout.println(expected);
+    val Result<bool, String> failure = Err(label);
+    failure.expect("cross-compiler parity assertion failed");
+  fi
+  return;
+}
+
+fnc parity_ok(int checksum): void {
+  stdio.stdout.write("PARITY_OK|nb-switch|");
+  stdio.stdout.println(checksum);
+  return;
+}
+
+pub async routine main(): void {
+  assert_eq_int("await-arm", await await_switch_arm(1), 42);
+  assert_eq_int("await-before-switch", await await_before_switch(), 42);
+  assert_eq_int("do-switch-await", await do_switch_await_arm(), 42);
+  parity_ok(126);
+  return;
+}

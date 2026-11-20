@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "captured_on": "2026-10-26",
+  "contract": {
+    "repository": "ores-truffle-oreslang/oreslang-common-source",
+    "pull_request": 160
+  },
+  "backends": {
+    "java": {
+      "state": "not_executed",
+      "implementation_pull_request": 2113,
+      "head": "145218bf36afe5e23eeb4686d02776d603b24d8e",
+      "note": "Free generator-v1 implementation now includes canonical/compatibility syntax, suspend T semantics, bounded one-pull admission, one-shot move transfer, fresh-yield borrow rejection, structural suspend lifetime gates, sticky close-cleanup failures, sync generic Iterator<T>, and explicit rejection for unsupported async/suspend generics and missing element type. Instance generator methods remain fail-closed.",
+      "ci_evidence": {
+        "fast_ci_run": 40430385854,
+        "ci_run": 40430385991,
+        "executed_steps": false,
+        "classification": "not_executed"
+      },
+      "static_class_generators": {
+        "state": "not_executed",
+        "pull_request": 2117,
+        "base_head": "145218bf36afe5e23eeb4686d02776d603b24d8e",
+        "head": "2e9bff49bde19683e36f46e7a88833b6e8b3bea8",
+        "tree": "9542f4241793cefbfe702ead2bf248cfa0130146",
+        "fast_ci_run": 40431173297,
+        "ci_run": 40431173244,
+        "executed_steps": false,
+        "mergeable": true,
+        "modes": [
+          "sync",
+          "async",
+          "suspend"
+        ],
+        "fixture": "generator-v1/08-static-class-generators.ores",
+        "expected": "exit:126",
+        "instance_methods": "unsupported_receiver_lifetime_gate",
+        "restack_proof": "pre/post restack root tree identical"
+      },
+      "tree": "c3b635196df3e9e3db456a95441f07166ac44bee"
+    },
+    "llvm": {
+      "state": "unsupported",
+      "tracking_issue": 1062,
+      "baseline_hardening_pull_request": 1069,
+      "baseline_merge_commit": "93e549b7fb70766768e75a400a271131472071d0",
+      "legacy_followup_pull_request": 1073,
+      "legacy_followup_merged": true,
+      "legacy_followup_merge_commit": "b92cdacb43570d7c2602268397ef30469e316632",
+      "note": "LLVM still has no generator frame/continuation lowering. Canonical and retained compatibility spellings now all hit the same compiler-owned fail-closed gate with native CTest fixtures. Latest source-org LLVM run had steps=null."
+    },
+    "wasm": {
+      "state": "unsupported",
+      "tracking_issue": 136,
+      "baseline_hardening_pull_request": 142,
+      "baseline_merge_commit": "876e81ace4f72ab9ba2c4a9505b706a17ac7830a",
+      "legacy_followup_pull_request": 144,
+      "legacy_followup_merged": true,
+      "legacy_followup_merge_commit": "e78ddfb63921be1c48df0bdae91ea5e8bde0756e",
+      "note": "Wasm remains gated by the real LLVM compiler. Canonical and compatibility generator spellings are checked through that gate; latest source-org Wasm test had steps=null."
+    },
+    "dotnet": {
+      "state": "unsupported",
+      "tracking_issue": 168,
+      "hardening_pull_request": 174,
+      "merge_commit": "82edba5f4c29e10dbfbd73489bd5397f8f943c00",
+      "legacy_followup_pull_request": 177,
+      "legacy_followup_merged": true,
+      "legacy_followup_merge_commit": "b6e79effae748d8a22c93b4be9e544710b518c4f",
+      "note": "Native AOT bootstrap rejects canonical and compatibility generator syntax before CIL emission. Latest Windows AOT jobs had steps=null."
+    },
+    "js": {
+      "state": "unsupported",
+      "tracking_issue": 74,
+      "hardening_pull_request": 75,
+      "merge_commit": "4ca9741644cfa9715309fb47e3f63a45bfaf1b80",
+      "legacy_followup_pull_request": 82,
+      "legacy_followup_merged": true,
+      "legacy_followup_merge_commit": "a0a98222dab75f8b71f0da82883d149067d9697f",
+      "note": "Scalar-v1/program-v2 reject canonical and compatibility generator syntax until real ESM lowering exists. Latest bootstrap CI had steps=null."
+    }
+  },
+  "policy": {
+    "unsupported_is_pass": false,
+    "not_executed_is_pass": false,
+    "zero_step_ci_is_pass": false,
+    "private_cross_org_mirror_requires_approved_destination": true
+  },
+  "runner_fallback": {
+    "source_transfer_authorized": false,
+    "source_main_protected": false,
+    "approved_destination_present": false,
+    "live_observation": "Java main branch API reports protected=false; .github/private-ci-approved-repositories.txt contains no approved repository.",
+    "note": "Cross-org private-source tree mirroring remains blocked by the source-owned security gate. Zero-step CI is not converted into PASS."
+  },
+  "audit_updates": {
+    "suspend_fixture": "g03 uses a cooperating suspend fnc returning T directly; suspension is an effect, not Future<T>.",
+    "concurrent_pull_policy": "Java deterministically rejects overlapping sync/async pulls rather than admitting unbounded waiting tasks.",
+    "yield_borrow_boundary": "Java rejects both pre-existing borrows and borrows created by the yield/yield* expression.",
+    "yield_move_boundary": "Move-only values are consumed exactly once at yield.",
+    "close_cleanup_failure": "Explicit close waits for physical producer exit and preserves non-cancellation finally/cleanup failures.",
+    "structural_suspend_boundary": "Structural borrowed params are rejected across plain suspend functions/methods as well as async/generator frames.",
+    "generic_contract": "Sync generic generators preserve Iterator<T>; continuation-backed generic generators remain unsupported pending a sendable bound; missing element type is rejected.",
+    "compatibility_fixture": "g10 exercises retained legacy generator declaration spellings and expects 42.",
+    "static_restack": "Java #2117 was restacked onto current #2113 with identical root-tree content."
+  }
+}

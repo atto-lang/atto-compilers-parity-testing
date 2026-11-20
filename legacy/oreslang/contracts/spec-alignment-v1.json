@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "contract_id": "atto.compiler-parity.spec-bridge.v1",
+  "status": "draft_traceability_only",
+  "specification": {
+    "repository": "ores-truffle-oreslang/oreslang-language-specs.md",
+    "edition": "0.1",
+    "reviewed_commit": "ceb292287005d7b6d335e27816a3afa9109f64f6",
+    "catalogue_path": "spec/conformance.md",
+    "traceability_path": "spec/parity-traceability.md"
+  },
+  "source_policy": {
+    "canonical_new_extension": ".atto",
+    "existing_legacy_extension": ".ores",
+    "rewrite_legacy_in_place": false,
+    "identical_source_per_backend": true
+  },
+  "targets": {
+    "required": [
+      "llvm",
+      "java",
+      "wasm",
+      "dotnet",
+      "forge",
+      "cranelift"
+    ],
+    "optional": [
+      "js"
+    ]
+  },
+  "claim_policy": {
+    "registry_is_execution_evidence": false,
+    "registry_is_spec_conformance": false,
+    "relation": "related_feature_only",
+    "new_cases_require_independent_oracle_review": true
+  },
+  "links": [
+    {
+      "spec_fixture_id": "parse.define_pub_module",
+      "corpus": {
+        "suite": "legacy",
+        "id": "05"
+      },
+      "relation": "related_feature_only",
+      "review_note": "Module entry point is adjacent, not a proof of declaration/formatter canonicalization."
+    },
+    {
+      "spec_fixture_id": "parse.match_forms",
+      "corpus": {
+        "suite": "legacy",
+        "id": "11"
+      },
+      "relation": "related_feature_only",
+      "review_note": "Value match source; does not prove every accepted syntactic form."
+    },
+    {
+      "spec_fixture_id": "parse.match_forms",
+      "corpus": {
+        "suite": "legacy",
+        "id": "12"
+      },
+      "relation": "related_feature_only",
+      "review_note": "Procedural match source; does not prove canonical formatter behavior."
+    },
+    {
+      "spec_fixture_id": "parse.match_forms",
+      "corpus": {
+        "suite": "checks",
+        "id": "do-match"
+      },
+      "relation": "related_feature_only",
+      "review_note": "Multi-file semantic match check only; full spec oracle pending review."
+    },
+    {
+      "spec_fixture_id": "actor.sealed_state_access",
+      "corpus": {
+        "suite": "legacy",
+        "id": "30"
+      },
+      "relation": "related_feature_only",
+      "review_note": "Positive actor state test; lacks a complete negative direct-state-access matrix."
+    },
+    {
+      "spec_fixture_id": "actor.mailbox_backpressure",
+      "corpus": {
+        "suite": "legacy",
+        "id": "27"
+      },
+      "relation": "related_feature_only",
+      "review_note": "Candidate bounded-channel backpressure is not actor mailbox admission proof."
+    },
+    {
+      "spec_fixture_id": "actor.critical_write_exclusive",
+      "corpus": {
+        "suite": "legacy",
+        "id": "30"
+      },
+      "relation": "related_feature_only",
+      "review_note": "Single-flight actor critical section is not multi-reader/writer proof."
+    },
+    {
+      "spec_fixture_id": "ownership.double_mut_borrow",
+      "corpus": {
+        "suite": "legacy",
+        "id": "20"
+      },
+      "relation": "related_feature_only",
+      "review_note": "Positive mutable-borrow source is not a compile-negative alias proof."
+    },
+    {
+      "spec_fixture_id": "channel.select_cancel",
+      "corpus": {
+        "suite": "legacy",
+        "id": "26"
+      },
+      "relation": "related_feature_only",
+      "review_note": "Channel select case lacks cancellation/one-winner oracle."
+    },
+    {
+      "spec_fixture_id": "types.match_return_inference",
+      "corpus": {
+        "suite": "legacy",
+        "id": "11"
+      },
+      "relation": "related_feature_only",
+      "review_note": "Value-producing match source is adjacent; inference semantics not independently established."
+    }
+  ]
+}

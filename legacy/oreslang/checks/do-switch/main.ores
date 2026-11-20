@@ -1,0 +1,31 @@
+import fnc plain_switch from "./plain.ores";
+import fnc procedural_switch from "./procedural.ores";
+import fnc nested_do_switch from "./nested.ores";
+
+fnc assert_eq_int(String label, int actual, int expected): void {
+  if actual != expected then
+    stdio.stdout.write("PARITY_FAIL|do-switch|");
+    stdio.stdout.write(label);
+    stdio.stdout.write("|actual=");
+    stdio.stdout.write(actual);
+    stdio.stdout.write("|expected=");
+    stdio.stdout.println(expected);
+    val Result<bool, String> failure = Err(label);
+    failure.expect("cross-compiler parity assertion failed");
+  fi
+  return;
+}
+
+fnc parity_ok(int checksum): void {
+  stdio.stdout.write("PARITY_OK|do-switch|");
+  stdio.stdout.println(checksum);
+  return;
+}
+
+pub fnc main(): void {
+  assert_eq_int("plain", plain_switch(2), 42);
+  assert_eq_int("do", procedural_switch(2), 42);
+  assert_eq_int("nested", nested_do_switch(4), 42);
+  parity_ok(126);
+  return;
+}
