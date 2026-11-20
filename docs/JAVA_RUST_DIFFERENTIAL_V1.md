@@ -27,7 +27,7 @@ These are separate targets. Rust/Wasm is not the Cranelift native backend. Norma
 | void-result-binding | DECISION REQUIRED | Historical Java accepts void binding vs browser Rust rejects |
 | implicit-int-float | DECISION REQUIRED | Historical Java permits selected implicit numeric widening vs Rust browser rejects |
 
-The three decision-required probes are **observation-only**; no parser or guest behavior can be called compliant until the language spec adjudicates them. The caret/XOR cases are still candidate syntax while spec PR #143 remains unmerged. Source acceptance, inferred diagnostics, and runtime outputs are hypotheses until executed against pinned real compilers.
+The three decision-required probes are **observation-only** (including when a backend rejects them at compile time); no parser or guest behavior can be called compliant until the language spec adjudicates them. The caret/XOR cases are still candidate syntax while spec PR #143 remains unmerged. Source acceptance, inferred diagnostics, and runtime outputs are hypotheses until executed against pinned real compilers.
 
 ## How to use
 

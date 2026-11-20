@@ -104,6 +104,7 @@ function runCase(t,a){
       const accepted=compile.exit_code!==0&&(compile.stdout+'\n'+compile.stderr).includes(needle(t,a))&&absent;
       return {status:accepted?'OBSERVED_UNVERIFIED':'MISMATCH',compile,artifact_absent:absent};
     }
+    if(t.kind==='observe'&&(compile.exit_code!==0||!existsSync(c.artifact)))return {status:'OBSERVATION_ONLY',compile,reason:'rejected or unsupported source; semantic decision still pending'};
     if(compile.exit_code!==0||!existsSync(c.artifact))return {status:'MISMATCH',compile,reason:'compiler did not produce guest artifact'};
     const artifact_sha256=hash(readFileSync(regular(c.artifact)));
     const guest=invoke(a.run_argv,c);
