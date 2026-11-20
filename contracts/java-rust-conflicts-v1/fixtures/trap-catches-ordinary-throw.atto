@@ -4,8 +4,8 @@ fnc fail() -> int throws Error {
 }
 pub fnc main() -> int {
     val result: Result<int, Error> = trap fail();
-    return match result over
+    match result over
         on Err(_) -> { return 42; }
         on Ok(_) -> { return 1; }
-    end;
+    end
 }

@@ -4,8 +4,8 @@ fnc checked_value() -> Result<int, Error> {
 }
 pub fnc main() -> int {
     val result: Result<int, Error> = trap checked_value();
-    return match result over
+    match result over
         on Ok(value) -> { return value; }
         on Err(_) -> { return 1; }
-    end;
+    end
 }
