@@ -4,7 +4,8 @@ on:
     paths:
       - "contracts/java-rust-conflicts-v1/**"
       - "tools/run-java-rust-differential.mjs"
-      - "tests/java-rust-differential.test.mjs"
+      - "tests/java-rust-differential*.test.mjs"
+      - "tools/java-rust-observation-policy.mjs"
       - "docs/JAVA_RUST_DIFFERENTIAL_V1.md"
       - ".github/workflows/java-rust-differential-audit.yml"
   workflow_dispatch:
@@ -40,6 +41,8 @@ jobs:
           node-version: '22'
       - name: Test source-only differential manifest and hostile adapters
         run: node --test tests/java-rust-differential.test.mjs
+      - name: Test adversarial observation classification (not a guest)
+        run: node --test tests/java-rust-observation-policy.test.mjs
       - name: Assert thirty untouched NOT_EXECUTED cells
         run: |
           node tools/run-java-rust-differential.mjs --audit > /tmp/atto-java-rust-audit.json

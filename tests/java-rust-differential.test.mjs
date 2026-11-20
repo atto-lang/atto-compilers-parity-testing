@@ -32,7 +32,7 @@ test('exactly 30 backend cells remain NOT_EXECUTED and uncertified',()=>{
 });
 test('unconfigured or invalid execute mode fails closed',()=>{
   assert.deepEqual(parseArgs([]),{execute:false,backend:null,adapter:null,output:null});
-  for(const args of [['--execute'],['--backend','java-graal'],['--execute','--backend','java-graal'],['--execute','--backend','java'],['--extra']]){
+  for(const args of [['--execute'],['--backend','java-graal'],['--execute','--backend','java-graal'],['--execute','--backend','java'],['--audit','--execute','--backend','java-graal','--adapter','/x'],['--audit','--audit'],['--backend','java-graal','--backend','rust-wasm'],['--extra']]){
     assert.throws(()=>parseArgs(args));
   }
   const p=spawnSync(process.execPath,[runner,'--execute','--backend','java-graal','--adapter','relative.json'],{encoding:'utf8'});

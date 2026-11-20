@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Opt-in AttoLang Java/Rust candidate observations; NEVER a guest attestation.
 import {createHash} from 'node:crypto';
-import {readFileSync, writeFileSync, mkdtempSync, lstatSync, realpathSync, existsSync, rmSync} from 'node:fs';
+import {readFileSync, writeFileSync, mkdtempSync, lstatSync, realpathSync, existsSync, rmSync, readdirSync} from 'node:fs';
+import {classifyCompileNegative, classifyUnsupported, classifyGuest, assertObservationReport} from './java-rust-observation-policy.mjs';
 import {spawnSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {resolve, join, relative, isAbsolute} from 'node:path';
@@ -33,6 +34,7 @@ export function loadManifest(){
   const seen=new Set();
   for(const c of m.cases){
     if(!/^[a-z][a-z0-9-]+$/.test(c.id)||seen.has(c.id)||c.status!=='AUTHORED_NOT_EXECUTED')fail('duplicate/claimed fixture');
+    if(c.path!==`contracts/java-rust-conflicts-v1/fixtures/${c.id}.atto`)fail('fixture identity/path mismatch');
     seen.add(c.id);
     if(!['canonical','candidate','decision_required'].includes(c.authority)||!['value','stdout','reject','trap','observe'].includes(c.kind))fail('bad oracle');
     if((c.kind==='observe')!==(c.authority==='decision_required'))fail('unreviewed oracle');
@@ -55,12 +57,17 @@ export function audit(){
 }
 export function parseArgs(args){
   const out={execute:false,backend:null,adapter:null,output:null};
+  const seen=new Set();
   for(let i=0;i<args.length;i++){
-    if(args[i]==='--audit')continue;
-    if(args[i]==='--execute'){out.execute=true;continue;}
-    if(!['--backend','--adapter','--output'].includes(args[i])||!args[i+1])fail('unknown/missing option: '+args[i]);
-    out[args[i++].slice(2)]=args[i];
+    const option=args[i];
+    if(seen.has(option))fail('duplicate option: '+option);
+    seen.add(option);
+    if(option==='--audit')continue;
+    if(option==='--execute'){out.execute=true;continue;}
+    if(!['--backend','--adapter','--output'].includes(option)||!args[i+1]||args[i+1].startsWith('--'))fail('unknown/missing option: '+option);
+    out[option.slice(2)]=args[++i];
   }
+  if(out.execute&&seen.has('--audit'))fail('--audit cannot also execute');
   if(out.execute&&(!BACKENDS.includes(out.backend)||!out.adapter))fail('execute requires backend and adapter');
   if(!out.execute&&(out.backend||out.adapter))fail('adapter and backend require --execute');
   return out;
@@ -71,15 +78,20 @@ function checkCommand(argv, executable, needsSource){
   if(!argv.some(x=>x.includes('{artifact}')))fail('must use artifact placeholder');
   for(const arg of argv)for(const match of arg.matchAll(/\{[^}]*\}/g))if(!['{source}','{artifact}','{workdir}'].includes(match[0]))fail('unsupported placeholder');
 }
-function checkAdapter(a,b){
+function checkAdapter(a,b,cases){
   if(a.backend!==b||!hex40.test(a.compiler_commit)||!hex40.test(a.compiler_tree))fail('unpinned compiler commit/tree');
   if(!hex64.test(a.compiler_sha256)||hash(readFileSync(regular(a.compiler_executable)))!==a.compiler_sha256)fail('compiler binary hash mismatch');
   if(!hex64.test(a.guest_runner_sha256)||hash(readFileSync(regular(a.guest_runner_executable)))!==a.guest_runner_sha256)fail('guest runner hash mismatch');
   checkCommand(a.compile_argv,a.compiler_executable,true);
   checkCommand(a.run_argv,a.guest_runner_executable,false);
   if(!['exit_code','stdout_i64'].includes(a.value_mode))fail('unapproved value extraction');
-  if(a.unsupported_cases!==undefined&&(!Array.isArray(a.unsupported_cases)||a.unsupported_cases.some(x=>typeof x!=='string')))fail('bad unsupported list');
-  if(a.diagnostic_needles!==undefined&&(!a.diagnostic_needles||typeof a.diagnostic_needles!=='object'||Array.isArray(a.diagnostic_needles)))fail('bad diagnostics');
+  const names=new Set(cases.map(c=>c.id));
+  if(a.unsupported_cases!==undefined&&(!Array.isArray(a.unsupported_cases)||new Set(a.unsupported_cases).size!==a.unsupported_cases.length||a.unsupported_cases.some(x=>!names.has(x))))fail('bad unsupported list');
+  if(a.unsupported_cases?.length){
+    if(!a.unsupported_needles||typeof a.unsupported_needles!=='object'||Array.isArray(a.unsupported_needles))fail('missing unsupported diagnostic map');
+    for(const id of a.unsupported_cases)if(typeof a.unsupported_needles[id]!=='string'||!/^[A-Z][A-Z0-9_]{2,79}$/.test(a.unsupported_needles[id]))fail('bad unsupported diagnostic');
+  }
+  if(a.diagnostic_needles!==undefined)fail('free-form diagnostic needles are unsafe; use fixture category codes');
   return a;
 }
 function invoke(argv,c){
@@ -87,37 +99,26 @@ function invoke(argv,c){
   const p=spawnSync(args[0],args.slice(1),{cwd:c.workdir,shell:false,encoding:'utf8',timeout:15000,maxBuffer:1024*1024,windowsHide:true});
   return {exit_code:p.status,signal:p.signal,stdout:(p.stdout||'').slice(0,4096),stderr:(p.stderr||'').slice(0,4096),error:p.error?.code||null};
 }
-function needle(t,a){
-  const n=a.diagnostic_needles?.[t.id];
-  if(typeof n!=='string'||n.length<4||n.length>256||!n.includes(t.expected_diagnostic))fail('missing targeted diagnostic for '+t.id);
-  return n;
-}
 function runCase(t,a){
-  if((a.unsupported_cases||[]).includes(t.id))return {status:'UNSUPPORTED'};
   const tmp=mkdtempSync(join(tmpdir(),'atto-diff-'));
   const c={source:sourcePath(t.path),artifact:join(tmp,'guest-artifact'),workdir:tmp};
   try{
     const compile=invoke(a.compile_argv,c);
     if(compile.error||compile.signal)return {status:'INFRASTRUCTURE_FAILURE',compile};
-    if(t.kind==='reject'){
-      const absent=!existsSync(c.artifact);
-      const accepted=compile.exit_code!==0&&(compile.stdout+'\n'+compile.stderr).includes(needle(t,a))&&absent;
-      return {status:accepted?'OBSERVED_UNVERIFIED':'MISMATCH',compile,artifact_absent:absent};
+    if(t.kind==='reject'||(a.unsupported_cases||[]).includes(t.id)){
+      const absent=readdirSync(c.workdir).length===0;
+      const unsupported=(a.unsupported_cases||[]).includes(t.id);
+      const status=unsupported
+        ?classifyUnsupported(compile,absent,a.unsupported_needles[t.id])
+        :classifyCompileNegative(compile,absent,t.expected_diagnostic);
+      return {status,compile,artifact_absent:absent};
     }
     if(t.kind==='observe'&&(compile.exit_code!==0||!existsSync(c.artifact)))return {status:'OBSERVATION_ONLY',compile,reason:'rejected or unsupported source; semantic decision still pending'};
     if(compile.exit_code!==0||!existsSync(c.artifact))return {status:'MISMATCH',compile,reason:'compiler did not produce guest artifact'};
     const artifact_sha256=hash(readFileSync(regular(c.artifact)));
     const guest=invoke(a.run_argv,c);
     if(guest.error||guest.signal||hash(readFileSync(regular(c.artifact)))!==artifact_sha256)return {status:'INFRASTRUCTURE_FAILURE',compile,guest};
-    if(t.kind==='observe')return {status:'OBSERVATION_ONLY',compile,guest,artifact_sha256};
-    let accepted=false;
-    if(t.kind==='value'){
-      const value=a.value_mode==='exit_code'?guest.exit_code:(/^-?(0|[1-9][0-9]*)\n?$/.test(guest.stdout)?Number(guest.stdout.trim()):null);
-      accepted=guest.exit_code!==null&&value===t.expected_value;
-    }
-    if(t.kind==='stdout')accepted=guest.exit_code===t.expected_exit&&guest.stdout===t.expected_stdout;
-    if(t.kind==='trap')accepted=guest.exit_code!==null&&guest.exit_code!==0&&(guest.stdout+'\n'+guest.stderr).includes(needle(t,a));
-    return {status:accepted?'OBSERVED_UNVERIFIED':'MISMATCH',compile,guest,artifact_sha256};
+    return {status:classifyGuest(t,guest,a.value_mode),compile,guest,artifact_sha256};
   } finally{rmSync(tmp,{recursive:true,force:true});}
 }
 export function main(args){
@@ -125,13 +126,16 @@ export function main(args){
   let result=audit();
   if(opts.execute){
     if(!isAbsolute(opts.adapter))fail('adapter path must be absolute');
-    const a=checkAdapter(JSON.parse(readFileSync(opts.adapter,'utf8')),opts.backend);
     const m=loadManifest();
+    const a=checkAdapter(JSON.parse(readFileSync(regular(opts.adapter),'utf8')),opts.backend,m.cases);
     result={schema:'atto.java_rust.differential.report.v1',mode:'LOCAL_OBSERVATION_NOT_ATTESTATION',cases:m.cases.length,backend:opts.backend,compiler_commit:a.compiler_commit,compiler_tree:a.compiler_tree,guest_parity_certified:false,records:m.cases.map(t=>({case_id:t.id,backend:opts.backend,source_sha256:t.sha256,oracle_kind:t.kind,...runCase(t,a)}))};
   }
+  if(opts.execute)assertObservationReport(result);
   const json=JSON.stringify(result,null,2)+'\n';
   if(opts.output){if(!isAbsolute(opts.output))fail('output must be absolute');writeFileSync(opts.output,json,{flag:'wx'});}else process.stdout.write(json);
-  return opts.execute&&result.records.some(x=>!['OBSERVED_UNVERIFIED','OBSERVATION_ONLY'].includes(x.status))?2:0;
+  // Unattested local observations MUST NOT exit as a green parity validation.
+  if(!opts.execute)return 0;
+  return result.records.some(x=>!['OBSERVED_UNVERIFIED','OBSERVATION_ONLY'].includes(x.status))?2:3;
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   try{process.exitCode=main(process.argv.slice(2));}
