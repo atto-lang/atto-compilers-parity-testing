@@ -1,0 +1,32 @@
+name: Checked stdio/on-is cross-compiler contract (metadata only)
+
+on:
+  pull_request:
+    paths:
+      - "contracts/v1/stdio-adt-parity-v1.json"
+      - "tests/stdio_adt_parity.rs"
+      - "tests/stdio-conformance-runner.test.mjs"
+      - "tools/run-stdio-conformance.mjs"
+      - "docs/stdio-adt-is-parity.md"
+      - ".github/workflows/stdio-adt-parity-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  metadata-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Node.js 22 for portable runner validation
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Fail-closed stdio runner validation (no guest claims)
+        run: node --test tests/stdio-conformance-runner.test.mjs
+      - name: Rust metadata and anti-forgery contract checks (no guest claims)
+        run: cargo test --locked --test stdio_adt_parity
