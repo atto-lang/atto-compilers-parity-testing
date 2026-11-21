@@ -181,12 +181,15 @@ fn classify_diagnostic(
     invocation: &Invocation,
 ) -> Option<String> {
     let backend_rules = rules.get(backend)?;
-    let raw = format!("{}{}", invocation.stdout_hex, invocation.stderr_hex);
-    let haystack = ascii_lower_hex(&raw)?;
+    // Stdout and stderr are independently captured pipes, not one ordered
+    // diagnostic stream. Never join their bytes: doing so could synthesize a
+    // semantic error token that the compiler never emitted on either stream.
+    let stdout = ascii_lower_hex(&invocation.stdout_hex)?;
+    let stderr = ascii_lower_hex(&invocation.stderr_hex)?;
     for (category, needles) in backend_rules {
         for needle in needles {
             let encoded = hex(needle.to_ascii_lowercase().as_bytes());
-            if haystack.contains(&encoded) {
+            if stdout.contains(&encoded) || stderr.contains(&encoded) {
                 return Some(category.clone());
             }
         }
@@ -765,6 +768,17 @@ fn temp_dir(case_id: &str, backend: &str) -> Result<PathBuf, String> {
     Ok(path)
 }
 
+// Treat any emitted file, directory or symlink (including a dangling one)
+// as an artifact. A successful semantic rejection must leave no product at
+// the runner's compiler output path. Permission errors fail closed.
+fn artifact_emitted(path: &Path) -> Result<bool, String> {
+    match fs::symlink_metadata(path) {
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(format!("cannot inspect compiler artifact: {error}")),
+    }
+}
+
 fn evaluate_case(
     case: &TestCase,
     diagnostic_rules: &DiagnosticRules,
@@ -824,6 +838,10 @@ fn evaluate_case(
     } else if case.expected_kind == "compile_reject" {
         if compile_exit == Some(0) {
             record.status = "unexpected_compile_success".into();
+        } else if artifact_emitted(&artifact)? {
+            // Even a perfectly matching semantic diagnostic cannot certify a
+            // negative if the compiler also published a guest artifact.
+            record.status = "negative_artifact_emitted".into();
         } else {
             record.actual_diagnostic_category = record
                 .compile
@@ -862,6 +880,11 @@ fn evaluate_case(
         } else {
             "compile_failure".into()
         };
+    } else if case.suite == "atto-actor-critical-v1" && !artifact_emitted(&artifact)? {
+        // Canonical actor guest certification requires a physical compiler
+        // product. A fake zero-exit compile script cannot pair with a fake
+        // run command to manufacture an Atto guest pass.
+        record.status = "compile_artifact_missing".into();
     } else {
         let run_argv = expand(
             run_template.as_ref().expect("checked above"),
@@ -1105,6 +1128,88 @@ mod tests {
             classify_diagnostic(&rules, "dotnet", &invocation).as_deref(),
             Some("unsupported_select")
         );
+    }
+
+    #[test]
+    fn split_stdout_stderr_cannot_forge_semantic_negative() {
+        let mut backend = BTreeMap::new();
+        backend.insert(
+            "actor_state_loan_escape_to_mailbox".to_string(),
+            vec!["ACTOR_LOAN_ESCAPE".to_string()],
+        );
+        let mut rules = BTreeMap::new();
+        rules.insert("java".to_string(), backend);
+        let mut invocation = Invocation {
+            status: "completed".into(),
+            exit_code: Some(1),
+            stdout_hex: hex(b"ACTOR_LOAN_"),
+            stderr_hex: hex(b"ESCAPE"),
+            duration_ms: 1,
+            error: None,
+        };
+        assert_eq!(classify_diagnostic(&rules, "java", &invocation), None);
+        invocation.stderr_hex = hex(b"ACTOR_LOAN_ESCAPE");
+        assert_eq!(
+            classify_diagnostic(&rules, "java", &invocation).as_deref(),
+            Some("actor_state_loan_escape_to_mailbox")
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn negative_artifact_and_missing_positive_artifact_fail_closed() {
+        let name = "ARTIFACT_PROOF_TEST";
+        let key = format!("ORES_PARITY_{name}_COMPILE");
+        let run_key = format!("ORES_PARITY_{name}_RUN");
+        let testcase = |kind: &str| super::TestCase {
+            suite: "atto-actor-critical-v1".into(),
+            case_id: format!("artifact-guard-{kind}"),
+            name: "artifact-guard".into(),
+            source: std::env::temp_dir().join("never-opened-atto-testcase.atto"),
+            source_sha256: "source-probe".into(),
+            graph_sha256: None,
+            graph_files: None,
+            expected_kind: kind.into(),
+            expected_value: if kind == "exit" { Some(0) } else { None },
+            expected_diagnostic_category: Some("actor_loan_deny".into()),
+            expected_stdout_prefix: None,
+            validation_status: "unvalidated".into(),
+            features: vec![],
+        };
+        let mut backend = BTreeMap::new();
+        backend.insert(
+            "actor_loan_deny".to_string(),
+            vec!["ACTOR_LOAN_DENIED".to_string()],
+        );
+        let mut rules = BTreeMap::new();
+        rules.insert("java".to_string(), backend);
+        let timeout = std::time::Duration::from_secs(5);
+
+        std::env::set_var(
+            &key,
+            "sh -c 'printf compiled > \"{artifact}\"; printf ACTOR_LOAN_DENIED >&2; exit 7'",
+        );
+        let negative = super::evaluate_case(
+            &testcase("compile_reject"), &rules, "java", name, true, true, timeout,
+        ).unwrap();
+        assert_eq!(negative.status, "negative_artifact_emitted");
+        assert_eq!(negative.compile.unwrap().exit_code, Some(7));
+
+        std::env::set_var(&key, "sh -c 'printf ACTOR_LOAN_DENIED >&2; exit 7'");
+        let rejected = super::evaluate_case(
+            &testcase("compile_reject"), &rules, "java", name, true, true, timeout,
+        ).unwrap();
+        assert_eq!(rejected.status, "exploratory_expected_reject_not_parity_pass");
+
+        std::env::set_var(&key, "sh -c 'exit 0'");
+        std::env::set_var(&run_key, "sh -c 'exit 0'");
+        let positive = super::evaluate_case(
+            &testcase("exit"), &rules, "java", name, true, true, timeout,
+        ).unwrap();
+        assert_eq!(positive.status, "compile_artifact_missing");
+        assert!(positive.run.is_none(), "no guest artifact means no run");
+        std::env::remove_var(&key);
+        std::env::remove_var(&run_key);
     }
 
     #[test]
