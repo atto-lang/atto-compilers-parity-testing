@@ -56,6 +56,10 @@ This ledger is updated through the implementation PR, with no change to existing
 ## CI zero-step recovery policy
 
 When source GitHub Actions jobs have runner ID zero and no executed steps, distinguish scheduling/budget admission from code failure; do not retry the same run as a substitute for execution. Find a source-owner-authorized private carrier in a different organization with a recently demonstrated *stepful* GitHub Actions run. Transfer the **exact reviewed Git blobs** via the GitHub connector to a temporary branch there. Verify each blob's Git SHA in CI before running tests; never use cross-organization checkout secrets or personal access tokens. For full-source certification, the **entire exact source Git tree** must be mirrored and its root tree SHA and source head must be verified; a targeted subset only proves the specifically transferred host components. Reject runner-less results, untrusted guest-authored receipts and host-only evidence as compiler parity. Retain source branch/review protections and mark the carrier temporary.\n
-- Source PR implementation head used for this opt-in lane: `0cff83c5ccaee03bfc2b1b12fe74562f8016e8cc` (before this documentation update).
+- Source runner implementation + rustfmt fix: `ff3193d4261bbb92d1f3eb4ec99d0cdec16141fa` (followed by CI/docs commit `0239a1c423210e69cb5d8d8e1cd7b5d5c6e16db9`).
 - Carrier subset `ores-data-platform/atto-ci` attempt after the new lane had **zero steps** and therefore provided no test result.
-- SHA-pinned temporary fallback for the new lane: `gha-indie-worker/gha-indie-worker-e2e` branch `ci/atto-actor-critical-all11-20261121`, commit `a79a33cec0232649b558070071621ac83ae8144f`. This mirrors ten relevant Git blobs, **not the complete source tree**; successful carrier checks are host-only.
+- SHA-pinned temporary fallback for the new lane: `gha-indie-worker/gha-indie-worker-e2e` branch `ci/atto-actor-critical-all11-20261121`, passing commit `422e5c7b063935983e831c4fd9275a161f13ea91`. This mirrors ten relevant Git blobs, **not the complete source tree**; successful carrier checks are host-only.
+
+### Fail-closed execution smoke
+
+The CI workflow deliberately invokes `--actor-critical --backend java --execute` without an admitted adapter and verifies a **nonzero exit**, `unvalidated` statuses, and no compiler invocation. A second `--allow-unvalidated` run must still exit nonzero with `backend_not_configured` when no compiler adapter exists. This check prevents accidental promotion from CLI switch plumbing alone; it does not substitute for real guests.

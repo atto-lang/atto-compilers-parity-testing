@@ -77,6 +77,26 @@ jobs:
           if (!d.records.every(r => r.suite === "atto-actor-critical-v1" && r.validation_status === "unvalidated")) process.exit(1);
           console.log("ACTOR_CRITICAL_ALL_11=33_INVENTORY_CELLS_0_GUEST_RECEIPTS");
           NODE
+      - name: Refuse unverified Atto actor guest attempts (strict and exploratory)
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml --locked -- --actor-critical --backend java --execute --output actor-critical-unvalidated.json
+          rc1=$?
+          cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml --locked -- --actor-critical --backend java --execute --allow-unvalidated --output actor-critical-no-adapter.json
+          rc2=$?
+          set -e
+          test "$rc1" -ne 0
+          test "$rc2" -ne 0
+          node - <<'NODE'
+          const strict = require("./actor-critical-unvalidated.json");
+          const exploratory = require("./actor-critical-no-adapter.json");
+          if (strict.records.length !== 3 || strict.summary.unvalidated !== 3) process.exit(1);
+          if (exploratory.records.length !== 3 || exploratory.summary.backend_not_configured !== 3) process.exit(1);
+          if (![...strict.records, ...exploratory.records].every(r => !r.compile && !r.run)) process.exit(1);
+          console.log("NO_COMPILER_ADAPTER_CAN_NOT_CERTIFY_ACTOR_GUEST");
+          NODE
       - name: Audit optional JavaScript transpiler separately
         run: |
           cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml -- --backend js --output parity-js-optional.json
