@@ -16,7 +16,10 @@
       "protected_main": false,
       "guest_parity": "NOT_EXECUTED",
       "ci_observation": {
-        "kind": "NO_RUN_SAMPLED"
+        "kind": "ZERO_STEP_SAMPLE",
+        "run_id": 44175114352,
+        "runner_id": 0,
+        "steps": 0
       }
     },
     {

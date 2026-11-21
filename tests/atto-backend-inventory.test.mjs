@@ -35,7 +35,7 @@ function verify(m) {
     assert.ok(typeof b.profile==='string' && b.profile.length>=3);
     assert.equal(b.protected_main,false);
     assert.equal(b.guest_parity,'NOT_EXECUTED');
-    if(b.backend==='atto' || b.backend==='realtime') {
+    if(b.backend==='realtime') {
       assert.ok(keys(b.ci_observation,['kind']));
       assert.equal(b.ci_observation.kind,'NO_RUN_SAMPLED');
     } else {
