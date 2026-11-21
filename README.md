@@ -47,3 +47,12 @@ AttoLang is the canonical project name; new source, examples and documentation u
 ## Checked stdio and nominal ADT pattern parity (draft)
 
 The draft [stdio/on-is parity contract](docs/stdio-adt-is-parity.md) defines the 11-backend target matrix (`contracts/v1/stdio-adt-parity-v1.json`), Rust anti-forgery tests (`tests/stdio_adt_parity.rs`), and a fail-closed **actual compiler + compiled guest** runner (`tools/run-stdio-conformance.mjs`). Run `node --test tests/stdio-conformance-runner.test.mjs` to validate the runner's guardrails; this **does not run a guest**. Real per-backend conformance requires an explicit compiler/runtime configuration and exact pinned Git heads. All eleven backends remain `NOT_EXECUTED` until independently verified target-specific source-compiled execution or an explicit HDL unsupported-profile receipt exists.
+
+## Canonical Atto source backend inventory (migration-safe)
+
+The separate source-free inventory at contracts/v1/atto-backend-inventory-v1.json pins all eleven Atto compiler repositories to their numeric GitHub repository IDs, 2026-11-21 main commit/tree SHA pairs, branch protection and sampled CI admission status. It is an immutable historical snapshot, not a live compliance decision or a private-source transfer grant.
+
+Run node --test tests/atto-backend-inventory.test.mjs to deny missing/renamed backends, repo-ID spoofing, fabricated guest passes and zero-step CI impersonation. The older manifest.json and contracts/attolang-semantic-floor-v1/contract.json include migration-era Oreslang sources; they are not automatically a canonical Atto roster. The new test cross-checks PR #23's eleven-backend stdio/ADT matrix.
+
+All eleven source main branches were unprotected at the time of this audit. Ten backends' sampled latest CI jobs were zero-step and runner-unassigned, while no recent workflow was found for self-hosted Atto and realtime. No compiled Atto guest parity was verified by these metadata checks. Future guest claims require identical .atto fixture blobs, source/toolchain identity, real executed test steps, nonzero runner identity, observed guest output, independent review and source export authorization.
+
