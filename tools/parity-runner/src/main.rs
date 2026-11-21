@@ -474,6 +474,133 @@ fn expand(
         .collect())
 }
 
+// Canonical Atto actor-critical cases are opt-in, never mixed into the
+// historical .ores baseline. Source pins are authenticated before a compiler
+// adapter can run; authored source alone never upgrades a guest to PASS.
+fn load_actor_critical_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
+    let registry: serde_json::Value = serde_json::from_slice(
+        &fs::read(root.join("contracts/atto-actor-critical-v1/all-eleven-backend-admission.json"))
+            .map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
+    if registry["contract_id"] != "atto-actor-critical-all-eleven-v1"
+        || registry["status"] != "AUTHORED_NOT_EXECUTED"
+        || registry["canonical_contract"]["id"] != "atto-actor-critical-v1"
+    {
+        return Err("unrecognized or promoted actor-critical admission registry".into());
+    }
+
+    let definitions = [
+        (
+            "two-actor-snapshot-positive",
+            "contracts/atto-actor-critical-v1/fixtures/two-actor-snapshot-positive.atto",
+            "a6189d92c813426ecf54a09cf535c3874de45942",
+            "exit",
+            None,
+        ),
+        (
+            "deny-send-inside-read",
+            "contracts/atto-actor-critical-v1/fixtures/deny-send-inside-read.atto",
+            "89eb278a139eb13079e8eda69a943f94591671cc",
+            "compile_reject",
+            Some("actor_state_loan_escape_to_mailbox"),
+        ),
+        (
+            "deny-write-inside-read",
+            "contracts/atto-actor-critical-v1/fixtures/deny-write-inside-read.atto",
+            "b279055abc2ee5175299a74fe5b66662581a87cf",
+            "compile_reject",
+            Some("write_through_read_only_actor_loan"),
+        ),
+    ];
+    let negative_manifest = registry["canonical_contract"]["negative_cases"]
+        .as_array()
+        .ok_or("missing actor-critical negative manifest")?;
+    if negative_manifest.len() != 2
+        || registry["canonical_contract"]["positive_fixture"] != definitions[0].1
+        || registry["canonical_contract"]["positive_git_blob_sha"] != definitions[0].2
+    {
+        return Err("canonical actor-critical source identity mismatch".into());
+    }
+    let canonical: serde_json::Value = serde_json::from_slice(
+        &fs::read(root.join("contracts/atto-actor-critical-v1/contract.json"))
+            .map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
+    if canonical["status"] != "AUTHORED_NOT_EXECUTED"
+        || canonical["positive"]["expected_stdout_line"]
+            != "ATTO_TWO_ACTOR_LOGICAL_ISOLATION=PASS"
+    {
+        return Err("canonical actor-critical guest expectations changed".into());
+    }
+
+    let mut cases = Vec::new();
+    for (index, (id, path, pin, kind, category)) in definitions.into_iter().enumerate() {
+        if index > 0 {
+            let entry = &negative_manifest[index - 1];
+            if entry["id"] != id
+                || entry["path"] != path
+                || entry["git_blob_sha"] != pin
+                || entry["expected_category"] != category.expect("negative category")
+            {
+                return Err(format!("actor-critical negative manifest drift: {id}"));
+            }
+        }
+        let source = safe_file(root, path)?;
+        if fs::symlink_metadata(root.join(path))
+            .map_err(|e| e.to_string())?
+            .file_type()
+            .is_symlink()
+        {
+            return Err(format!("actor-critical source must be a regular file: {path}"));
+        }
+        let output = Command::new("git")
+            .arg("hash-object")
+            .arg("--no-filters")
+            .arg(&source)
+            .output()
+            .map_err(|e| format!("git hash-object failed: {e}"))?;
+        if !output.status.success()
+            || String::from_utf8(output.stdout)
+                .map_err(|e| e.to_string())?
+                .trim()
+                != pin
+        {
+            return Err(format!("actor-critical fixture blob differs: {path}"));
+        }
+        cases.push(TestCase {
+            suite: "atto-actor-critical-v1".into(),
+            case_id: id.into(),
+            name: id.into(),
+            source_sha256: sha256_file(&source)?,
+            source,
+            graph_sha256: None,
+            graph_files: None,
+            expected_kind: kind.into(),
+            expected_value: if index == 0 { Some(0) } else { None },
+            expected_diagnostic_category: category.map(str::to_owned),
+            expected_stdout_prefix: if index == 0 {
+                Some("ATTO_TWO_ACTOR_LOGICAL_ISOLATION=PASS".into())
+            } else {
+                None
+            },
+            // No backend has a certified compiler+guest receipt yet. Even
+            // explicit --execute --allow-unvalidated is exploratory only.
+            validation_status: "unvalidated".into(),
+            features: vec!["actor".into(), "sealed-state".into(), "critical-loan".into()],
+        });
+    }
+    Ok((
+        cases,
+        Corpus {
+            legacy_cases: 0,
+            multifile_checks: 0,
+            negative_probes: 2,
+            total_cases: 3,
+        },
+    ))
+}
+
 // Source compilers and guest programs are not trusted to emit bounded output.
 // Drain to EOF even after the capture limit, so a full pipe cannot block a
 // child, but never promote truncated diagnostics to parity success.
@@ -782,6 +909,7 @@ fn main() -> Result<(), String> {
     let execute = args.iter().any(|arg| arg == "--execute");
     let allow_unvalidated = args.iter().any(|arg| arg == "--allow-unvalidated");
     let all_backends = args.iter().any(|arg| arg == "--all-backends");
+    let actor_critical = args.iter().any(|arg| arg == "--actor-critical");
     let selected_backend = args
         .iter()
         .position(|arg| arg == "--backend")
@@ -817,7 +945,11 @@ fn main() -> Result<(), String> {
         .join("../..")
         .canonicalize()
         .map_err(|e| e.to_string())?;
-    let (cases, corpus) = load_cases(&root)?;
+    let (cases, corpus) = if actor_critical {
+        load_actor_critical_cases(&root)?
+    } else {
+        load_cases(&root)?
+    };
     let diagnostic_rules: DiagnosticRules = serde_json::from_str(
         &fs::read_to_string(root.join("diagnostics.json")).map_err(|e| e.to_string())?,
     )
@@ -826,7 +958,7 @@ fn main() -> Result<(), String> {
     let mut records = Vec::new();
     for case in &cases {
         for &(backend, env_name) in &BACKENDS {
-            if !is_backend_selected(backend, selected_backend.as_deref(), all_backends) {
+            if !is_backend_selected(backend, selected_backend.as_deref(), all_backends || actor_critical) {
                 continue;
             }
             records.push(evaluate_case(
@@ -852,7 +984,7 @@ fn main() -> Result<(), String> {
         corpus,
         backends: BACKENDS
             .iter()
-            .filter(|entry| is_backend_selected(entry.0, selected_backend.as_deref(), all_backends))
+            .filter(|entry| is_backend_selected(entry.0, selected_backend.as_deref(), all_backends || actor_critical))
             .map(|entry| entry.0.to_string())
             .collect(),
         records,
