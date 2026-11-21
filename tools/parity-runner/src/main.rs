@@ -8,9 +8,11 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-// The six oreslang-source.* backends are mandatory. JavaScript is
-// independently selectable for exploratory transpiler coverage.
-const BACKENDS: [(&str, &str); 7] = [
+// Preserve the original six required backends and existing 54 x 6 baseline.
+// All eleven Atto compiler profiles can be selected, but enumeration alone
+// is never evidence of guest execution or runtime permission.
+const REQUIRED_BACKENDS: [&str; 6] = ["llvm", "java", "wasm", "dotnet", "forge", "cranelift"];
+const BACKENDS: [(&str, &str); 11] = [
     ("llvm", "LLVM"),
     ("java", "JAVA"),
     ("wasm", "WASM"),
@@ -18,6 +20,10 @@ const BACKENDS: [(&str, &str); 7] = [
     ("forge", "FORGE"),
     ("cranelift", "CRANELIFT"),
     ("js", "JS"),
+    ("rs", "RS"),
+    ("hdl", "HDL"),
+    ("realtime", "REALTIME"),
+    ("atto", "ATTO"),
 ];
 
 #[derive(Debug, Deserialize)]
@@ -54,7 +60,8 @@ struct Expectation {
     entry: String,
     stable_stdout_prefix: String,
     imported_files: usize,
-    maturity: String,
+    #[serde(rename = "maturity")]
+    _maturity: String,
     #[serde(default)]
     features: Vec<String>,
     verified: bool,
@@ -145,7 +152,7 @@ fn hex(bytes: &[u8]) -> String {
 }
 
 fn ascii_lower_hex(input: &str) -> Option<String> {
-    if input.len() % 2 != 0 {
+    if !input.len().is_multiple_of(2) {
         return None;
     }
     let bytes = input.as_bytes();
@@ -158,7 +165,7 @@ fn ascii_lower_hex(input: &str) -> Option<String> {
             _ => None,
         }
     };
-    for pair in bytes.chunks_exact(2) {
+    for pair in bytes.as_chunks::<2>().0 {
         let high = nibble(pair[0])?;
         let low = nibble(pair[1])?;
         decoded.push((high << 4 | low).to_ascii_lowercase());
@@ -762,10 +769,19 @@ fn is_verified_execution_status(status: &str) -> bool {
     matches!(status, "pass" | "expected_reject")
 }
 
+/// Six core backends are mandatory by default; opt-in profiles are explicit.
+fn is_backend_selected(backend: &str, selected: Option<&str>, all_backends: bool) -> bool {
+    match selected {
+        Some(name) => name == backend,
+        None => all_backends || REQUIRED_BACKENDS.contains(&backend),
+    }
+}
+
 fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     let execute = args.iter().any(|arg| arg == "--execute");
     let allow_unvalidated = args.iter().any(|arg| arg == "--allow-unvalidated");
+    let all_backends = args.iter().any(|arg| arg == "--all-backends");
     let selected_backend = args
         .iter()
         .position(|arg| arg == "--backend")
@@ -774,11 +790,14 @@ fn main() -> Result<(), String> {
                 .filter(|name| BACKENDS.iter().any(|(backend, _)| backend == name))
                 .cloned()
                 .ok_or_else(|| {
-                    "--backend requires llvm, java, wasm, dotnet, forge, cranelift, or js"
+                    "--backend requires llvm, java, wasm, dotnet, forge, cranelift, js, rs, hdl, realtime or atto"
                         .to_string()
                 })
         })
         .transpose()?;
+    if all_backends && selected_backend.is_some() {
+        return Err("--all-backends conflicts with --backend".into());
+    }
     let output = args
         .windows(2)
         .find(|window| window[0] == "--output")
@@ -807,14 +826,7 @@ fn main() -> Result<(), String> {
     let mut records = Vec::new();
     for case in &cases {
         for &(backend, env_name) in &BACKENDS {
-            // Omit the optional JS transpiler from default required parity.
-            if selected_backend.is_none() && backend == "js" {
-                continue;
-            }
-            if selected_backend
-                .as_deref()
-                .is_some_and(|selected| selected != backend)
-            {
+            if !is_backend_selected(backend, selected_backend.as_deref(), all_backends) {
                 continue;
             }
             records.push(evaluate_case(
@@ -840,12 +852,7 @@ fn main() -> Result<(), String> {
         corpus,
         backends: BACKENDS
             .iter()
-            .filter(|entry| {
-                (selected_backend.is_some() || entry.0 != "js")
-                    && selected_backend
-                        .as_deref()
-                        .is_none_or(|name| name == entry.0)
-            })
+            .filter(|entry| is_backend_selected(entry.0, selected_backend.as_deref(), all_backends))
             .map(|entry| entry.0.to_string())
             .collect(),
         records,
@@ -878,10 +885,38 @@ fn main() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        ascii_lower_hex, classify_diagnostic, hex, import_target, is_verified_execution_status,
-        lowercase_kebab, Invocation,
+        ascii_lower_hex, classify_diagnostic, hex, import_target, is_backend_selected,
+        is_verified_execution_status, lowercase_kebab, Invocation, BACKENDS, REQUIRED_BACKENDS,
     };
     use std::collections::BTreeMap;
+
+    #[test]
+    fn full_eleven_compiler_roster_requires_explicit_opt_in() {
+        let unique: std::collections::BTreeSet<&str> =
+            BACKENDS.iter().map(|(name, _)| *name).collect();
+        assert_eq!(unique.len(), 11);
+        assert_eq!(REQUIRED_BACKENDS.len(), 6);
+        assert_eq!(
+            BACKENDS
+                .iter()
+                .filter(|(name, _)| is_backend_selected(name, None, false))
+                .count(),
+            6
+        );
+        assert_eq!(
+            BACKENDS
+                .iter()
+                .filter(|(name, _)| is_backend_selected(name, None, true))
+                .count(),
+            11
+        );
+        for backend in ["js", "rs", "hdl", "realtime", "atto"] {
+            assert!(!is_backend_selected(backend, None, false));
+            assert!(is_backend_selected(backend, None, true));
+            assert!(is_backend_selected(backend, Some(backend), false));
+            assert!(!is_backend_selected(backend, Some("java"), true));
+        }
+    }
 
     #[test]
     fn exploratory_and_unrecognized_execution_results_fail_closed() {
