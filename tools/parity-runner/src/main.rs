@@ -1190,22 +1190,39 @@ mod tests {
             "sh -c 'printf compiled > \"{artifact}\"; printf ACTOR_LOAN_DENIED >&2; exit 7'",
         );
         let negative = super::evaluate_case(
-            &testcase("compile_reject"), &rules, "java", name, true, true, timeout,
-        ).unwrap();
+            &testcase("compile_reject"),
+            &rules,
+            "java",
+            name,
+            true,
+            true,
+            timeout,
+        )
+        .unwrap();
         assert_eq!(negative.status, "negative_artifact_emitted");
         assert_eq!(negative.compile.unwrap().exit_code, Some(7));
 
         std::env::set_var(&key, "sh -c 'printf ACTOR_LOAN_DENIED >&2; exit 7'");
         let rejected = super::evaluate_case(
-            &testcase("compile_reject"), &rules, "java", name, true, true, timeout,
-        ).unwrap();
-        assert_eq!(rejected.status, "exploratory_expected_reject_not_parity_pass");
+            &testcase("compile_reject"),
+            &rules,
+            "java",
+            name,
+            true,
+            true,
+            timeout,
+        )
+        .unwrap();
+        assert_eq!(
+            rejected.status,
+            "exploratory_expected_reject_not_parity_pass"
+        );
 
         std::env::set_var(&key, "sh -c 'exit 0'");
         std::env::set_var(&run_key, "sh -c 'exit 0'");
-        let positive = super::evaluate_case(
-            &testcase("exit"), &rules, "java", name, true, true, timeout,
-        ).unwrap();
+        let positive =
+            super::evaluate_case(&testcase("exit"), &rules, "java", name, true, true, timeout)
+                .unwrap();
         assert_eq!(positive.status, "compile_artifact_missing");
         assert!(positive.run.is_none(), "no guest artifact means no run");
         std::env::remove_var(&key);
