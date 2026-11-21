@@ -67,6 +67,16 @@ jobs:
           const arithmetic = d.records.filter(r => ["32","33","34","35"].includes(r.case_id));
           if (arithmetic.length !== 24 || !arithmetic.every(r => r.status === "not_run" && r.validation_status === "candidate")) process.exit(1);
           NODE
+      - name: Inventory SHA-pinned native .atto actor critical contract for all 11 profiles
+        run: |
+          cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml --locked -- --actor-critical --output actor-critical-inventory.json
+          node - <<'NODE'
+          const d = require("./actor-critical-inventory.json");
+          if (d.cases !== 3 || d.records.length !== 33 || d.summary.not_run !== 33) process.exit(1);
+          if (d.backends.length !== 11 || d.executed) process.exit(1);
+          if (!d.records.every(r => r.suite === "atto-actor-critical-v1" && r.validation_status === "unvalidated")) process.exit(1);
+          console.log("ACTOR_CRITICAL_ALL_11=33_INVENTORY_CELLS_0_GUEST_RECEIPTS");
+          NODE
       - name: Audit optional JavaScript transpiler separately
         run: |
           cargo run --quiet --manifest-path tools/parity-runner/Cargo.toml -- --backend js --output parity-js-optional.json

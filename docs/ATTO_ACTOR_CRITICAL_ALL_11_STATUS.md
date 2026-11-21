@@ -4,15 +4,19 @@
 
 The canonical three `.atto` sources live in `contracts/atto-actor-critical-v1/fixtures/`; their exact Git blobs are pinned in `all-eleven-backend-admission.json`. Do not rewrite them per backend. The source-only positive asserts two-actor **logical** isolation, not physical memory segregation; the two negatives require semantic rejection of send-from-critical-read and write-through-critical-read. A generic parse error or "unsupported" result is NOT a negative semantic pass.
 
-The all-eleven registry and runner are **additive** to the historical six required Oreslang parity profiles. Existing 54 × 6 = **324** historical corpus cells remain the default; the opt-in inventory provides 54 × 11 = **594** possible inventory cells, not 594 guest passes. Run:
+The all-eleven registry and runner are **additive** to the historical six required Oreslang parity profiles. Existing 53 × 6 = **318** historical corpus cells remain the default; the opt-in inventory provides 53 × 11 = **583** possible inventory cells, not 594 guest passes. Run:
 
 ```sh
 cargo run --manifest-path tools/parity-runner/Cargo.toml --locked -- --output default-six.json
 cargo run --manifest-path tools/parity-runner/Cargo.toml --locked -- --all-backends --output all-eleven-inventory.json
 cargo run --manifest-path tools/parity-runner/Cargo.toml --locked -- --backend rs --output rust-inventory.json
+# New, separate opt-in canonical Atto actor-critical suite: 3 fixtures × 11 profiles = 33 inventory-only cells
+cargo run --manifest-path tools/parity-runner/Cargo.toml --locked -- --actor-critical --output actor-critical-inventory.json
+# Individual actual compiler adapter exploration (cannot certify parity yet):
+# ORES_PARITY_JAVA_COMPILE='...' ORES_PARITY_JAVA_RUN='...' cargo run --manifest-path tools/parity-runner/Cargo.toml --locked -- --actor-critical --backend java --execute --allow-unvalidated
 ```
 
-No `--execute` means inventory-only `not_run`; the runner's `--execute` gate fails when adapters, source language, semantic diagnostics or receipts are missing. **Do not promote results from Oreslang `.ores` compatibility corpus to canonical Atto `.atto` actor certification.** A separate source/guest runner must exercise this exact three-file contract, with no backend-specific modification and exact compiler binary SHA. Never use Python for the Rust-only parity runner.
+The `--actor-critical` flag selects only the three SHA-pinned canonical `.atto` actor-critical sources and selects all eleven compilers unless `--backend` is supplied. The runner checks both the contract identities and actual Git blob hashes before launching adapters. Its status remains `unvalidated` even when `--execute --allow-unvalidated` runs real commands; such exploratory evidence cannot yet exit as certified parity. Negative diagnostics must match a backend-specific semantic category, not generic parse failure.\n\nNo `--execute` means inventory-only `not_run`; the runner's `--execute` gate fails when adapters, source language, semantic diagnostics or receipts are missing. **Do not promote results from Oreslang `.ores` compatibility corpus to canonical Atto `.atto` actor certification.** A separate source/guest runner must exercise this exact three-file contract, with no backend-specific modification and exact compiler binary SHA. Never use Python for the Rust-only parity runner.
 
 ## Backend admission snapshot
 
@@ -48,3 +52,10 @@ These are **audited GitHub default-branch identities**, not proof of guest suppo
 - Source [parity runner CI admission issue #25](https://github.com/atto-lang/atto-compilers-parity-testing/issues/25) remains open. Source Actions can fail with `runner_id=0` and `steps=[]`; that is not evidence of executed tests or a code regression.
 
 This ledger is updated through the implementation PR, with no change to existing three-backend fixture bytes. Do not mark the draft Ready, merge or claim certified parity until independently executed source CI and review requirements are met.
+
+## CI zero-step recovery policy
+
+When source GitHub Actions jobs have runner ID zero and no executed steps, distinguish scheduling/budget admission from code failure; do not retry the same run as a substitute for execution. Find a source-owner-authorized private carrier in a different organization with a recently demonstrated *stepful* GitHub Actions run. Transfer the **exact reviewed Git blobs** via the GitHub connector to a temporary branch there. Verify each blob's Git SHA in CI before running tests; never use cross-organization checkout secrets or personal access tokens. For full-source certification, the **entire exact source Git tree** must be mirrored and its root tree SHA and source head must be verified; a targeted subset only proves the specifically transferred host components. Reject runner-less results, untrusted guest-authored receipts and host-only evidence as compiler parity. Retain source branch/review protections and mark the carrier temporary.\n
+- Source PR implementation head used for this opt-in lane: `0cff83c5ccaee03bfc2b1b12fe74562f8016e8cc` (before this documentation update).
+- Carrier subset `ores-data-platform/atto-ci` attempt after the new lane had **zero steps** and therefore provided no test result.
+- SHA-pinned temporary fallback for the new lane: `gha-indie-worker/gha-indie-worker-e2e` branch `ci/atto-actor-critical-all11-20261121`, commit `a79a33cec0232649b558070071621ac83ae8144f`. This mirrors ten relevant Git blobs, **not the complete source tree**; successful carrier checks are host-only.
