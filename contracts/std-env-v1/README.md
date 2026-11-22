@@ -4,7 +4,7 @@ This tool is the **independent receipt sanity-checking companion** to
 [atto-platform-conformance PR #576](https://github.com/atto-lang/atto-platform-conformance/pull/576).
 The authoritative behavioral contract is `contracts/std-env-v1/contract.json`
 in that repo, pinned here to Git blob SHA
-`204070572743b51defa891eb85b1d177fee5792c`.
+`e20331b2c17e29eefdd2ba04ea5f750c0b56eff1`.
 It contains 13 portable `.atto` cases and exact SHA identities for ten
 fixtures. The tool never substitutes canonical shared `.atto` library source
 for the 11 independently maintained backend implementations.
