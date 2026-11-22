@@ -41,6 +41,8 @@ fn valid(v: &Value) -> bool {
             || row["repo"] != format!("atto-lang/atto-source.{backend}")
             || row["stage"] != (if backend == "llvm" {
                 "SCALAR_COPY_GATE_STAGED_UNVERIFIED"
+            } else if backend == "java" {
+                "JAVA_HTTP_BORROW_STAGED_UNVERIFIED"
             } else {
                 "UNASSESSED"
             })
