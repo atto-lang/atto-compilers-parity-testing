@@ -1,7 +1,7 @@
 {
   "schema": "atto-std-env-receipt-v1",
   "feature": "std/env",
-  "contract_git_blob_sha": "204070572743b51defa891eb85b1d177fee5792c",
+  "contract_git_blob_sha": "e20331b2c17e29eefdd2ba04ea5f750c0b56eff1",
   "claim": "UNVERIFIED_GUEST_PARITY",
   "targets": [
     {
