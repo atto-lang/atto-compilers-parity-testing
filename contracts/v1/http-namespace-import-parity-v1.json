@@ -38,7 +38,7 @@
       "backend": "net",
       "status": "NOT_EXECUTED",
       "guest_executed_cases": 0,
-      "source_stage": "UNSUPPORTED_IMPORT_FAIL_CLOSED"
+      "source_stage": "BOOL_PARAMETER_ABI_STAGED_IMPORT_UNSUPPORTED"
     },
     {
       "backend": "wasm",
