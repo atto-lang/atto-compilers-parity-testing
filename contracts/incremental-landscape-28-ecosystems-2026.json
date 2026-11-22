@@ -1,0 +1,312 @@
+{
+  "schema": "atto.incremental-landscape-audit.v1",
+  "status": "RESEARCH_AND_TARGETS_ONLY",
+  "research_date": "2026-11-22",
+  "scope": "28 selected widely used compiler, build and dev ecosystems; illustrative cross-section, not a statistically ranked top-28 by usage",
+  "primary_evidence": "linked vendor/upstream project documentation; maturity and feature claims are scoped to the specified layer and not benchmarked head-to-head",
+  "reference_implementations": [
+    {
+      "name": "Rust/rustc",
+      "layer": "compiler",
+      "mechanism": "Red/green query DAG, persisted query results and codegen-unit reuse",
+      "source": "https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation-in-detail.html",
+      "atto_takeaway": "Query-level invalidation plus persisted IR/object results; avoid marking cached values green without rederived dependencies"
+    },
+    {
+      "name": "Swift compiler/driver",
+      "layer": "compiler",
+      "mechanism": "Fine-grained source dependency files and incremental frontend jobs",
+      "source": "https://github.com/swiftlang/swift/blob/main/docs/Driver.md",
+      "atto_takeaway": "Record per-source provided/referenced declarations; schedule source jobs independently and revise dependency graph when emitted metadata changes"
+    },
+    {
+      "name": "Kotlin Gradle plugin",
+      "layer": "compiler",
+      "mechanism": "Classpath API snapshots and dependent class recompilation",
+      "source": "https://kotlinlang.org/docs/gradle-compilation-and-caches.html",
+      "atto_takeaway": "Compare actual exported API separately from implementation text, including non-source dependencies"
+    },
+    {
+      "name": "Scala/sbt Zinc",
+      "layer": "compiler",
+      "mechanism": "Name/member reference hashes and class-based dependency analysis",
+      "source": "https://www.scala-sbt.org/1.x/docs/Understanding-Recompilation.html",
+      "atto_takeaway": "Refine file/namespace invalidation to exported declarations and symbol-usage edges, preserving inheritance/implicit effects"
+    },
+    {
+      "name": "TypeScript/tsc",
+      "layer": "compiler",
+      "mechanism": "On-disk tsbuildinfo and project-reference declaration boundaries",
+      "source": "https://www.typescriptlang.org/docs/handbook/project-references",
+      "atto_takeaway": "Persist analysis by package/profile and use verified interface artifacts between build units"
+    },
+    {
+      "name": "Go cmd/go",
+      "layer": "build",
+      "mechanism": "Package/action identity build cache and compiled export data",
+      "source": "https://pkg.go.dev/cmd/go",
+      "atto_takeaway": "Make package-instance keys stable and reproducible across compiler processes"
+    },
+    {
+      "name": "Haskell/GHC",
+      "layer": "compiler",
+      "mechanism": "Interface and per-declaration fingerprints to avoid recompilation",
+      "source": "https://ghc.gitlab.haskell.org/ghc/doc/users_guide/separate_compilation.html",
+      "atto_takeaway": "Fingerprint effective exported entities and invalidate only importers of changed APIs"
+    },
+    {
+      "name": "C#/Roslyn incremental generators",
+      "layer": "compiler-plugin",
+      "mechanism": "Incremental value-provider graph and cache-friendly deterministic transforms",
+      "source": "https://github.com/dotnet/roslyn/blob/main/docs/features/incremental-generators.md",
+      "atto_takeaway": "Track annotation/macro-generated declarations as versioned, deterministic query outputs"
+    },
+    {
+      "name": "Elixir/Mix",
+      "layer": "compiler",
+      "mechanism": "Compile-time vs runtime module dependency tracking",
+      "source": "https://mix.hexdocs.pm/Mix.Tasks.Compile.Elixir.html",
+      "atto_takeaway": "Distinguish semantic/compile-time imports from runtime-only edges; actor protocol consolidation is a distinct output"
+    },
+    {
+      "name": "Zig compiler",
+      "layer": "compiler",
+      "mechanism": "Compiler/watch incremental compilation with linked code emission (some modes evolving)",
+      "source": "https://ziglang.org/download/0.16.0/release-notes.html",
+      "atto_takeaway": "Keep file/function and target-object invalidation separate; claim stable behavior only after executing supported target modes"
+    },
+    {
+      "name": "Dart/Flutter dev pipeline",
+      "layer": "dev",
+      "mechanism": "Incremental source reload to running VM during debug",
+      "source": "https://docs.flutter.dev/tools/hot-reload",
+      "atto_takeaway": "Treat hot loading as separate state-preserving runtime protocol, not proof of native AOT incremental build"
+    },
+    {
+      "name": "OCaml/Dune",
+      "layer": "build",
+      "mechanism": "Memoized rule graph and build cache with reproducibility checks",
+      "source": "https://dune.readthedocs.io/en/latest/reference/caches.html",
+      "atto_takeaway": "Add randomly sampled cache re-execution and deterministic artifact equivalence checking"
+    },
+    {
+      "name": "Java/Gradle",
+      "layer": "compiler-build",
+      "mechanism": "ABI-aware compilation avoidance and incremental Java compilation",
+      "source": "https://docs.gradle.org/current/userguide/performance.html",
+      "atto_takeaway": "Reuse unaffected importer outputs when bodies change, but invalidate on effective ABI changes"
+    },
+    {
+      "name": "C#/.NET MSBuild",
+      "layer": "build",
+      "mechanism": "Declared inputs/outputs and incremental target skipping",
+      "source": "https://learn.microsoft.com/en-us/visualstudio/msbuild/incremental-builds",
+      "atto_takeaway": "Explicit per-step input/output manifests and canonical build action keys"
+    },
+    {
+      "name": "Java/Maven Compiler Plugin",
+      "layer": "build",
+      "mechanism": "Module/source change detection; coarser incremental modes",
+      "source": "https://maven.apache.org/plugins/maven-compiler-plugin/compile-mojo.html",
+      "atto_takeaway": "Avoid calling coarse module timestamp checks equivalent to semantic compiler incrementality"
+    },
+    {
+      "name": "Bazel",
+      "layer": "build",
+      "mechanism": "Content-addressed action cache and optional remote reuse",
+      "source": "https://bazel.build/versions/7.3.0/remote/caching",
+      "atto_takeaway": "Hermetic action key includes toolchain, options, inputs, environment and declared dependencies"
+    },
+    {
+      "name": "Buck2/DICE",
+      "layer": "build",
+      "mechanism": "Dynamic memoized dependency computation graph and incremental actions",
+      "source": "https://buck2.build/docs/insights_and_knowledge/modern_dice/",
+      "atto_takeaway": "Use dynamic dependency edges, incremental graph recomputation and safe parallel scheduling"
+    },
+    {
+      "name": "Pants",
+      "layer": "build",
+      "mechanism": "Fine-grained file dependency inference, memoized hermetic engine",
+      "source": "https://www.pantsbuild.org/stable/docs/introduction/how-does-pants-work",
+      "atto_takeaway": "Package file-level source membership plus verified dependency inference and selective invalidation"
+    },
+    {
+      "name": "Ninja",
+      "layer": "build",
+      "mechanism": "Explicit file graph, depfiles and restat-based incremental actions",
+      "source": "https://ninja-build.org/manual.html",
+      "atto_takeaway": "Emit real depfiles/output manifests; avoid changed timestamps triggering unchanged downstream outputs"
+    },
+    {
+      "name": "CMake/Ninja generator",
+      "layer": "build",
+      "mechanism": "Generated Ninja target graph with depfile integration",
+      "source": "https://cmake.org/cmake/help/latest/command/add_custom_command.html",
+      "atto_takeaway": "Support standardized build graph integration without inventing a new unsupported build orchestrator"
+    },
+    {
+      "name": "webpack 5",
+      "layer": "bundler",
+      "mechanism": "Persistent filesystem module graph cache and dependency-based invalidation",
+      "source": "https://webpack.js.org/configuration/cache/",
+      "atto_takeaway": "Persist module/namespace transforms and invalidate when config, plugin or file dependency changes"
+    },
+    {
+      "name": "Vite",
+      "layer": "dev",
+      "mechanism": "Environment-specific module graphs and precise HMR invalidation",
+      "source": "https://vite.dev/guide/api-environment-instances",
+      "atto_takeaway": "Keep isolated target/runtime-profile graphs; version invalidation across client/worker/host actors"
+    },
+    {
+      "name": "esbuild",
+      "layer": "bundler",
+      "mechanism": "Persistent context rebuild/watch and incremental in-process graph reuse",
+      "source": "https://esbuild.github.io/api/",
+      "atto_takeaway": "Fast in-session reuse is valuable but not a substitute for process-restart persistence"
+    },
+    {
+      "name": "Rollup",
+      "layer": "bundler",
+      "mechanism": "Watch rebuilds and reusable module cache",
+      "source": "https://rollupjs.org/configuration-options/",
+      "atto_takeaway": "Model target fragments, dynamic imports and accurate external dependency invalidation"
+    },
+    {
+      "name": "Parcel",
+      "layer": "bundler",
+      "mechanism": "Disk cache of transforms and granular invalidation of config/plugin inputs",
+      "source": "https://parceljs.org/features/development/",
+      "atto_takeaway": "Treat codegen plugins/macros/feature configuration as first-class cache inputs"
+    },
+    {
+      "name": "Angular compiler/build",
+      "layer": "compiler-build",
+      "mechanism": "Incremental AOT-oriented build system and partial library output",
+      "source": "https://angular.dev/tools/cli/build-system-migration",
+      "atto_takeaway": "Separate ahead-of-time analysis/emission/linking and preserve correct generated dependency provenance"
+    },
+    {
+      "name": "Nx",
+      "layer": "build",
+      "mechanism": "Task/affected project graph and hash-based local/remote result replay",
+      "source": "https://nx.dev/docs/getting-started/how-nx-works",
+      "atto_takeaway": "Explain exact rebuild reasons and permit optional trusted workspace/CI artifact reuse"
+    },
+    {
+      "name": "Turborepo",
+      "layer": "build",
+      "mechanism": "Global plus per-task hashes with local and remote task caches",
+      "source": "https://turborepo.dev/docs/crafting-your-repository/caching",
+      "atto_takeaway": "Include environment/toolchain dependencies in cache keys and ensure reproducible output manifests"
+    }
+  ],
+  "atto_baseline": {
+    "status": "PARTIAL_JAVA_FRONTEND_UNVERIFIED_OTHER_BACKENDS_DESIGN_ONLY",
+    "source_pr": "https://github.com/atto-lang/atto-source.java/pull/1744",
+    "source_head_observed": "c09cada6e7c22fb545ea22b5d9a7b87e58c6644e",
+    "spec_pr": "https://github.com/atto-lang/atto-spec/pull/213",
+    "reference_planner_pr": "https://github.com/atto-lang/atto-common-source/pull/133",
+    "implemented_unverified": [
+      "Java in-memory per-file parsed AST reuse",
+      "separate strict/legacy semantic checking caches",
+      "source/interface/import-binding fingerprint invalidation with conservative reverse closure",
+      "transactional publication on semantic success",
+      "file fallback for source without explicit namespace",
+      "15 focused JUnit tests authored, source workflow zero-step"
+    ],
+    "design_only": [
+      "package-instance-qualified namespaces spanning multiple verified sources",
+      "transitive inline/specialization/dependent ABI invalidation across compiler phases",
+      "cross-backend clean-vs-incremental guest parity"
+    ],
+    "not_demonstrated": [
+      "stepful JDK 25 Java JUnit",
+      "persistent cache reused after process exit",
+      "incremental emitted object/codegen artifact reuse",
+      "native AOT incremental guest conformance",
+      "multi-backend stepful compiler parity",
+      "authenticated remote cache",
+      "cold/hot performance measurements"
+    ],
+    "claim_guard": "never treat authoring tests, source-free runner checks, zero-step Actions, or Python planner tests as executed Java/LLVM/.NET/etc compiler evidence"
+  },
+  "priorities": [
+    {
+      "id": "P0",
+      "title": "Prove one correct Java frontend slice",
+      "scope": "verified 15-case JUnit, real source/diagnostics, warm/no-op/negative import/borrow effects, no bypass of actor admission",
+      "done_when": "actual nonzero runner steps + clean-vs-incremental diagnostics parity + independently reviewed CI path"
+    },
+    {
+      "id": "P1",
+      "title": "Bind packages/namespaces and precise semantic dependencies",
+      "scope": "manifest+lock package-instance ID, one unit per unnamespaced file, shared namespace interface graph, negative lookups, nominal actor/ownership/effect/inline edges, SCC interface-first",
+      "done_when": "12-file/3-namespace plus unnamespaced fixture with exact rebuild-set oracle and negative cases"
+    },
+    {
+      "id": "P2",
+      "title": "Persist deterministic semantic/compiler graph",
+      "scope": "versioned CAS for parse/typed/HIR/MIR/declaration fingerprint, restart/recovery, corruption and toolchain-profile detection, atomic publish and concurrent cancellation",
+      "done_when": "restart in a second process reports true disk hits, corruption rechecks, no stale ownership evidence"
+    },
+    {
+      "id": "P3",
+      "title": "Incremental codegen, linking and target artifacts",
+      "scope": "per backend IR/object/ESM/Wasm/CIL/RTL artifact hashes, inline specialization graph, link vs compile counters, AOT profile partitioning",
+      "done_when": "real emitted artifact + guest output/diagnostic parity and targeted recompilation for supported modes"
+    },
+    {
+      "id": "P4",
+      "title": "Build UX, hermeticity and optional trusted remote cache",
+      "scope": "--explain-incremental stable machine report, local cache first, target/toolchain/env/key provenance, optional verified remote cache, p50/p95 timings and RSS",
+      "done_when": "reproducible benchmark receipts, process-restart reuse and hermetic cache adversarial tests across supported backends"
+    }
+  ],
+  "recommended_cache_key_fields": [
+    "schema-version",
+    "compiler-build-SHA",
+    "backend-identity",
+    "backend-target-triple",
+    "runtime-and-ABI-revision",
+    "semantic-parser-profile",
+    "ownership/effect/actor-permission-flags",
+    "package-instance-id-and-lock-snapshot",
+    "namespace-or-source-unit-id",
+    "source-digest",
+    "resolved-import-and-negative-lookup-digest",
+    "exported-ABI-and-inline-body-digests",
+    "macro/plugin/generated-input-digests",
+    "optimization-flags",
+    "toolchain/SDK-version",
+    "deterministic-declared-environment-digest"
+  ],
+  "performance_protocol": [
+    "cold clean build",
+    "warm no-op same process",
+    "warm no-op after fresh process",
+    "one private body edit",
+    "one public interface edit",
+    "one inline/specialization/actor-effect edit",
+    "rename/delete/move namespace member",
+    "package lock/toolchain/target/profile change",
+    "corrupt/missing/malicious cache entry",
+    "parallel build with cancellation and unstable source snapshot"
+  ],
+  "measurement_fields": [
+    "selected-unit-count",
+    "reparsed-source-count",
+    "rechecked-semantic-unit-count",
+    "generated-IR-unit-count",
+    "recompiled-object-count",
+    "relinked-package-count",
+    "cache-hits-by-phase",
+    "reason-for-each-invalidation",
+    "elapsed-ms-p50-p95",
+    "peak-RSS",
+    "clean-output-vs-incremental-output-and-diagnostics-hash",
+    "actual-runner-step-count"
+  ],
+  "related_tracker": "https://github.com/atto-lang/atto-compilers-parity-testing/issues/53"
+}
