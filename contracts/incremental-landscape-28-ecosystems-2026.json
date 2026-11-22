@@ -114,7 +114,7 @@
       "name": "Bazel",
       "layer": "build",
       "mechanism": "Content-addressed action cache and optional remote reuse",
-      "source": "https://bazel.build/versions/7.3.0/remote/caching",
+      "source": "https://bazel.build/remote/caching",
       "atto_takeaway": "Hermetic action key includes toolchain, options, inputs, environment and declared dependencies"
     },
     {
