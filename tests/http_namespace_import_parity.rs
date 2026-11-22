@@ -50,7 +50,7 @@ fn valid(v: &Value) -> bool {
         let expected_stage = match name {
             "llvm" => "SCALAR_NAMESPACE_AST_IMPORT_STAGED_UNVERIFIED",
             "java" => "PUBLIC_MODULE_VISIBILITY_STAGED_UNVERIFIED",
-            "net" => "UNSUPPORTED_IMPORT_FAIL_CLOSED",
+            "net" => "BOOL_PARAMETER_ABI_STAGED_IMPORT_UNSUPPORTED",
             _ => "UNASSESSED",
         };
         if !BACKENDS.contains(&name) || !seen.insert(name)
