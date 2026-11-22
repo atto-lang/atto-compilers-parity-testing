@@ -24,20 +24,21 @@ fn valid(v: &Value) -> bool {
         return false;
     }
     let positives: BTreeSet<&str> = match v["required_positive"].as_array() {
-        Some(items) if items.len() == 2 =>
+        Some(items) if items.len() == 3 =>
             items.iter().filter_map(Value::as_str).collect(),
         _ => return false,
     };
-    if positives != BTreeSet::from(["builtin_namespace", "selective_public_module"]) {
+    if positives != BTreeSet::from(["builtin_namespace", "selective_public_module", "public_module_wildcard"]) {
         return false;
     }
     let negatives: BTreeSet<&str> = match v["required_negative"].as_array() {
-        Some(items) if items.len() == 4 =>
+        Some(items) if items.len() == 5 =>
             items.iter().filter_map(Value::as_str).collect(),
         _ => return false,
     };
     if negatives != BTreeSet::from([
         "private_module", "private_member", "unregistered_builtin", "duplicate_alias",
+        "public_member_private_module",
     ]) {
         return false;
     }
