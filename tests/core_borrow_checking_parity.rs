@@ -78,7 +78,7 @@ fn forged_borrow_success_or_removed_ownership_obligation_fails_closed() {
         "copy_only_generics_guarded",
     ] {
         let mut data = initial.clone();
-        data["required_negative"].as_array_mut().unwrap().retain(|v| v != item);
+        data["required_negative"].as_array_mut().unwrap().retain(|v| v.as_str() != Some(item));
         assert!(!valid(&data), "missing ownership requirement: {item}");
     }
     let mut data = initial.clone();
