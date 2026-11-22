@@ -39,11 +39,11 @@ fn valid(v: &Value) -> bool {
         let Some(backend) = row["backend"].as_str() else { return false; };
         if !BACKENDS.contains(&backend) || !seen.insert(backend)
             || row["repo"] != format!("atto-lang/atto-source.{backend}")
-            || row["stage"] != if backend == "llvm" {
+            || row["stage"] != (if backend == "llvm" {
                 "SCALAR_COPY_GATE_STAGED_UNVERIFIED"
             } else {
                 "UNASSESSED"
-            }
+            })
             || row["guest_status"] != "NOT_EXECUTED"
             || row["executed_cases"].as_u64() != Some(0)
             || row["receipt"] != "NONE"
