@@ -11,13 +11,15 @@
   "guest_required": true,
   "required_positive": [
     "builtin_namespace",
-    "selective_public_module"
+    "selective_public_module",
+    "public_module_wildcard"
   ],
   "required_negative": [
     "private_module",
     "private_member",
     "unregistered_builtin",
-    "duplicate_alias"
+    "duplicate_alias",
+    "public_member_private_module"
   ],
   "backends": [
     {
