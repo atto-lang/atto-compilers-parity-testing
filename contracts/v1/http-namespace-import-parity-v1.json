@@ -25,57 +25,68 @@
     {
       "backend": "llvm",
       "status": "NOT_EXECUTED",
-      "guest_executed_cases": 0
+      "guest_executed_cases": 0,
+      "source_stage": "SCALAR_NAMESPACE_AST_IMPORT_STAGED_UNVERIFIED"
     },
     {
       "backend": "java",
       "status": "NOT_EXECUTED",
-      "guest_executed_cases": 0
+      "guest_executed_cases": 0,
+      "source_stage": "PUBLIC_MODULE_VISIBILITY_STAGED_UNVERIFIED"
     },
     {
       "backend": "net",
       "status": "NOT_EXECUTED",
-      "guest_executed_cases": 0
+      "guest_executed_cases": 0,
+      "source_stage": "UNSUPPORTED_IMPORT_FAIL_CLOSED"
     },
     {
       "backend": "wasm",
       "status": "NOT_EXECUTED",
-      "guest_executed_cases": 0
+      "guest_executed_cases": 0,
+      "source_stage": "UNASSESSED"
     },
     {
       "backend": "rs",
       "status": "NOT_EXECUTED",
-      "guest_executed_cases": 0
+      "guest_executed_cases": 0,
+      "source_stage": "UNASSESSED"
     },
     {
       "backend": "forge",
       "status": "NOT_EXECUTED",
-      "guest_executed_cases": 0
+      "guest_executed_cases": 0,
+      "source_stage": "UNASSESSED"
     },
     {
       "backend": "cranelift",
       "status": "NOT_EXECUTED",
-      "guest_executed_cases": 0
+      "guest_executed_cases": 0,
+      "source_stage": "UNASSESSED"
     },
     {
       "backend": "js",
       "status": "NOT_EXECUTED",
-      "guest_executed_cases": 0
+      "guest_executed_cases": 0,
+      "source_stage": "UNASSESSED"
     },
     {
       "backend": "atto",
       "status": "NOT_EXECUTED",
-      "guest_executed_cases": 0
+      "guest_executed_cases": 0,
+      "source_stage": "UNASSESSED"
     },
     {
       "backend": "hdl",
       "status": "NOT_EXECUTED",
-      "guest_executed_cases": 0
+      "guest_executed_cases": 0,
+      "source_stage": "UNASSESSED"
     },
     {
       "backend": "realtime",
       "status": "NOT_EXECUTED",
-      "guest_executed_cases": 0
+      "guest_executed_cases": 0,
+      "source_stage": "UNASSESSED"
     }
   ]
 }
