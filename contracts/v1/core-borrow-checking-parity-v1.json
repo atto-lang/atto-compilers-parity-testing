@@ -23,7 +23,7 @@
     {
       "backend": "java",
       "repo": "atto-lang/atto-source.java",
-      "stage": "UNASSESSED",
+      "stage": "JAVA_HTTP_BORROW_STAGED_UNVERIFIED",
       "guest_status": "NOT_EXECUTED",
       "executed_cases": 0,
       "receipt": "NONE"
