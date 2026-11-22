@@ -14,7 +14,7 @@ export const CASES=['basic-values','strict-bool','invalid-bool',
   'independent-contexts','package-no-shadow','present-empty-bool-fails'];
 // Immutable independent source-contract review target; do not use a PR-local
 // override to accept an invented or downgraded guest test suite.
-export const CONTRACT_BLOB='204070572743b51defa891eb85b1d177fee5792c';
+export const CONTRACT_BLOB='e20331b2c17e29eefdd2ba04ea5f750c0b56eff1';
 const HEX40=/^[a-f0-9]{40}$/;
 const RUN_URL=/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/actions\/runs\/[1-9][0-9]*$/;
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
