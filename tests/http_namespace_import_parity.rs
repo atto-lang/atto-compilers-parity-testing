@@ -47,10 +47,17 @@ fn valid(v: &Value) -> bool {
     let mut seen = BTreeSet::new();
     for b in backends {
         let Some(name) = b["backend"].as_str() else { return false; };
+        let expected_stage = match name {
+            "llvm" => "SCALAR_NAMESPACE_AST_IMPORT_STAGED_UNVERIFIED",
+            "java" => "PUBLIC_MODULE_VISIBILITY_STAGED_UNVERIFIED",
+            "net" => "UNSUPPORTED_IMPORT_FAIL_CLOSED",
+            _ => "UNASSESSED",
+        };
         if !BACKENDS.contains(&name) || !seen.insert(name)
             || b["status"] != "NOT_EXECUTED"
             || b["guest_executed_cases"].as_u64() != Some(0)
-            || b.as_object().is_none_or(|m| m.len() != 3) {
+            || b["source_stage"] != expected_stage
+            || b.as_object().is_none_or(|m| m.len() != 4) {
             return false;
         }
     }
@@ -84,6 +91,18 @@ fn false_guest_promotion_and_missing_negative_import_checks_are_rejected() {
     let mut altered = original.clone();
     altered["guest_required"] = json!(false);
     assert!(!valid(&altered), "host-only simulation is not guest parity");
+
+    for (backend, false_stage) in [
+        ("llvm", "COMPILED_GUEST_PASS"),
+        ("java", "SCALAR_NAMESPACE_AST_IMPORT_STAGED_UNVERIFIED"),
+        ("net", "FULL_IMPORT_PARITY"),
+    ] {
+        let mut altered = original.clone();
+        let row = altered["backends"].as_array_mut().unwrap().iter_mut()
+            .find(|entry| entry["backend"] == backend).unwrap();
+        row["source_stage"] = json!(false_stage);
+        assert!(!valid(&altered), "{backend}: forged source stage");
+    }
 
     let mut altered = original.clone();
     altered["backend_owned_source"] = json!(false);
