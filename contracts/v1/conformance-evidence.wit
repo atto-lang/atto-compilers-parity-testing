@@ -1,0 +1,27 @@
+package atto:conformance@1.0.0;
+
+interface evidence-sink {
+  enum backend { java, llvm, wasm, forge, net }
+  enum evidence-status { passed, failed, unsupported, not-executed }
+  enum execution-target { host, guest }
+
+  record conformance-evidence {
+    version: u32,
+    backend: backend,
+    feature-id: string,
+    source-sha: string,
+    case-set-sha256: string,
+    status: evidence-status,
+    execution-target: option<execution-target>,
+    run-url: option<string>,
+    executed-cases: option<u32>,
+    failed-cases: option<u32>,
+    reason: option<string>,
+  }
+
+  submit: func(item: conformance-evidence) -> result<u32, string>;
+}
+
+world evidence-reporter {
+  import evidence-sink;
+}

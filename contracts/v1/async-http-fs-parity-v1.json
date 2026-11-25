@@ -1,0 +1,79 @@
+{
+  "schema": "atto.feature.parity.std_http_fs.v1",
+  "status": "ALL_NOT_EXECUTED",
+  "spec": "atto-lang/atto-spec/language/hosted-async-http-fs-v1.md",
+  "conformance": "atto-lang/atto-platform-conformance/contracts/hosted-async-http-fs-v1.json",
+  "feature_id": "stdlib.http_fs.roundtrip",
+  "guest_required": true,
+  "test_endpoint": "LOOPBACK_ONLY",
+  "required_guest_checks": [
+    "http_status",
+    "response_text",
+    "file_bytes_equal_body",
+    "saved_length",
+    "permission_denial",
+    "redirect_policy",
+    "path_escape",
+    "double_consume",
+    "utf8_error",
+    "cancellation",
+    "tenant_isolation"
+  ],
+  "backends": [
+    {
+      "backend": "llvm",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "java",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "net",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "wasm",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "rs",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "forge",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "cranelift",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "js",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "atto",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "hdl",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    },
+    {
+      "backend": "realtime",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0
+    }
+  ]
+}

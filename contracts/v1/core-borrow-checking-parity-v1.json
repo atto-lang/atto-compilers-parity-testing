@@ -1,0 +1,112 @@
+{
+  "schema": "atto.core.borrow_checked_libs.v1",
+  "status": "ALL_NOT_EXECUTED",
+  "implementation": "EACH_BACKEND_OWNS_INDEPENDENT_ATTO_CORE_ALLOC_STD",
+  "abi_promotion": "DENY_UNTIL_COMPILED_CHECKER_AND_GUEST",
+  "copy_abi": [
+    "int",
+    "bool"
+  ],
+  "required_positive": [
+    "copy_scalar_allowed",
+    "move_new_owner_allowed"
+  ],
+  "required_negative": [
+    "use_after_move_denied",
+    "borrowed_self_escape_denied",
+    "mut_shared_overlap_denied",
+    "suspension_borrow_crossing_denied",
+    "import_noncopy_without_contract_denied",
+    "copy_only_generics_guarded"
+  ],
+  "backends": [
+    {
+      "backend": "java",
+      "repo": "atto-lang/atto-source.java",
+      "stage": "JAVA_HTTP_BORROW_STAGED_UNVERIFIED",
+      "guest_status": "NOT_EXECUTED",
+      "executed_cases": 0,
+      "receipt": "NONE"
+    },
+    {
+      "backend": "llvm",
+      "repo": "atto-lang/atto-source.llvm",
+      "stage": "SCALAR_COPY_GATE_STAGED_UNVERIFIED",
+      "guest_status": "NOT_EXECUTED",
+      "executed_cases": 0,
+      "receipt": "NONE"
+    },
+    {
+      "backend": "net",
+      "repo": "atto-lang/atto-source.net",
+      "stage": "UNASSESSED",
+      "guest_status": "NOT_EXECUTED",
+      "executed_cases": 0,
+      "receipt": "NONE"
+    },
+    {
+      "backend": "wasm",
+      "repo": "atto-lang/atto-source.wasm",
+      "stage": "UNASSESSED",
+      "guest_status": "NOT_EXECUTED",
+      "executed_cases": 0,
+      "receipt": "NONE"
+    },
+    {
+      "backend": "rs",
+      "repo": "atto-lang/atto-source.rs",
+      "stage": "UNASSESSED",
+      "guest_status": "NOT_EXECUTED",
+      "executed_cases": 0,
+      "receipt": "NONE"
+    },
+    {
+      "backend": "forge",
+      "repo": "atto-lang/atto-source.forge",
+      "stage": "UNASSESSED",
+      "guest_status": "NOT_EXECUTED",
+      "executed_cases": 0,
+      "receipt": "NONE"
+    },
+    {
+      "backend": "cranelift",
+      "repo": "atto-lang/atto-source.cranelift",
+      "stage": "UNASSESSED",
+      "guest_status": "NOT_EXECUTED",
+      "executed_cases": 0,
+      "receipt": "NONE"
+    },
+    {
+      "backend": "js",
+      "repo": "atto-lang/atto-source.js",
+      "stage": "UNASSESSED",
+      "guest_status": "NOT_EXECUTED",
+      "executed_cases": 0,
+      "receipt": "NONE"
+    },
+    {
+      "backend": "atto",
+      "repo": "atto-lang/atto-source.atto",
+      "stage": "UNASSESSED",
+      "guest_status": "NOT_EXECUTED",
+      "executed_cases": 0,
+      "receipt": "NONE"
+    },
+    {
+      "backend": "hdl",
+      "repo": "atto-lang/atto-source.hdl",
+      "stage": "UNASSESSED",
+      "guest_status": "NOT_EXECUTED",
+      "executed_cases": 0,
+      "receipt": "NONE"
+    },
+    {
+      "backend": "realtime",
+      "repo": "atto-lang/atto-source.realtime",
+      "stage": "UNASSESSED",
+      "guest_status": "NOT_EXECUTED",
+      "executed_cases": 0,
+      "receipt": "NONE"
+    }
+  ]
+}

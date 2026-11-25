@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.atto-lang.org/conformance-evidence/v1/conformance-evidence.schema.json",
+  "title": "Atto five-backend test evidence v1 (proposed)",
+  "type": "object",
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "backend": {
+      "enum": [
+        "java",
+        "llvm",
+        "wasm",
+        "forge",
+        "net"
+      ]
+    },
+    "feature_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]{0,127}(?![\\s\\S])"
+    },
+    "source_sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}(?![\\s\\S])"
+    },
+    "case_set_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}(?![\\s\\S])"
+    },
+    "status": {
+      "enum": [
+        "passed",
+        "failed",
+        "unsupported",
+        "not_executed"
+      ]
+    },
+    "execution_target": {
+      "enum": [
+        "host",
+        "guest"
+      ]
+    },
+    "run_url": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://github\\.com/[^/]+/[^/]+/actions/runs/[0-9]+(?![\\s\\S])"
+    },
+    "executed_cases": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "failed_cases": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    }
+  },
+  "required": [
+    "version",
+    "backend",
+    "feature_id",
+    "source_sha",
+    "case_set_sha256",
+    "status"
+  ],
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "properties": {
+        "status": {
+          "const": "passed"
+        },
+        "failed_cases": {
+          "const": 0
+        }
+      },
+      "required": [
+        "run_url",
+        "execution_target",
+        "executed_cases",
+        "failed_cases"
+      ],
+      "not": {
+        "required": [
+          "reason"
+        ]
+      }
+    },
+    {
+      "properties": {
+        "status": {
+          "const": "failed"
+        },
+        "failed_cases": {
+          "minimum": 1
+        }
+      },
+      "required": [
+        "run_url",
+        "execution_target",
+        "executed_cases",
+        "failed_cases",
+        "reason"
+      ]
+    },
+    {
+      "properties": {
+        "status": {
+          "const": "unsupported"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "run_url"
+            ]
+          },
+          {
+            "required": [
+              "execution_target"
+            ]
+          },
+          {
+            "required": [
+              "executed_cases"
+            ]
+          },
+          {
+            "required": [
+              "failed_cases"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "properties": {
+        "status": {
+          "const": "not_executed"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "run_url"
+            ]
+          },
+          {
+            "required": [
+              "execution_target"
+            ]
+          },
+          {
+            "required": [
+              "executed_cases"
+            ]
+          },
+          {
+            "required": [
+              "failed_cases"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+name: Atto std/env receipt ceiling (SOURCE ONLY)
+on:
+  pull_request:
+    paths:
+      - 'contracts/std-env-v1/**'
+      - 'tools/std-env-v1/**'
+      - '.github/workflows/std-env-receipt-ceiling.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'contracts/std-env-v1/**'
+      - 'tools/std-env-v1/**'
+      - '.github/workflows/std-env-receipt-ceiling.yml'
+permissions:
+  contents: read
+jobs:
+  verify-receipt-ceiling:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Require exact source checkout
+        shell: bash
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test -z "$(git status --porcelain)"
+          echo "SOURCE_ONLY_SHA=$EXPECTED_HEAD"
+          echo "SOURCE_ONLY_TREE=$(git rev-parse HEAD^{tree})"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Execute source-only receipt rejection tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/std-env-v1/verify-receipts.mjs
+          node --test --test-reporter=tap tools/std-env-v1/verify-receipts.test.mjs \
+            | tee "$RUNNER_TEMP/std-env-ledger.tap"
+          grep -Fx '# tests 8' "$RUNNER_TEMP/std-env-ledger.tap"
+          grep -Fx '# pass 8' "$RUNNER_TEMP/std-env-ledger.tap"
+          grep -Fx '# fail 0' "$RUNNER_TEMP/std-env-ledger.tap"
+          grep -Fx '# skipped 0' "$RUNNER_TEMP/std-env-ledger.tap"
+          echo 'SOURCE_ONLY_LEDGER_TESTS=PASS, GUEST_PARITY=NOT_EXECUTED'
