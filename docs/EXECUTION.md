@@ -1,6 +1,6 @@
 # Execution and parity gate
 
-The checked-in corpus is fail-closed. The default CI audits 35 legacy programs (including four unvalidated signed-i64 boundary candidates), 16 positive multi-file checks and 2 negative probes, yielding 53 logical cases and 265 required backend/case pairs across Java, LLVM, WASM, .NET and Forge. JavaScript is an optional sixth target (`--backend js`), not a substitute for Forge. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
+The checked-in corpus is fail-closed. The default CI audits 45 legacy programs (including fourteen unvalidated signed-i64 candidates), 16 positive multi-file checks and 2 negative probes, yielding 63 logical cases and 378 required backend/case pairs across Java, LLVM, WASM, .NET, Forge and Cranelift. JavaScript is an optional seventh target (`--backend js`), not a substitute for Forge. It makes no compiler-parity claim unless a case is explicitly validated and an exact backend adapter executes it.
 
 ## Rust-only tooling
 
@@ -13,7 +13,7 @@ Each backend uses two command templates:
 - `ORES_PARITY_<BACKEND>_COMPILE`
 - `ORES_PARITY_<BACKEND>_RUN`
 
-Tokens: `{source}`, `{artifact}`, `{workdir}`. Templates are split into argv without a shell. Supported backend names are LLVM, JAVA, WASM, DOTNET, FORGE and optional JS. The default report includes only the five required backends.
+Tokens: `{source}`, `{artifact}`, `{workdir}`. Templates are split into argv without a shell. Supported backend names are LLVM, JAVA, WASM, DOTNET, FORGE, CRANELIFT and optional JS. The default report includes six required backends.
 
 Example:
 
@@ -89,3 +89,7 @@ nonzero exit does not constitute parity.
 Case 31 (static select delimiter equivalence) remains a Java-reference target,
 not five-backend execution proof. The `intentional_capability_reject` status
 is a fail-closed gap, never a passing record.
+
+## Cranelift
+
+Cranelift currently supports only JIT-executed, pure scalar functions and prints the result, which is incompatible with the exit-code oracle without an audited adapter. Never use `ir` alone, an invented exit 42, or a mocked compiler as guest evidence. Cases 40–49 are `candidate` until independently executed and oracle-reviewed.

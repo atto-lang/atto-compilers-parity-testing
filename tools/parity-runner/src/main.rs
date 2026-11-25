@@ -8,14 +8,14 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-// The five oreslang-source.* backends are mandatory. JavaScript is
-// independently selectable for exploratory transpiler coverage.
-const BACKENDS: [(&str, &str); 6] = [
+// Six required independent compiler targets; JavaScript remains optional.
+const BACKENDS: [(&str, &str); 7] = [
     ("llvm", "LLVM"),
     ("java", "JAVA"),
     ("wasm", "WASM"),
     ("dotnet", "DOTNET"),
     ("forge", "FORGE"),
+    ("cranelift", "CRANELIFT"),
     ("js", "JS"),
 ];
 
@@ -24,7 +24,7 @@ struct LegacyManifest {
     cases: Vec<LegacyCase>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 struct LegacyCase {
     id: String,
     name: String,
@@ -288,12 +288,50 @@ fn lowercase_kebab(name: &str) -> bool {
         })
 }
 
+
+fn validate_legacy_manifest(cases: &[LegacyCase]) -> Result<(), String> {
+    let mut seen_ids = BTreeSet::new();
+    let mut seen_paths = BTreeSet::new();
+    for case in cases {
+        if case.id.len() != 2 || !case.id.bytes().all(|b| b.is_ascii_digit()) {
+            return Err(format!("legacy case id must have exactly two digits: {}", case.id));
+        }
+        if !lowercase_kebab(&case.name) {
+            return Err(format!("legacy case name is noncanonical: {}", case.name));
+        }
+        if case.path != format!("programs/{}-{}.ores", case.id, case.name) {
+            return Err(format!("legacy case path is noncanonical: {}", case.path));
+        }
+        if !seen_ids.insert(&case.id) || !seen_paths.insert(&case.path) {
+            return Err(format!("duplicate legacy id or path: {}", case.id));
+        }
+        if case.features.is_empty() || case.features.iter().any(|f| f.trim().is_empty()) {
+            return Err(format!("empty feature inventory: {}", case.id));
+        }
+        if !matches!(
+            case.validation_status.as_str(),
+            "candidate" | "reference_fixture" | "reference_derived"
+                | "reference_contract" | "reference_test" | "parser_grounded" | "validated"
+        ) {
+            return Err(format!("unsupported validation status: {}", case.id));
+        }
+        match case.expected_kind.as_str() {
+            "exit" if case.expected_value.is_some() && case.expected_diagnostic_category.is_none() => {}
+            "compile_reject" if case.expected_value.is_none()
+                && case.expected_diagnostic_category.as_ref().is_some_and(|d| !d.trim().is_empty()) => {}
+            _ => return Err(format!("incoherent oracle shape: {}", case.id)),
+        }
+    }
+    Ok(())
+}
+
 fn load_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
     let legacy: LegacyManifest = serde_json::from_str(
         &fs::read_to_string(root.join("manifest.json")).map_err(|e| e.to_string())?,
     )
     .map_err(|e| e.to_string())?;
 
+    validate_legacy_manifest(&legacy.cases)?;
     let mut cases = Vec::new();
     for case in &legacy.cases {
         let source = safe_file(root, &case.path)?;
@@ -773,7 +811,7 @@ fn main() -> Result<(), String> {
                 .filter(|name| BACKENDS.iter().any(|(backend, _)| backend == name))
                 .cloned()
                 .ok_or_else(|| {
-                    "--backend requires llvm, java, wasm, dotnet, forge, or js".to_string()
+                    "--backend requires llvm, java, wasm, dotnet, forge, cranelift, or js".to_string()
                 })
         })
         .transpose()?;
@@ -877,9 +915,79 @@ fn main() -> Result<(), String> {
 mod tests {
     use super::{
         ascii_lower_hex, classify_diagnostic, hex, import_target, is_verified_execution_status,
-        lowercase_kebab, Invocation,
+        lowercase_kebab, validate_legacy_manifest, Invocation, LegacyCase,
     };
     use std::collections::BTreeMap;
+
+
+    fn sample_legacy() -> LegacyCase {
+        LegacyCase {
+            id: "40".into(),
+            name: "wide-i64-difference".into(),
+            path: "programs/40-wide-i64-difference.ores".into(),
+            expected_kind: "exit".into(),
+            expected_value: Some(42),
+            expected_diagnostic_category: None,
+            validation_status: "candidate".into(),
+            features: vec!["int".into(), "i64-exactness".into()],
+        }
+    }
+
+    #[test]
+    fn legacy_manifest_rejects_duplicate_id() {
+        let case = sample_legacy();
+        assert!(validate_legacy_manifest(&[case.clone()]).is_ok());
+        assert!(validate_legacy_manifest(&[case.clone(), case]).is_err());
+    }
+
+    #[test]
+    fn legacy_manifest_rejects_duplicate_id_different_source() {
+        let old = sample_legacy();
+        let mut new = old.clone();
+        new.name = "different-source".into();
+        new.path = "programs/40-different-source.ores".into();
+        assert!(validate_legacy_manifest(&[old, new]).is_err());
+    }
+
+    #[test]
+    fn legacy_manifest_rejects_path_traversal_and_aliases() {
+        for path in ["../escape.ores", "programs/40-other.ores", "programs/40-wide-i64-difference.ores/.."] {
+            let mut case = sample_legacy();
+            case.path = path.into();
+            assert!(validate_legacy_manifest(&[case]).is_err(), "{path}");
+        }
+    }
+
+    #[test]
+    fn legacy_manifest_rejects_incoherent_positive_and_negative_oracles() {
+        let mut case = sample_legacy();
+        case.expected_kind = "compile_reject".into();
+        assert!(validate_legacy_manifest(&[case]).is_err());
+        let mut case = sample_legacy();
+        case.expected_diagnostic_category = Some("unknown_identifier".into());
+        assert!(validate_legacy_manifest(&[case]).is_err());
+        let mut case = sample_legacy();
+        case.expected_kind = "skip".into();
+        assert!(validate_legacy_manifest(&[case]).is_err());
+        let mut case = sample_legacy();
+        case.expected_kind = "compile_reject".into();
+        case.expected_value = None;
+        case.expected_diagnostic_category = Some("integer_range".into());
+        assert!(validate_legacy_manifest(&[case]).is_ok());
+    }
+
+    #[test]
+    fn legacy_manifest_rejects_empty_features_unknown_maturity_and_bad_ids() {
+        let mut case = sample_legacy();
+        case.features.clear();
+        assert!(validate_legacy_manifest(&[case]).is_err());
+        let mut case = sample_legacy();
+        case.validation_status = "passed".into();
+        assert!(validate_legacy_manifest(&[case]).is_err());
+        let mut case = sample_legacy();
+        case.id = "040".into();
+        assert!(validate_legacy_manifest(&[case]).is_err());
+    }
 
     #[test]
     fn exploratory_and_unrecognized_execution_results_fail_closed() {

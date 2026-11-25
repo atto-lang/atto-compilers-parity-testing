@@ -33,3 +33,7 @@ The 53-case, five-required-backend audit matrix contains 265 records (and 53 opt
 is corpus inventory, not compiler/runtime conformance. Ordinary match/switch
 suspension remains distinct from the rejected `nb match` / `nb switch`
 spellings. The modern actor counter uses `handle_state` for mutation.
+
+## Cranelift/signed-i64 additions (40–49)
+
+Ten unvalidated candidate programs stress lossless signed-64 arithmetic above the f64 mantissa, signed-MIN/MAX boundaries, checked multiplication, nesting and named bitwise XOR. An independent BigInt oracle confirms 42 for each expression; no native Oreslang compiler has executed the new fixtures. Forge remains required, JavaScript stays optional, and Cranelift is added as a separate required sixth backend.
