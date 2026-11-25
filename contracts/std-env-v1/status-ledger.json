@@ -1,0 +1,63 @@
+{
+  "schema": "atto-std-env-receipt-v1",
+  "feature": "std/env",
+  "contract_git_blob_sha": "e20331b2c17e29eefdd2ba04ea5f750c0b56eff1",
+  "claim": "UNVERIFIED_GUEST_PARITY",
+  "targets": [
+    {
+      "backend": "java",
+      "status": "not_executed",
+      "reason": "No exact-head compiled .atto guest receipt; local host-only or queued CI evidence cannot qualify."
+    },
+    {
+      "backend": "llvm",
+      "status": "not_executed",
+      "reason": "No exact-head compiled .atto guest receipt; local host-only or queued CI evidence cannot qualify."
+    },
+    {
+      "backend": "net",
+      "status": "not_executed",
+      "reason": "No exact-head compiled .atto guest receipt; local host-only or queued CI evidence cannot qualify."
+    },
+    {
+      "backend": "rs",
+      "status": "not_executed",
+      "reason": "No exact-head compiled .atto guest receipt; local host-only or queued CI evidence cannot qualify."
+    },
+    {
+      "backend": "forge",
+      "status": "not_executed",
+      "reason": "No exact-head compiled .atto guest receipt; local host-only or queued CI evidence cannot qualify."
+    },
+    {
+      "backend": "cranelift",
+      "status": "not_executed",
+      "reason": "No exact-head compiled .atto guest receipt; local host-only or queued CI evidence cannot qualify."
+    },
+    {
+      "backend": "js",
+      "status": "not_executed",
+      "reason": "No exact-head compiled .atto guest receipt; local host-only or queued CI evidence cannot qualify."
+    },
+    {
+      "backend": "wasm",
+      "status": "not_executed",
+      "reason": "No exact-head compiled .atto guest receipt; local host-only or queued CI evidence cannot qualify."
+    },
+    {
+      "backend": "atto",
+      "status": "not_executed",
+      "reason": "Self-hosted compiler bootstrap has no executed guest compiler evidence."
+    },
+    {
+      "backend": "realtime",
+      "status": "not_executed",
+      "reason": "Real-time backend is not implemented; no bounded host snapshot or guest evidence."
+    },
+    {
+      "backend": "hdl",
+      "status": "not_executed",
+      "reason": "Synthesizable subset excludes host environment side effects; no independently tested rejection receipt."
+    }
+  ]
+}
