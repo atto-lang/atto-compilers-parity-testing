@@ -29,3 +29,10 @@ test('not-run records cannot contain fabricated compile/guest receipts',()=>{
   x=>x.executed=true
  ]){const x=base();mutate(x);assert.throws(()=>inspect(x),/NATIVE_CORPUS_UNVERIFIED/);}
 });
+
+test('Forge is a required recognized backend and cannot receive a different case set',()=>{
+ const x=base(); x.backends.push('forge'); x.records.push(...x.records.filter(r=>r.backend==='java').map(r=>({...r,backend:'forge'}))); x.summary.not_run=6;
+ assert.equal(inspect(x).notRun,6);
+ const other=structuredClone(x);other.records.at(-1).case_id='different';assert.throws(()=>inspect(other),/case inventory/);
+ const drift=structuredClone(x);drift.records.at(-1).source_sha256='a'.repeat(64);assert.throws(()=>inspect(drift),/case source identity/);
+});

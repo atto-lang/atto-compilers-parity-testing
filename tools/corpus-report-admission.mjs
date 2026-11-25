@@ -2,7 +2,7 @@
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 const fail=why=>{throw Error('NATIVE_CORPUS_UNVERIFIED: '+why);};
-const backends=new Set(['llvm','java','wasm','dotnet','js','cranelift']);
+const backends=new Set(['llvm','java','wasm','dotnet','forge','js','cranelift']);
 const digest=/^[a-f0-9]{64}$/;
 export function inspectCorpusReport(report){
  if(!report||report.schema_version!==2||typeof report.executed!=='boolean'||
@@ -15,6 +15,7 @@ export function inspectCorpusReport(report){
  const expected=report.cases*report.backends.length;
  if(report.records.length!==expected)fail('missing corpus/backend Cartesian product');
  const pairSet=new Set();
+ const caseDigests=new Map();
  const totals=new Map();
  let notRun=0,other=0;
  for(const r of report.records){
@@ -23,7 +24,10 @@ export function inspectCorpusReport(report){
       !report.backends.includes(r.backend)||
       !digest.test(r.source_sha256)||typeof r.status!=='string')
        fail('missing case/backend/source identity');
-   const key=r.suite+'\0'+r.case_id+'\0'+r.backend;
+   const caseKey=r.suite+'\0'+r.case_id;
+   if(caseDigests.has(caseKey)&&caseDigests.get(caseKey)!==r.source_sha256)fail('case source identity differs across backends');
+   caseDigests.set(caseKey,r.source_sha256);
+   const key=caseKey+'\0'+r.backend;
    if(pairSet.has(key))fail('duplicate case/backend receipt');pairSet.add(key);
    if(r.status==='not_run'){
      notRun++;
@@ -37,6 +41,7 @@ export function inspectCorpusReport(report){
  }
  if(notRun>0&&report.executed===true&&notRun===expected)
    fail('empty execute request cannot establish native execution');
+ if(caseDigests.size!==report.cases)fail('case inventory differs across backends');
  const reported=Object.entries(report.summary);
  if(reported.length!==totals.size||
     reported.some(([kind,count])=>!Number.isSafeInteger(count)||count!==totals.get(kind)))
