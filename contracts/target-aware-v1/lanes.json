@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "claim": "candidate_lane_inventory_not_execution",
+  "legacy_wasm_alias": "llvm-wasm-bridge",
+  "lanes": [
+    {
+      "id": "java-jvm",
+      "owner": "atto-lang/atto-source.java",
+      "compiler_lineage": "atto-lang/atto-source.java",
+      "artifact": "jvm-bytecode",
+      "runtime": "jvm",
+      "mode": "managed",
+      "profile": "portable",
+      "outcome": "NOT_EXECUTED"
+    },
+    {
+      "id": "java-native",
+      "owner": "atto-lang/atto-source.java",
+      "compiler_lineage": "atto-lang/atto-source.java",
+      "artifact": "native-executable",
+      "runtime": "native",
+      "mode": "aot",
+      "profile": "portable",
+      "outcome": "NOT_EXECUTED"
+    },
+    {
+      "id": "net-cil",
+      "owner": "atto-lang/atto-source.net",
+      "compiler_lineage": "atto-lang/atto-source.net",
+      "artifact": "cil",
+      "runtime": "coreclr",
+      "mode": "managed",
+      "profile": "portable",
+      "outcome": "NOT_EXECUTED"
+    },
+    {
+      "id": "net-native",
+      "owner": "atto-lang/atto-source.net",
+      "compiler_lineage": "atto-lang/atto-source.net",
+      "artifact": "native-executable",
+      "runtime": "native",
+      "mode": "aot",
+      "profile": "portable",
+      "outcome": "NOT_EXECUTED"
+    },
+    {
+      "id": "llvm-native",
+      "owner": "atto-lang/atto-source.llvm",
+      "compiler_lineage": "atto-lang/atto-source.llvm",
+      "artifact": "native-executable",
+      "runtime": "native",
+      "mode": "aot",
+      "profile": "portable",
+      "outcome": "NOT_EXECUTED"
+    },
+    {
+      "id": "rs-wasm",
+      "owner": "atto-lang/atto-source.rs",
+      "compiler_lineage": "atto-lang/atto-source.rs",
+      "artifact": "wasm",
+      "runtime": "wasm-engine",
+      "mode": "wasm",
+      "profile": "portable",
+      "outcome": "NOT_EXECUTED"
+    },
+    {
+      "id": "rs-wasm-worker",
+      "owner": "atto-lang/atto-source.rs",
+      "compiler_lineage": "atto-lang/atto-source.rs",
+      "artifact": "wasm",
+      "runtime": "atto-source.wasm",
+      "mode": "wasm",
+      "profile": "portable",
+      "outcome": "NOT_EXECUTED"
+    },
+    {
+      "id": "llvm-wasm-bridge",
+      "owner": "atto-lang/atto-source.llvm",
+      "compiler_lineage": "atto-lang/atto-source.llvm",
+      "artifact": "wasm",
+      "runtime": "atto-source.wasm",
+      "mode": "wasm",
+      "profile": "bridge",
+      "outcome": "NOT_EXECUTED"
+    },
+    {
+      "id": "js-esm",
+      "owner": "atto-lang/atto-source.js",
+      "compiler_lineage": "atto-lang/atto-source.js",
+      "artifact": "esm",
+      "runtime": "js-engine",
+      "mode": "transpile",
+      "profile": "portable",
+      "outcome": "NOT_EXECUTED"
+    },
+    {
+      "id": "forge-native",
+      "owner": "atto-lang/atto-source.forge",
+      "compiler_lineage": "atto-lang/atto-source.forge",
+      "artifact": "native-executable",
+      "runtime": "native",
+      "mode": "aot",
+      "profile": "portable",
+      "outcome": "NOT_EXECUTED"
+    },
+    {
+      "id": "cranelift-jit",
+      "owner": "atto-lang/atto-source.cranelift",
+      "compiler_lineage": "atto-lang/atto-source.cranelift",
+      "artifact": "compiled-function",
+      "runtime": "jit-host",
+      "mode": "jit",
+      "profile": "portable",
+      "outcome": "NOT_EXECUTED"
+    },
+    {
+      "id": "cranelift-aot",
+      "owner": "atto-lang/atto-source.cranelift",
+      "compiler_lineage": "atto-lang/atto-source.cranelift",
+      "artifact": "native-executable",
+      "runtime": "native",
+      "mode": "aot",
+      "profile": "portable",
+      "outcome": "NOT_EXECUTED"
+    },
+    {
+      "id": "atto-bootstrap",
+      "owner": "atto-lang/atto-source.atto",
+      "compiler_lineage": null,
+      "artifact": "bootstrap-seed",
+      "runtime": "external-compiler",
+      "mode": "bootstrap",
+      "profile": "bootstrap",
+      "outcome": "NOT_EXECUTED"
+    },
+    {
+      "id": "hdl-rtl",
+      "owner": "atto-lang/atto-source.hdl",
+      "compiler_lineage": "atto-lang/atto-source.hdl",
+      "artifact": "rtl",
+      "runtime": "rtl-simulator",
+      "mode": "synthesis",
+      "profile": "restricted",
+      "outcome": "NOT_EXECUTED"
+    },
+    {
+      "id": "realtime-profile",
+      "owner": "atto-lang/atto-source.realtime",
+      "compiler_lineage": null,
+      "artifact": "target-artifact",
+      "runtime": "declared-target",
+      "mode": "profile",
+      "profile": "restricted",
+      "outcome": "NOT_EXECUTED"
+    }
+  ]
+}
