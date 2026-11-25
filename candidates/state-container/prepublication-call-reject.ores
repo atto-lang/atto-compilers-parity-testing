@@ -1,0 +1,4 @@
+@Inject(MutableStateContainer())
+define class Counter as
+  state { count: int = make_count(); }
+end

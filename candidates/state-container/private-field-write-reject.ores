@@ -1,0 +1,19 @@
+// Candidate negative: mutably borrowing the object does NOT make its
+// private representation visible to an external function.
+// This is an access-control error, never a successful mutation.
+define class InventoryState as
+  let int available = 10;
+  pub available_count(): int {
+    return self.available;
+  }
+end
+
+fnc bypass_write(borrow mut InventoryState state): void {
+  state.available = 0;
+}
+
+pub fnc main(): int {
+  let mut InventoryState state = new InventoryState();
+  bypass_write(rt mut borrow state);
+  return state.available_count();
+}

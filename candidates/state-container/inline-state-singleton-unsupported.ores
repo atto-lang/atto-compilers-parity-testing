@@ -1,0 +1,3 @@
+define singleton StateBank as
+    state { let count: int = 0 }
+end

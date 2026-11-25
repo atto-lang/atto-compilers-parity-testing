@@ -1,0 +1,24 @@
+// REJECT: simultaneous mutable borrows of the same owner are forbidden.
+define class InventoryState as
+  let int available = 10;
+
+  pub available_count(): int {
+    return self.available;
+  }
+
+  pub try_reserve(mut self InventoryState)(int amount): bool {
+    if amount <= 0; then return false; fi
+    if amount > self.available; then return false; fi
+    self.available = self.available - amount;
+    return true;
+  }
+end
+
+fnc consume(borrow mut InventoryState first, borrow mut InventoryState second): int {
+  return first.available_count() + second.available_count();
+}
+
+pub fnc main(): int {
+  let mut InventoryState state = new InventoryState();
+  return consume(rt mut borrow state, rt mut borrow state);
+}

@@ -1,0 +1,4 @@
+define singleton StateBank with Stateful<BankState> as
+    @Inject
+    state: MutableStateContainer<BankState>
+end

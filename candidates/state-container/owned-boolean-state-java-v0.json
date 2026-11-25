@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "contract": "owned-scalar-state-java-boolean-v0",
+  "status": "CANDIDATE_NOT_EXECUTED",
+  "semantics": "compiler-lowered exclusively owned class state; neither shared DI nor singleton nor actor state nor critical RW",
+  "source": {
+    "path": "injected-owned-bool-java-v0.ores",
+    "git_blob_sha": "e0cd09ea1832384af2d0cd0b7c8955d44528bd58",
+    "java_pr": 2443
+  },
+  "expected": {
+    "exit_code": 0,
+    "stdout": "false|true",
+    "java_guest_context": "ores"
+  },
+  "backends": {
+    "java": "NOT_EXECUTED",
+    "llvm": "NOT_EXECUTED",
+    "wasm": "NOT_EXECUTED",
+    "cranelift": "NOT_EXECUTED",
+    "net": "NOT_EXECUTED"
+  },
+  "promotion": {
+    "same_source_bytes": true,
+    "backend_owned_positive_guest_execution_required": true,
+    "exact_commit_sha_required": true,
+    "nonzero_job_steps_required": true,
+    "unsupported_diagnostic_is_not_positive_parity": true,
+    "source_free_test_is_not_guest_proof": true
+  }
+}

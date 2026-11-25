@@ -1,0 +1,17 @@
+// Candidate negative: a read-only injected capability does not grant
+// direct access to a private mutable field.
+define class InventoryState as
+  let int available = 10;
+  pub available_count(): int {
+    return self.available;
+  }
+end
+
+fnc bypass(borrow InventoryState state): int {
+  return state.available;
+}
+
+pub fnc main(): int {
+  let mut InventoryState state = new InventoryState();
+  return bypass(rt borrow state);
+}
