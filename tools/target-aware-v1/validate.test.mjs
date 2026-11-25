@@ -84,3 +84,15 @@ test('bootstrap, HDL and realtime do not get portable guest certification', () =
   for (const id of ['atto-bootstrap','hdl-rtl','realtime-profile'])
     assert.throws(() => validateCandidate(...pair(id)), /separate profile/);
 });
+
+test('arithmetic error candidates are closed and never authenticate an execution receipt',()=>{
+  const expected={kind:'error',code:'division_by_zero'};
+  assert.equal(compareValue(expected,{...expected}),true);
+  assert.equal(compareValue(expected,{kind:'error',code:'integer_overflow'}),false);
+  assert.equal(compareValue(expected,{kind:'i64',value:'42'}),false);
+  for(const invalid of [{kind:'error',code:'panic'},{...expected,abiCode:65538}])
+    assert.throws(()=>compareValue(expected,invalid),/invalid arithmetic error/);
+  const [p,r]=pair('js-esm');
+  assert.equal(validateCandidate({...p,expected},{...r,observed:expected}),'CANDIDATE_REQUIRES_INDEPENDENT_PROVENANCE');
+  assert.throws(()=>validateCandidate({...p,expected},{...r,observed:expected,guest_executed:false}),/no executed/);
+});
