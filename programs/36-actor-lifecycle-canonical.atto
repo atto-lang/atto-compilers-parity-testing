@@ -1,0 +1,17 @@
+// 36: actor-lifecycle-canonical
+// First shared .atto actor case: identical bytes compile and run on the Java
+// reference and LLVM native backends (canonical spec spelling: as ... end,
+// type-first field, self receiver, bare method, worker.stop()).
+define actor Worker as
+  let int total = 0;
+  pub on_message(int n): int {
+    self.total = self.total + n;
+    return self.total;
+  }
+end
+pub fnc main(): int {
+  const worker: ActorRef<Worker> = spawn Worker();
+  worker.stop();
+  await worker.get_done();
+  return 43;
+}

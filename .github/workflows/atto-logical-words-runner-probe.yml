@@ -1,0 +1,31 @@
+name: AttoLang logical-operator alternate-org runner probe (SOURCE-FREE)
+on:
+  push:
+    branches:
+      - ci/atto-logical-words-runner-probe-20261110
+permissions:
+  contents: read
+jobs:
+  runner-admission-only:
+    name: source-free-runner-admission-NOT-GUEST
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Record actual runner execution (no checkout, no tokens)
+        shell: bash
+        env:
+          PROBE_SHA: ${{ github.sha }}
+          PROBE_RUN_ID: ${{ github.run_id }}
+          PROBE_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          [[ "$PROBE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$PROBE_RUN_ID" =~ ^[0-9]+$ ]]
+          [[ "$PROBE_ATTEMPT" =~ ^[0-9]+$ ]]
+          test -n "${RUNNER_NAME:-}"
+          echo "ATTO_ALT_ORG_ADMISSION_ONLY=EXECUTED"
+          echo "ATTO_ALT_ORG_PROBE_SHA=$PROBE_SHA"
+          echo "ATTO_ALT_ORG_PROBE_RUN_ID=$PROBE_RUN_ID"
+          echo "ATTO_ALT_ORG_PROBE_ATTEMPT=$PROBE_ATTEMPT"
+          echo "ATTO_ALT_ORG_RUNNER_NAME=$RUNNER_NAME"
+          echo "ATTO_COMPILER_GUEST_EVIDENCE=NOT_EXECUTED"

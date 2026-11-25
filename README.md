@@ -1,28 +1,51 @@
-# Oreslang compiler parity testing
+> **AI agent instructions (organization-wide):** Before working on code, issues, or pull requests, read and follow the [organization `AGENTS.md`](https://github.com/atto-lang/.github/blob/main/AGENTS.md), including its **merge-first stealth-development policy**. Honor any repository-local `AGENTS.md`, explicit holds, and GitHub-enforced rules.
 
-A shared cross-backend conformance corpus for the six required `oreslang-source.*` backends: Java/GraalVM, LLVM, WebAssembly, .NET Native AOT, Forge and Cranelift. The JavaScript transpiler is a separately selectable, optional seventh target.
+# atto-compilers-parity-testing
 
-The suite is deliberately fail-closed. The same `.ores` bytes must be presented to every backend. Unsupported features, infrastructure failures, unclassified negative diagnostics, or backend-specific source rewrites are never counted as parity passes.
+Differential testing and behavioral parity verification across AttoLang compiler backends.
 
-The 31-program original feature ladder covers scalar execution, control flow, diagnostics, ownership, cleanup/async/channels, actors, and Java-reference static-select delimiters. Four unvalidated signed-i64 boundary/metamorphic programs (32–35) extend this ladder. A second whole-program layer under `checks/<lowercase-name>/` adds 16 positive multi-file checks plus 2 negative syntax probes. Together they form **53 logical cases and 318 required backend/case cells**, with a separately selectable 53-case JavaScript inventory.
+## Naming migration and language authority
 
-Every positive multi-file entry point imports exactly three local source files, performs in-program assertions, and emits a stable `PARITY_OK|<name>|` prefix. The Rust runner recursively fingerprints the complete reachable import graph, including cycles, so a result is tied to all source bytes involved.
+This repository is maintained at [atto-lang/atto-compilers-parity-testing](https://github.com/atto-lang/atto-compilers-parity-testing); use `https://github.com/atto-lang/atto-compilers-parity-testing.git` for Git remotes and canonical `.atto` source examples. The normative language contract is [atto-spec](https://github.com/atto-lang/atto-spec), with executable guest evidence tracked by [atto-platform-conformance](https://github.com/atto-lang/atto-platform-conformance). Follow current ownership, borrowing, effects, actor, and syntax rules there; do not infer implemented features from a README or unexecuted CI.
 
-See `docs/TEST_MATRIX.md`, `docs/EXECUTION.md`, `docs/BACKEND_ADAPTERS.md`, `docs/CI_EXECUTION_EVIDENCE.md`, `manifest.json`, `checks/manifest.json`, and `checks/README.md`.
+## Purpose
 
-AttoLang specification alignment is tracked separately in [docs/SPEC_ALIGNMENT.md](docs/SPEC_ALIGNMENT.md) and [the source-only registry](contracts/spec-alignment-v1.json). New language sources should use `.atto`; the existing `.ores` corpus is retained unchanged as a versioned legacy compatibility baseline. Registry links are not execution receipts and do not alter the 53 × 6 inventory.
+Compare same-program semantics across independent compiler/runtime backends.
 
-CI execution evidence is tiered separately from corpus status. Source-side exact-run
-verification begins at `RUNNER_EXECUTED`; compiler/guest tiers require stronger
-artifact/provenance evidence, and `ORES_GUEST_EXECUTED` must also bind to the
-matching executed parity-report cell.
+## Repository responsibilities
 
-Tooling follows the Oreslang Rust-only tooling policy; Python is prohibited.
+- Keep interfaces, schemas, and behavior documented in a backend-neutral form where applicable.
+- Use test fixtures and reproducible evidence to distinguish proposed behavior from implemented behavior.
+- Record breaking changes, migration notes, and dependencies on other AttoLang components.
 
-Default inventory audits the six required backends. Use `--backend forge` to select Forge or `--backend js` for optional transpiler inventory/exploration. Forge's `run` command currently prints a scalar result via its interpreter and does **not** satisfy this runner's guest exit-code oracle without a reviewed adapter. Forge's constant-return assembly tests are also not full-program native execution proof. The new arithmetic candidates are deliberately **not validated**. No new backend execution is claimed.
+## Validation
 
-For pinned Java reference execution and compiler/runtime identity receipts, see
-[`docs/JAVA_REFERENCE.md`](docs/JAVA_REFERENCE.md). Reference matches remain
-exploratory until their syntax and semantic oracles are independently validated.
+Validation should rely on checked-in tests and exact-commit CI results. When reporting parity, distinguish **passed**, **failed**, **unsupported**, and **not executed**. Avoid inferring guest-runtime support from host-only tests.
 
-Cranelift is also a required independent target, alongside LLVM, Java, Wasm, .NET and Forge; JavaScript remains optional. The 53-case default audit now yields 318 non-executed cells. Cranelift uses ORES_PARITY_CRANELIFT_COMPILE and ORES_PARITY_CRANELIFT_RUN. Its scalar JIT has no reviewed separate artifact adapter for this corpus; unavailable or unsupported source remains a gap, never a pass.
+## Status and development
+
+This README records the intended role of this repository; it is not a claim of feature completeness. Consult the source tree and workflow files for actual implementation and verified build commands. Contributions should preserve compatibility with the canonical language contract.
+
+## Ecosystem
+
+- [AttoLang](https://github.com/atto-lang)
+- [Language specification](https://github.com/atto-lang/atto-spec)
+- [Cross-platform conformance](https://github.com/atto-lang/atto-platform-conformance)
+
+## Repository ownership and contribution routing
+
+**Belongs here:** Differential execution harnesses, normalizers, mismatch triage and regressions across independent AttoLang compilers.
+
+**Belongs elsewhere:** Canonical semantics belong in atto-spec; primary feature fixtures and formal backend receipts belong in atto-platform-conformance.
+
+**Security and portability boundary:** Compare identical source and equivalent flags/inputs; include diagnostic and rejection parity, deterministic replay and exact-head executed negative cases.
+
+AttoLang is the canonical project name; new source, examples and documentation use `.atto` and the `atto-lang` repository organization. This README defines scope, not feature readiness.
+
+**Acceptance:** name the exact source SHA/tree, runtime/toolchain, positive and negative checks and execution receipt before claiming support. Host-only tests and empty CI steps do not prove guest execution.
+
+## Legacy provenance and transfer verification
+
+The historical predecessor, `ores-truffle-oreslang/oreslang-compilers-parity-testing`, is archived; the current `atto-lang/atto-compilers-parity-testing` has a separate numeric GitHub repository ID. Preserve working legacy `.ores` fixtures and package/CLI aliases until their canonical `.atto` replacements are verified. The scope is compiler-pinned cross-backend source corpora, differential tests and negative compiler admission checks, not implementing language features or treating host-only CI as guest execution.
+
+[atto-lang](https://github.com/atto-lang) owns language and portable tooling; [atto-co](https://github.com/atto-co) separately governs managed infrastructure, tenant hosting, identity and billing. Any future original-ID transfer or commercial carve-out requires separate owner authorization and independent security review. Inventory exact SHA/tree, numeric ID, access, protections, PRs, releases, packages, runners, secrets, deploy keys, apps, webhooks, Pages, consumers and rollback ownership; verify identity and retest after an authorized transfer. Never mirror private source without authorization. Zero-step jobs are NOT_EXECUTED; host/reference checks are not compiled guest evidence.

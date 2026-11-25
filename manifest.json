@@ -668,6 +668,25 @@
       "validation_status": "candidate",
       "source_basis": "Derived integer boundary/metamorphic oracle (2026-10-29); independently validated compiler execution pending",
       "required_on_all_backends": true
+    },
+    {
+      "id": "36",
+      "name": "actor-lifecycle-canonical",
+      "path": "programs/36-actor-lifecycle-canonical.atto",
+      "group": "actors",
+      "features": [
+        "actor",
+        "spawn",
+        "stop",
+        "get_done",
+        "atto"
+      ],
+      "expected_kind": "exit",
+      "expected_value": 43,
+      "expected_diagnostic_category": null,
+      "validation_status": "reference_derived",
+      "source_basis": "Executed identically on Java OresMain (main @ 469eada531) and LLVM compile-aot.sh (main @ c1c6cda889), both exit 43",
+      "required_on_all_backends": true
     }
   ]
 }
