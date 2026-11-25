@@ -1,0 +1,38 @@
+import class Animal from "./animals.ores";
+import class Dog from "./animals.ores";
+import interface Coded from "./interfaces.ores";
+import class CodeBox from "./interfaces.ores";
+import trait Scored from "./traits.ores";
+import class ScoreBox from "./traits.ores";
+
+fnc assert_eq_int(String label, int actual, int expected): void {
+  if actual != expected then
+    stdio.stdout.write("PARITY_FAIL|classes-traits-casting|");
+    stdio.stdout.write(label);
+    stdio.stdout.write("|actual=");
+    stdio.stdout.write(actual);
+    stdio.stdout.write("|expected=");
+    stdio.stdout.println(expected);
+    val Result<bool, String> failure = Err(label);
+    failure.expect("cross-compiler parity assertion failed");
+  fi
+  return;
+}
+
+fnc parity_ok(int checksum): void {
+  stdio.stdout.write("PARITY_OK|classes-traits-casting|");
+  stdio.stdout.println(checksum);
+  return;
+}
+
+pub fnc main(): void {
+  val Animal animal = new Dog();
+  val Dog dog = animal as Dog;
+  val Coded coded = new CodeBox();
+  val Scored scored = new ScoreBox();
+  assert_eq_int("inheritance-cast", dog.bark(), 7);
+  assert_eq_int("interface-dispatch", coded.code(), 13);
+  assert_eq_int("trait-dispatch", scored.score(), 22);
+  parity_ok(dog.bark() + coded.code() + scored.score());
+  return;
+}

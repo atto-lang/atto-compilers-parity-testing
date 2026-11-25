@@ -1,0 +1,13 @@
+define class LocalCounter as
+  pub let int value = 40;
+end
+pub fnc local_mutex_case(): int {
+  val mutex = Mutex.new(new LocalCounter());
+  val guard = mutex.lock();
+  guard.value = guard.value + 2;
+  guard.release();
+  val again = mutex.lock();
+  val int result = again.value;
+  again.release();
+  return result;
+}

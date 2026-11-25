@@ -1,0 +1,382 @@
+name: Source-free event-sourcing runner health (NO source export)
+on:
+  push:
+    branches:
+      - ci/atto-event-sourcing-source-free-canary-20261110
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/atto-event-sourcing-source-free-canary.yml'
+permissions: {}
+jobs:
+  sqlite-crash-canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Prepare Node 22 (no repo checkout)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Execute independent crash / SQLite canary (no private source)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          node --disable-warning=ExperimentalWarning --input-type=module <<'NODE'
+          // Synthetic runner probe. No source checkout, private code, or cross-org source data.
+          import assert from 'node:assert/strict';
+          import {spawnSync} from 'node:child_process';
+          import {DatabaseSync} from 'node:sqlite';
+          import {mkdtempSync, rmSync} from 'node:fs';
+          import {tmpdir} from 'node:os';
+          import {join} from 'node:path';
+          const childCode = String.raw`
+          import {DatabaseSync} from 'node:sqlite';
+          const db = new DatabaseSync(process.argv[1]);
+          db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; CREATE TABLE IF NOT EXISTS events(op TEXT PRIMARY KEY, amount INTEGER NOT NULL);');
+          db.exec('BEGIN IMMEDIATE');
+          db.prepare('INSERT INTO events(op,amount) VALUES(?,?)').run('deposit-1', 100);
+          if(process.argv[2] === 'after') db.exec('COMMIT');
+          process.kill(process.pid, 'SIGKILL');
+          `;
+          const root=mkdtempSync(join(tmpdir(),'atto-source-free-'));
+          let checks=0;
+          try {
+            for(const phase of ['before','after']) {
+              const path=join(root, phase+'.sqlite');
+              const child=spawnSync(process.execPath,
+                ['--disable-warning=ExperimentalWarning','--input-type=module','-e',childCode,path,phase],
+                {timeout:12000, encoding:'utf8'});
+              assert.equal(child.error,undefined,String(child.error));
+              assert.equal(child.signal,'SIGKILL','exit='+child.status+' err='+child.stderr);
+              const db=new DatabaseSync(path);
+              const read=db.prepare('SELECT op,amount FROM events ORDER BY op').all();
+              assert.equal(read.length,phase==='after'?1:0);
+              if(phase==='after') {
+                assert.equal(read[0].amount,100);
+                db.prepare('INSERT INTO events(op,amount) VALUES(?,?) ON CONFLICT(op) DO NOTHING').run('deposit-1',100);
+                assert.equal(db.prepare('SELECT COUNT(*) AS count FROM events').get().count,1);
+                checks++;
+              }
+              db.close();
+              checks++;
+            }
+            console.log('PASS synthetic SQLite before/after SIGKILL: '+checks+' checks');
+          } finally { rmSync(root,{recursive:true,force:true}); }
+          NODE
+      - name: Execute independent checkpoint-integrity canary (no source checkout)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --disable-warning=ExperimentalWarning --input-type=module <<'NODE'
+          // Independently authored snapshot proof probe, NOT the AttoLang source tree.
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          import {DatabaseSync} from 'node:sqlite';
+          const sha=b=>createHash('sha256').update(b).digest('hex');
+          const db=new DatabaseSync(':memory:');
+          db.exec("CREATE TABLE snapshot(payload BLOB NOT NULL,payload_hash TEXT NOT NULL,op_digest TEXT NOT NULL);"+
+                  "CREATE TABLE operations(digest TEXT NOT NULL,payload_hash TEXT NOT NULL);");
+          const original=Buffer.from('balance=100'),opHash=sha(Buffer.from('trusted durable op'));
+          db.prepare('INSERT INTO snapshot VALUES(?,?,?)').run(original,sha(original),opHash);
+          db.prepare('INSERT INTO operations VALUES(?,?)').run(opHash,sha(original));
+          function verify() {
+            const s=db.prepare('SELECT payload,payload_hash,op_digest FROM snapshot').get();
+            const op=db.prepare('SELECT digest,payload_hash FROM operations').get();
+            assert(s.payload instanceof Uint8Array);
+            assert.equal(sha(Buffer.from(s.payload)),s.payload_hash,'CORRUPT_SNAPSHOT');
+            assert(op,'UNVERIFIED_SNAPSHOT');
+            assert.equal(s.op_digest,op.digest,'UNVERIFIED_SNAPSHOT');
+            assert.equal(s.payload_hash,op.payload_hash,'CORRUPT_SNAPSHOT');
+          }
+          let scenarios=0;
+          verify();scenarios++;
+          const forged=Buffer.from('balance=900');
+          db.prepare('UPDATE snapshot SET payload=?').run(forged);
+          assert.throws(verify,/CORRUPT_SNAPSHOT/);scenarios++;
+          db.prepare('UPDATE snapshot SET payload_hash=?').run(sha(forged));
+          assert.throws(verify,/CORRUPT_SNAPSHOT/);scenarios++;
+          db.prepare('UPDATE snapshot SET payload=?,payload_hash=?').run(original,sha(original));
+          db.exec('DELETE FROM operations');
+          assert.throws(verify,/UNVERIFIED_SNAPSHOT/);scenarios++;
+          db.close();
+          console.log('PASS synthetic independent snapshot integrity: '+scenarios+' scenarios');
+          NODE
+      - name: Execute independent bounded-replay SQL canary (no source checkout)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --disable-warning=ExperimentalWarning --input-type=module <<'NODE'
+          // Independently authored SQLite envelope/admission probe; no source export.
+          import {DatabaseSync} from 'node:sqlite';
+          import assert from 'node:assert/strict';
+          const db=new DatabaseSync(':memory:');
+          db.exec('CREATE TABLE events(tenant TEXT,actor TEXT,slot TEXT,version INTEGER,payload BLOB);');
+          const append=db.prepare('INSERT INTO events VALUES(?,?,?,?,zeroblob(?))');
+          const usage=db.prepare('SELECT COUNT(*) AS n,COALESCE(SUM(length(payload)),0) AS bytes '+
+            'FROM events WHERE tenant=? AND actor=? AND slot=? AND version>?');
+          const fits=(actor,checkpoint,addedEvents,addedBytes)=>{
+            const {n,bytes}=usage.get('t',actor,'ledger',checkpoint);
+            return n<=10000-addedEvents && bytes<=16777216-addedBytes;
+          };
+          let checks=0;
+          db.exec('BEGIN IMMEDIATE');
+          for(let i=1;i<=16;i++)append.run('t','bytes','ledger',i,1048576);
+          db.exec('COMMIT');
+          assert.equal(fits('bytes',0,1,1),false);checks++;
+          assert.equal(fits('bytes',16,1,1),true);checks++;
+          assert.equal(fits('other',0,1,1),true);checks++;
+          db.exec('BEGIN IMMEDIATE');
+          for(let i=1;i<=10000;i++)append.run('t','count','ledger',i,0);
+          db.exec('COMMIT');
+          assert.equal(fits('count',0,1,0),false);checks++;
+          assert.equal(fits('count',10000,1,0),true);checks++;
+          db.exec('BEGIN IMMEDIATE');
+          append.run('t','other','ledger',1,1);
+          assert.equal(fits('other',0,9999,16777215),true);checks++;
+          assert.equal(fits('other',0,10000,1),false);checks++;
+          db.exec('ROLLBACK');
+          db.close();
+          console.log('PASS independently authored SQLite replay-admission canary '+checks+'/7');
+          NODE
+      - name: Execute independent checkpoint-laundering regression (no checkout)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --disable-warning=ExperimentalWarning --input-type=module <<'NODE'
+          // Independently written SQLite integrity experiment; no private code.
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          import {DatabaseSync} from 'node:sqlite';
+          const sha=b=>createHash('sha256').update(b).digest('hex');
+          const db=new DatabaseSync(':memory:');
+          db.exec('CREATE TABLE heads(actor TEXT PRIMARY KEY,version INTEGER NOT NULL);'+
+            'CREATE TABLE events(actor TEXT,version INTEGER,payload BLOB,PRIMARY KEY(actor,version));'+
+            'CREATE TABLE ops(actor TEXT,version INTEGER,payload_hash TEXT,PRIMARY KEY(actor,version));'+
+            'CREATE TABLE snapshots(actor TEXT PRIMARY KEY,version INTEGER NOT NULL,payload BLOB NOT NULL);');
+          const head=db.prepare('SELECT version FROM heads WHERE actor=?');
+          const rows=db.prepare('SELECT e.version,e.payload,o.payload_hash FROM events e LEFT JOIN ops o '+
+            'ON o.actor=e.actor AND o.version=e.version WHERE e.actor=? ORDER BY e.version');
+          function validatedSnapshot(actor,bytes) {
+            const version=head.get(actor)?.version??0;
+            let expected=1,n=0;
+            for(const row of rows.iterate(actor)) {
+              assert.equal(row.version,expected++,'INCOMPLETE_ACTOR_JOURNAL');
+              assert.equal(sha(Buffer.from(row.payload)),row.payload_hash,'CORRUPT_ACTOR_EVENT');
+              n++;
+            }
+            assert.equal(n,version,'INCOMPLETE_ACTOR_JOURNAL');
+            db.prepare('INSERT INTO snapshots VALUES(?,?,?)').run(actor,version,bytes);
+          }
+          const event=db.prepare('INSERT INTO events VALUES(?,?,?)');
+          const op=db.prepare('INSERT INTO ops VALUES(?,?,?)');
+          const balance=Buffer.from('balance=100');
+          db.prepare('INSERT INTO heads VALUES(?,?)').run('good',2);
+          for(const [n,v] of [[1,'40'],[2,'60']]){const b=Buffer.from(v);event.run('good',n,b);op.run('good',n,sha(b));}
+          let checks=0;
+          validatedSnapshot('good',balance);
+          assert.equal(db.prepare('SELECT version FROM snapshots WHERE actor=?').get('good').version,2);checks++;
+          db.prepare('INSERT INTO heads VALUES(?,?)').run('gap',2);
+          const b=Buffer.from('60');event.run('gap',2,b);op.run('gap',2,sha(b));
+          assert.throws(()=>validatedSnapshot('gap',balance),/INCOMPLETE_ACTOR_JOURNAL/);checks++;
+          assert.equal(db.prepare('SELECT COUNT(*) AS n FROM snapshots WHERE actor=?').get('gap').n,0);checks++;
+          db.prepare('INSERT INTO heads VALUES(?,?)').run('modified',1);
+          const c=Buffer.from('40');event.run('modified',1,c);op.run('modified',1,sha(c));
+          db.prepare('UPDATE events SET payload=? WHERE actor=?').run(Buffer.from('99'),'modified');
+          assert.throws(()=>validatedSnapshot('modified',balance),/CORRUPT_ACTOR_EVENT/);checks++;
+          assert.equal(db.prepare('SELECT COUNT(*) AS n FROM snapshots WHERE actor=?').get('modified').n,0);checks++;
+          assert.equal(db.prepare('SELECT version FROM snapshots WHERE actor=?').get('good').version,2);checks++;
+          db.close();
+          console.log('PASS independent checkpoint-laundering canary '+checks+'/6');
+          NODE
+      - name: Validate Node SQLite trigger and COMMIT hooks for crash fixtures (no checkout)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --disable-warning=ExperimentalWarning --input-type=module <<'NODE'
+          // Standalone host API compatibility probe; no AttoLang private-source checkout.
+          import assert from 'node:assert/strict';
+          import {DatabaseSync} from 'node:sqlite';
+          const db=new DatabaseSync(':memory:');
+          let commits=0,triggers=0;
+          const original=db.exec.bind(db);
+          db.exec=(sql)=>{
+            const result=original(sql);
+            if(sql.trim().toUpperCase()==='COMMIT')commits++;
+            return result;
+          };
+          db.function('test_trigger_probe',()=>{triggers++;return 0;});
+          db.exec('CREATE TABLE events(version INTEGER PRIMARY KEY);');
+          db.exec('CREATE TEMP TRIGGER hook_after_event AFTER INSERT ON events '+
+            'BEGIN SELECT test_trigger_probe(); END;');
+          db.exec('BEGIN IMMEDIATE');
+          db.prepare('INSERT INTO events VALUES(?)').run(1);
+          db.exec('COMMIT');
+          assert.equal(triggers,1,'SQLite TEMP trigger did not invoke JS hook');
+          assert.equal(commits,1,'Native DatabaseSync.exec is not overridable');
+          assert.equal(db.prepare('SELECT COUNT(*) AS n FROM events').get().n,1);
+          db.close();
+          console.log('PASS independent Node SQLite trigger/COMMIT interception hooks 3/3');
+          NODE
+      - name: Probe strict JDK 21 / pinned JDBC dependencies without source checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${JAVA_HOME_21_X64:?This runner lacks the pinned JDK21 toolchain}"
+          "${JAVA_HOME_21_X64}/bin/javac" -version
+          mvn -B -q dependency:get -Dartifact=org.xerial:sqlite-jdbc:3.53.4.0
+          mvn -B -q dependency:get -Dartifact=org.slf4j:slf4j-api:2.0.17
+          JDBC="$HOME/.m2/repository/org/xerial/sqlite-jdbc/3.53.4.0/sqlite-jdbc-3.53.4.0.jar"
+          SLF4J="$HOME/.m2/repository/org/slf4j/slf4j-api/2.0.17/slf4j-api-2.0.17.jar"
+          sha256sum "$JDBC" "$SLF4J"
+          TEMP_DIR="$(mktemp -d)"
+          trap 'rm -rf "$TEMP_DIR"' EXIT
+          cat > "$TEMP_DIR/SqliteCanary.java" <<'JAVA'
+          // Independently authored JDK21 JDBC probe; NO private AttoLang code.
+          import java.nio.file.Path;
+          import java.sql.Connection;
+          import java.sql.DriverManager;
+          import java.sql.ResultSet;
+          import java.sql.Statement;
+          
+          public final class SqliteCanary {
+              private SqliteCanary() {}
+              private static void require(boolean okay,String reason) {
+                  if(!okay)throw new AssertionError(reason);
+              }
+              public static void main(String[] args) throws Exception {
+                  Path database=Path.of(args[0]);
+                  try(Connection db=DriverManager.getConnection("jdbc:sqlite:"+database)) {
+                      try(Statement sql=db.createStatement()) {
+                          sql.execute("PRAGMA journal_mode=WAL");
+                          sql.execute("PRAGMA synchronous=FULL");
+                          sql.execute("CREATE TABLE events(version INTEGER PRIMARY KEY,amount INTEGER)");
+                          sql.execute("BEGIN IMMEDIATE");
+                          sql.execute("INSERT INTO events VALUES(1,40)");
+                          sql.execute("INSERT INTO events VALUES(2,60)");
+                          sql.execute("COMMIT");
+                          sql.execute("BEGIN IMMEDIATE");
+                          sql.execute("INSERT INTO events VALUES(3,900)");
+                          sql.execute("ROLLBACK");
+                      }
+                  }
+                  try(Connection db=DriverManager.getConnection("jdbc:sqlite:"+database);
+                      Statement sql=db.createStatement();
+                      ResultSet rows=sql.executeQuery("SELECT COUNT(*),SUM(amount) FROM events")) {
+                      require(rows.next(),"missing WAL rows");
+                      require(rows.getInt(1)==2,"ROLLBACK did not remove third event");
+                      require(rows.getInt(2)==100,"reopened WAL state differs");
+                  }
+                  System.out.println("PASS independent Java21 strict JDBC WAL/FULL commit/rollback 3/3");
+              }
+          }
+          JAVA
+          "${JAVA_HOME_21_X64}/bin/javac" -Xlint:all -Werror -d "$TEMP_DIR" "$TEMP_DIR/SqliteCanary.java"
+          "${JAVA_HOME_21_X64}/bin/java" -ea -cp "$TEMP_DIR:$JDBC:$SLF4J" SqliteCanary "$TEMP_DIR/ledger.sqlite"
+      - name: Verify original-epoch event/snapshot digest witness (source-free)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --disable-warning=ExperimentalWarning --input-type=module <<'NODE'
+          // Synthetic reference-only digest witness: NO private source import or checkout.
+          import {createHash} from 'node:crypto';
+          import {DatabaseSync} from 'node:sqlite';
+          import assert from 'node:assert/strict';
+          const sha=v=>createHash('sha256').update(v).digest('hex');
+          const origin=(e)=>sha(JSON.stringify([
+            e.tenant,e.actor,e.slot,e.opId,e.epoch,e.version-1,
+            e.kind,e.schema,Buffer.from(e.payload).toString('base64')
+          ]));
+          const db=new DatabaseSync(':memory:');
+          db.exec('CREATE TABLE ops(opId TEXT PRIMARY KEY,epoch INTEGER,kind TEXT,version INTEGER,schema INTEGER,digest TEXT,payload_hash TEXT);'+
+            'CREATE TABLE events(opId TEXT,version INTEGER,payload BLOB);'+
+            'CREATE TABLE snapshots(opId TEXT,version INTEGER,payload BLOB);');
+          const base={tenant:'t',actor:'a',slot:'ledger',epoch:1,schema:1};
+          const putOp=db.prepare('INSERT INTO ops VALUES(?,?,?,?,?,?,?)');
+          const putEv=db.prepare('INSERT INTO events VALUES(?,?,?)');
+          const putSnap=db.prepare('INSERT INTO snapshots VALUES(?,?,?)');
+          const getOp=db.prepare('SELECT * FROM ops WHERE opId=?');
+          const event=db.prepare('SELECT payload FROM events WHERE opId=?');
+          const snap=db.prepare('SELECT payload FROM snapshots WHERE opId=?');
+          let cases=0;
+          function verify(opId){
+            const row=getOp.get(opId);
+            assert(row && Number.isSafeInteger(row.epoch) && row.epoch>=1,'UNVERIFIED_ORIGIN_EPOCH');
+            const payload=(row.kind==='event'?event:snap).get(opId)?.payload;
+            assert(payload instanceof Uint8Array,'MISSING_JOURNAL_BYTES');
+            const e={...base,opId,epoch:row.epoch,kind:row.kind,
+              version:row.version,schema:row.schema,payload};
+            assert.equal(sha(payload),row.payload_hash,'PAYLOAD_HASH_MISMATCH');
+            assert.equal(origin(e),row.digest,'ORIGINAL_OPERATION_DIGEST_MISMATCH');
+          }
+          const ev={...base,opId:'evt',kind:'event',version:1,payload:Buffer.from('40')};
+          putOp.run(ev.opId,ev.epoch,ev.kind,ev.version,ev.schema,origin(ev),sha(ev.payload));
+          putEv.run(ev.opId,ev.version,ev.payload);
+          verify('evt');cases++;
+          // Epoch 2 supervisor fencing must not alter the historical digest witness.
+          base.epoch=2;verify('evt');cases++;
+          db.prepare('UPDATE events SET payload=? WHERE opId=?').run(Buffer.from('99'),'evt');
+          db.prepare('UPDATE ops SET payload_hash=? WHERE opId=?').run(sha(Buffer.from('99')),'evt');
+          assert.throws(()=>verify('evt'),/ORIGINAL_OPERATION_DIGEST_MISMATCH/);cases++;
+          const checkpoint={...base,opId:'snap',kind:'snapshot',epoch:2,version:2,payload:Buffer.from('balance=100')};
+          putOp.run(checkpoint.opId,checkpoint.epoch,checkpoint.kind,checkpoint.version,
+           checkpoint.schema,origin(checkpoint),sha(checkpoint.payload));
+          putSnap.run(checkpoint.opId,checkpoint.version,checkpoint.payload);
+          verify('snap');cases++;
+          const corrupt=Buffer.from('balance=900');
+          db.prepare('UPDATE snapshots SET payload=? WHERE opId=?').run(corrupt,'snap');
+          db.prepare('UPDATE ops SET payload_hash=? WHERE opId=?').run(sha(corrupt),'snap');
+          assert.throws(()=>verify('snap'),/ORIGINAL_OPERATION_DIGEST_MISMATCH/);cases++;
+          db.prepare('UPDATE ops SET epoch=NULL WHERE opId=?').run('snap');
+          assert.throws(()=>verify('snap'),/UNVERIFIED_ORIGIN_EPOCH/);cases++;
+          db.close();
+          console.log('PASS independently authored original-operation digest/epoch SQLite proof '+cases+'/6');
+          NODE
+      - name: Verify archived legacy receipts across epochs (source-free)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --disable-warning=ExperimentalWarning --input-type=module <<'NODE'
+          // Independent SQLite checkpointed-idempotency probe. NO PRIVATE SOURCE.
+          import {DatabaseSync} from 'node:sqlite';
+          import {createHash} from 'node:crypto';
+          import assert from 'node:assert/strict';
+          const db=new DatabaseSync(':memory:');
+          db.exec("CREATE TABLE ops(op_id TEXT PRIMARY KEY,epoch INTEGER,version INTEGER,kind TEXT,payload BLOB,digest TEXT);"+
+            "CREATE TABLE events(version INTEGER PRIMARY KEY,payload BLOB);"+
+            "CREATE TABLE snapshot(version INTEGER PRIMARY KEY,payload BLOB);");
+          const sha=b=>createHash('sha256').update(b).digest('hex');
+          const digest=(o,epoch)=>sha(Buffer.from(JSON.stringify([o.id,epoch,o.version-1,o.kind,o.bytes.toString('base64')])));
+          const ev={id:'deposit',version:1,kind:'event',bytes:Buffer.from('40')};
+          db.prepare('INSERT INTO ops VALUES(?,?,?,?,?,?)').run(ev.id,1,ev.version,ev.kind,ev.bytes,digest(ev,1));
+          db.prepare('INSERT INTO events VALUES(?,?)').run(1,ev.bytes);
+          const snap={id:'checkpoint',version:2,kind:'snapshot',bytes:Buffer.from('40')};
+          db.prepare('INSERT INTO ops VALUES(?,?,?,?,?,?)').run(snap.id,1,snap.version,snap.kind,snap.bytes,digest(snap,1));
+          db.prepare('INSERT INTO snapshot VALUES(?,?)').run(2,snap.bytes);
+          db.prepare('DELETE FROM events WHERE version<=1').run();
+          let checks=0;
+          const proof=(candidate,currentEpoch)=>{
+            const saved=db.prepare('SELECT * FROM ops WHERE op_id=?').get(candidate.id);
+            assert(saved && saved.epoch>=1 && saved.epoch<=currentEpoch,'EPOCH_INVALID');
+            assert.equal(saved.digest,digest(candidate,saved.epoch),'OP_CONFLICT');
+            const active=db.prepare('SELECT * FROM snapshot ORDER BY version DESC LIMIT 1').get();
+            assert(active && active.version>=candidate.version,'MISSING_CHECKPOINT');
+            const checkpointOp=db.prepare('SELECT * FROM ops WHERE version=? AND kind=?').get(active.version,'snapshot');
+            assert(checkpointOp && checkpointOp.epoch>=1,'INVALID_CHECKPOINT_PROOF');
+            const cp={id:checkpointOp.op_id,version:checkpointOp.version,kind:'snapshot',bytes:Buffer.from(active.payload)};
+            assert.equal(checkpointOp.digest,digest(cp,checkpointOp.epoch),'CORRUPT_CHECKPOINT');
+            return saved.version;
+          };
+          assert.equal(proof(ev,2),1);checks++;
+          assert.equal(proof(snap,2),2);checks++;
+          assert.throws(()=>proof({...ev,bytes:Buffer.from('99')},2),/OP_CONFLICT/);checks++;
+          assert.throws(()=>proof(ev,0),/EPOCH_INVALID/);checks++;
+          db.prepare('UPDATE snapshot SET payload=? WHERE version=2').run(Buffer.from('99'));
+          assert.throws(()=>proof(ev,2),/CORRUPT_CHECKPOINT/);checks++;
+          db.prepare('UPDATE snapshot SET payload=? WHERE version=2').run(snap.bytes);
+          db.prepare('DELETE FROM snapshot WHERE version=2').run();
+          assert.throws(()=>proof(ev,2),/MISSING_CHECKPOINT/);checks++;
+          db.close();
+          console.log('PASS independent compacted legacy epoch2 duplicate proof '+checks+'/6');
+          NODE

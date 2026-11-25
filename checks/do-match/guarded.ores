@@ -1,0 +1,6 @@
+pub fnc guarded_match(int value): int {
+  do match value over {
+    on int n when n > 40 { return n; }
+    on _ { return 0; }
+  }
+}

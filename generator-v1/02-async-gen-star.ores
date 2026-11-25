@@ -1,0 +1,14 @@
+// generator-v1 02: canonical async gen*
+async fnc later(int value): int { return value; }
+pub async gen* values(): AsyncIterator<int> {
+  yield await later(20);
+  yield await later(22);
+  return;
+}
+pub async fnc main(): int {
+  let int total = 0;
+  for await const value of values() {
+    total = total + value;
+  }
+  return total;
+}

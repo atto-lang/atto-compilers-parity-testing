@@ -1,0 +1,4 @@
+pub fnc typed_lambda_case(): int {
+  val double = (int x) -> { return x * 2; };
+  return double(21);
+}
