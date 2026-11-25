@@ -52,3 +52,16 @@ test('negative numeric cases need a structured failure oracle, not a generic com
     assert.throws(() => selectFixture(id), /structured failure oracle/);
   assert.throws(() => selectFixture('unknown'), /unknown numeric fixture/);
 });
+
+test('closed structured error observations reject aliases, extra fields and injected output',()=>{
+  for(const code of ['integer_overflow','division_by_zero'])
+    assert.deepEqual(decodeObservation(JSON.stringify({kind:'error',code})+'\n'),{kind:'error',code});
+  for(const output of ['{"kind":"error","code":"panic"}\n','{"kind":"error","code":"division_by_zero","extra":1}\n',
+    '{"kind":"error","code":"division_by_zero"}\n\n','{"code":"division_by_zero","kind":"error"}\n'])
+    assert.throws(()=>decodeObservation(output),/invalid exact guest observation/);
+});
+test('structured error cases require explicit JS program-v2 profile',()=>{
+  for(const id of ['reject-i64-zero-divisor','reject-i64-min-overflow','reject-i64-zero-remainder'])
+    assert.equal(selectFixture(id,'js-program-v2').expected.kind,'error');
+  assert.throws(()=>execute({lane:'rs-wasm',profile:'js-program-v2'}),/unsupported lane\/profile/);
+});
