@@ -8,7 +8,8 @@
       "llvm",
       "wasm",
       "dotnet",
-      "js"
+      "js",
+      "forge"
     ],
     "unsupported_is_pass": false,
     "not_executed_is_pass": false
@@ -105,6 +106,42 @@
         "routine-generator-star",
         "async-fnc-gen-star",
         "compatibility"
+      ]
+    },
+    {
+      "id": "g11",
+      "path": "generator-v1/11-sync-early-close.ores",
+      "expected": "exit:42",
+      "features": [
+        "gen-star",
+        "Iterator",
+        "early-close",
+        "sticky-done",
+        "empty-terminal-option"
+      ]
+    },
+    {
+      "id": "g12",
+      "path": "generator-v1/12-async-close-receipt.ores",
+      "expected": "exit:42",
+      "features": [
+        "async-gen-star",
+        "AsyncIterator",
+        "await-close",
+        "early-close",
+        "sticky-done",
+        "empty-terminal-option"
+      ]
+    },
+    {
+      "id": "g13",
+      "path": "generator-v1/13-sync-yield-delegation.ores",
+      "expected": "exit:42",
+      "features": [
+        "gen-star",
+        "yield-star",
+        "delegation-order",
+        "for-of"
       ]
     }
   ],

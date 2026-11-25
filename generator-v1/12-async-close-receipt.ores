@@ -1,0 +1,22 @@
+// generator-v1 12: async close awaits retirement and terminal pulls are sticky
+pub async gen* values(): AsyncIterator<int> {
+  yield 20;
+  yield 99;
+  return;
+}
+
+pub async fnc main(): int {
+  val AsyncIterator<int> iter = values();
+  val IteratorResult<int> first = await iter.next();
+  await iter.close();
+  val IteratorResult<int> terminal = await iter.next();
+  val IteratorResult<int> again = await iter.next();
+  if terminal.done then
+    if again.done then
+      if terminal.value.is_none() then
+        return first.value.unwrap() + 22;
+      fi
+    fi
+  fi
+  return 1;
+}
