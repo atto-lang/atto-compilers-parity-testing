@@ -1,0 +1,7 @@
+pub fnc omittable_case(int a, string label?, bool active): int {
+  if !active then return 0; fi
+  match label over
+    on Some(text) -> { return a + 1; }
+    on None -> { return a + 2; }
+  end
+}

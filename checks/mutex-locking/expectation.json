@@ -1,0 +1,15 @@
+{
+  "name": "mutex-locking",
+  "entry": "checks/mutex-locking/main.ores",
+  "expected": "run-pass",
+  "stable_stdout_prefix": "PARITY_OK|mutex-locking|",
+  "imported_files": 3,
+  "maturity": "runtime",
+  "features": [
+    "mutex",
+    "shared-mutex",
+    "locking"
+  ],
+  "verified": false,
+  "notes": "Mutex guard mutation/release, SharedMutex access, and with_lock lexical guard behavior."
+}

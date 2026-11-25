@@ -1,0 +1,1602 @@
+{
+  "schema_version": 2,
+  "executed": true,
+  "corpus": {
+    "legacy_cases": 31,
+    "multifile_checks": 16,
+    "negative_probes": 2,
+    "total_cases": 49
+  },
+  "cases": 49,
+  "backends": [
+    "java"
+  ],
+  "records": [
+    {
+      "suite": "legacy",
+      "case_id": "01",
+      "name": "literal-42",
+      "backend": "java",
+      "source_sha256": "1162adddc04c873a8d6f78d256e2d2661414fd881e955cc109b6208e18889871",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "int",
+        "entrypoint"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 415,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 558,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "02",
+      "name": "operator-precedence",
+      "backend": "java",
+      "source_sha256": "b10e52fd478fc7e7dd5b55b590d378acdb51d28879bb5d36b861e837d1badf3f",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "int",
+        "precedence",
+        "parentheses"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 412,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 587,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "03",
+      "name": "unary-arithmetic",
+      "backend": "java",
+      "source_sha256": "0bca596ed944138a3b33b3fbdea2671981efcb7e74a2c8e4337821cb11a763f8",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "int",
+        "unary-minus"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 413,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 548,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "04",
+      "name": "forward-call",
+      "backend": "java",
+      "source_sha256": "18490b62e67e2a0ef7fb2442926612a093e40db63b5f00d2b91aa3fb55085e91",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "functions",
+        "forward-resolution",
+        "calls"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 434,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 585,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "05",
+      "name": "module-main",
+      "backend": "java",
+      "source_sha256": "1be02710dc0dc51cf56dadbfe7eabca3e7a079e5c6bb297d0ff54db50a637716",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_derived",
+      "features": [
+        "module",
+        "entrypoint"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 416,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 543,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "06",
+      "name": "named-arguments",
+      "backend": "java",
+      "source_sha256": "cd657526be52ac2e6d5d24f9c3f9a3a92617c29b35efde67ad5d92d95cbf87ca",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "functions",
+        "named-arguments",
+        "argument-reordering"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f70726f6772616d732f30362d6e616d65642d617267756d656e74732e6f7265733a333a33393a206572726f723a2065787065637465642027292720616674657220617267756d656e74730a",
+        "duration_ms": 391,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "07",
+      "name": "ternary-right-associative",
+      "backend": "java",
+      "source_sha256": "131e996b595bc1c3c270819c20d07e637e3adcb747eadead03a039e9ea15646c",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_contract",
+      "features": [
+        "ternary",
+        "right-associativity",
+        "bool"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 424,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 544,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "08",
+      "name": "if-statement",
+      "backend": "java",
+      "source_sha256": "d1b4335930eedae34fe7c58e5cd30ae5bbf54a20c3ce166f69a3d3952a3e5210",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_derived",
+      "features": [
+        "if",
+        "return"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 424,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 558,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "09",
+      "name": "switch-statement",
+      "backend": "java",
+      "source_sha256": "cf2d2dabd500c9814a3b3d189e73b7bde46401968aed03c702a7fb7c02ac8a44",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "parser_grounded",
+      "features": [
+        "switch",
+        "case",
+        "default",
+        "slim-arrow"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 433,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 564,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "10",
+      "name": "do-switch-statement",
+      "backend": "java",
+      "source_sha256": "d02af8625f0d773185923c924941be261ef6f006ad8cbda95e41a353a7195839",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "parser_grounded",
+      "features": [
+        "do-switch",
+        "case",
+        "default",
+        "return-scope"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 418,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 538,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "11",
+      "name": "match-value-expression",
+      "backend": "java",
+      "source_sha256": "2da8a64224546bee7a6bbc372dfd017f62d23065a172c2dbbe9ce9ed3ab52a50",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_test",
+      "features": [
+        "match",
+        "value-expression",
+        "exhaustiveness"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 418,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 559,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "12",
+      "name": "do-match-return-scope",
+      "backend": "java",
+      "source_sha256": "8171dc3384f352f45fc85ae44ae5da6ee1c08eddcd5cbc355557d9a1cf64fa3b",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_test",
+      "features": [
+        "do-match",
+        "procedural-match",
+        "return-scope"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 416,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 566,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "13",
+      "name": "overflow-literal-reject",
+      "backend": "java",
+      "source_sha256": "f376cb7f675553fba96d6a5bd657ea8295e2b557caeddf11f427736a19b36fdb",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "int",
+        "overflow",
+        "diagnostic"
+      ],
+      "expected_diagnostic_category": "integer_range",
+      "actual_diagnostic_category": "integer_range",
+      "status": "exploratory_expected_reject_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f70726f6772616d732f31332d6f766572666c6f772d6c69746572616c2d72656a6563742e6f7265733a333a33303a206572726f723a20696e7465676572206c69746572616c206f766572666c6f7773207369676e65642036342d6269743a20393232333337323033363835343737353830380a",
+        "duration_ms": 397,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "14",
+      "name": "int-division-return-reject",
+      "backend": "java",
+      "source_sha256": "af455470a9e411c4a8129b9fa2749472b993c56d3acdad62ea377c402245eeec",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "division",
+        "numeric-typing",
+        "diagnostic"
+      ],
+      "expected_diagnostic_category": "type_mismatch",
+      "actual_diagnostic_category": "type_mismatch",
+      "status": "exploratory_expected_reject_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f70726f6772616d732f31342d696e742d6469766973696f6e2d72657475726e2d72656a6563742e6f7265733a313a313a206572726f723a204f7265736c616e6720736f7572636520756e697420272f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f70726f6772616d732f31342d696e742d6469766973696f6e2d72657475726e2d72656a6563742e6f726573273a2072657475726e2076616c756520686173207479706520464c4f41542062757420657870656374656420494e540a",
+        "duration_ms": 418,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "15",
+      "name": "arity-reject",
+      "backend": "java",
+      "source_sha256": "45e97ad3f397c7d64755780354657b52c38dd685d8294fad69b37c9f90a05c7f",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "calls",
+        "arity",
+        "diagnostic"
+      ],
+      "expected_diagnostic_category": "arity",
+      "actual_diagnostic_category": "arity",
+      "status": "exploratory_expected_reject_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f70726f6772616d732f31352d61726974792d72656a6563742e6f7265733a313a313a206572726f723a204f7265736c616e6720736f7572636520756e697420272f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f70726f6772616d732f31352d61726974792d72656a6563742e6f726573273a2063616c6c206172697479206d69736d617463680a",
+        "duration_ms": 416,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "16",
+      "name": "unknown-identifier-reject",
+      "backend": "java",
+      "source_sha256": "d97b99bf975e154f75b47dd6014cd6db05dad87dad3b5402ae8120d93ca53cd6",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "name-resolution",
+        "diagnostic"
+      ],
+      "expected_diagnostic_category": "unknown_identifier",
+      "actual_diagnostic_category": "unknown_identifier",
+      "status": "exploratory_expected_reject_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f70726f6772616d732f31362d756e6b6e6f776e2d6964656e7469666965722d72656a6563742e6f7265733a313a313a206572726f723a204f7265736c616e6720736f7572636520756e697420272f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f70726f6772616d732f31362d756e6b6e6f776e2d6964656e7469666965722d72656a6563742e6f726573273a20756e6b6e6f776e206e616d6520276d697373696e67270a",
+        "duration_ms": 396,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "17",
+      "name": "duplicate-function-reject",
+      "backend": "java",
+      "source_sha256": "24051b8b77b48ed4ad67f2d88998f58f2d9e8481ce8bbc77f3294addeb194e20",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "declarations",
+        "duplicate-symbol",
+        "diagnostic"
+      ],
+      "expected_diagnostic_category": "duplicate_symbol",
+      "actual_diagnostic_category": "duplicate_symbol",
+      "status": "exploratory_expected_reject_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f70726f6772616d732f31372d6475706c69636174652d66756e6374696f6e2d72656a6563742e6f7265733a313a313a206572726f723a204f7265736c616e6720736f7572636520756e697420272f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f70726f6772616d732f31372d6475706c69636174652d66756e6374696f6e2d72656a6563742e6f726573273a2063616c6c61626c6520275f5f726f6f745f5f2e73616d652720616c72656164792068617320617269747920303b206d6f64756c652f746f702d6c6576656c206f7665726c6f6164206964656e74697479206973206e616d65202b206172697479206f6e6c793b20706172616d6574657220747970657320616e642072657475726e20747970657320646f206e6f742070617274696369706174650a",
+        "duration_ms": 412,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "18",
+      "name": "inferred-struct",
+      "backend": "java",
+      "source_sha256": "758beac5981219005c851256b1199fe7e4ac63df415e00359552662183775879",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_test",
+      "features": [
+        "infer-struct",
+        "field-access",
+        "structural-data"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 416,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 553,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "19",
+      "name": "tuple-pattern",
+      "backend": "java",
+      "source_sha256": "b066871c570916ab6edec9c008f345732d8a42118b3cd6c1d4806c1e7a1be39f",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_test",
+      "features": [
+        "tuple",
+        "pattern-match",
+        "wildcard"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 420,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 565,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "20",
+      "name": "mutable-borrow",
+      "backend": "java",
+      "source_sha256": "57c810c8e8c71e06a49f6767d901f30d03502a462d9944c4592cdc3d5ddda7b8",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_derived",
+      "features": [
+        "class",
+        "mutable-borrow",
+        "ownership"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f70726f6772616d732f32302d6d757461626c652d626f72726f772e6f7265733a31323a31393a206572726f723a206c65676163792027727420626f72726f77206d75742076616c756527206973206e6f742061636365707465643b2075736520277274206d757420626f72726f772076616c7565270a",
+        "duration_ms": 414,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "21",
+      "name": "runtime-ownership-ops",
+      "backend": "java",
+      "source_sha256": "66379165ca4e07d038e7bd19c535ea41569776b19a75be5c5fbd25e79f092f77",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_derived",
+      "features": [
+        "rt-copy",
+        "rt-take",
+        "rt-share"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 443,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 549,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "22",
+      "name": "closure-capture",
+      "backend": "java",
+      "source_sha256": "3de07014f4ba357d6000c7c16dea51e261dadaff681c4f382e51854840645168",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_test",
+      "features": [
+        "lambda",
+        "lexical-closure",
+        "capture"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 409,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 564,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "23",
+      "name": "defer-lifo",
+      "backend": "java",
+      "source_sha256": "af995b1f7c30852503bc4680a207839242c5df585aef24a8e9d2c0fd26942b27",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_derived",
+      "features": [
+        "defer",
+        "lifo",
+        "mutable-borrow"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f70726f6772616d732f32332d64656665722d6c69666f2e6f7265733a31353a32373a206572726f723a206c65676163792027727420626f72726f77206d75742076616c756527206973206e6f742061636365707465643b2075736520277274206d757420626f72726f772076616c7565270a",
+        "duration_ms": 392,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "24",
+      "name": "try-finally-return-snapshot",
+      "backend": "java",
+      "source_sha256": "9a080ba3332c5cc4670908e316b7779fcb7a91bca19c73eaf7e0980fec62b79c",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_fixture",
+      "features": [
+        "try",
+        "catch",
+        "finally",
+        "defer",
+        "return-snapshot"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f70726f6772616d732f32342d7472792d66696e616c6c792d72657475726e2d736e617073686f742e6f7265733a32303a33373a206572726f723a206c65676163792027727420626f72726f77206d75742076616c756527206973206e6f742061636365707465643b2075736520277274206d757420626f72726f772076616c7565270a",
+        "duration_ms": 391,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "25",
+      "name": "async-await",
+      "backend": "java",
+      "source_sha256": "d535dbe304281af250eaf31660a6474b58953fbf9690212bd057402c1188a6f9",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_derived",
+      "features": [
+        "async",
+        "await",
+        "future"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 416,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 574,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "26",
+      "name": "channel-select",
+      "backend": "java",
+      "source_sha256": "70cb98f747e9c27f16cf6388bb110864dd9c550fa1fb0dc5f6cf47d31bfb8f8f",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_derived",
+      "features": [
+        "channel",
+        "writech",
+        "readch",
+        "do-select"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 433,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 558,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "27",
+      "name": "bounded-channel-backpressure",
+      "backend": "java",
+      "source_sha256": "1eea5ddcb123c6841e6e5f528f8e317faad322b62b313d0d05361b461cd65dea",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "candidate",
+      "features": [
+        "channel",
+        "bounded-capacity",
+        "async",
+        "backpressure"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 433,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 570,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "28",
+      "name": "actor-lifecycle",
+      "backend": "java",
+      "source_sha256": "4444d504f550e0a3909e681d4a3b93a9076dd1f509c8b245f245c7d6ac1cd83c",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_derived",
+      "features": [
+        "actor",
+        "spawn",
+        "get_ready",
+        "send",
+        "outputs",
+        "get_done"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 417,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 42,
+        "stdout_hex": "",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 556,
+        "error": null
+      }
+    },
+    {
+      "suite": "legacy",
+      "case_id": "29",
+      "name": "actor-lexical-isolation-reject",
+      "backend": "java",
+      "source_sha256": "65afc3b280255bb8b7cd218745aa64adb5cd5961ff3659fbb788ea269210120f",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_test",
+      "features": [
+        "actor",
+        "lexical-isolation",
+        "diagnostic"
+      ],
+      "expected_diagnostic_category": "actor_lexical_isolation",
+      "actual_diagnostic_category": "actor_lexical_isolation",
+      "status": "exploratory_expected_reject_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f70726f6772616d732f32392d6163746f722d6c65786963616c2d69736f6c6174696f6e2d72656a6563742e6f7265733a313a313a206572726f723a204f7265736c616e6720736f7572636520756e697420272f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f70726f6772616d732f32392d6163746f722d6c65786963616c2d69736f6c6174696f6e2d72656a6563742e6f726573273a206163746f722027576f726b6572272063616e6e6f7420696d706c696369746c79206163636573732066696c652f6d6f64756c652063616c6c61626c65202768656c706572273b206d6f76652074686520646570656e64656e637920746f20616e6f7468657220736f7572636520756e697420616e6420696d706f7274206974206578706c696369746c790a",
+        "duration_ms": 417,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "30",
+      "name": "actor-critical-integrated",
+      "backend": "java",
+      "source_sha256": "769b91b5a274e23e906c742a6cfd053a0aa629103945c769a44609c001eb3d90",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "candidate",
+      "features": [
+        "actor",
+        "state",
+        "critical",
+        "handle_state",
+        "single-flight",
+        "get_ready",
+        "get_done"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f70726f6772616d732f33302d6163746f722d637269746963616c2d696e74656772617465642e6f7265733a343a393a206572726f723a20657870656374656420272827206166746572206d6574686f64206e616d650a",
+        "duration_ms": 393,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "legacy",
+      "case_id": "31",
+      "name": "channel-select-over-end",
+      "backend": "java",
+      "source_sha256": "b64d0eb16cbcaf9766ae44143b63c54430e6042b173f381f8bbd287e790b1728",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "reference_test",
+      "features": [
+        "channel",
+        "writech",
+        "readch",
+        "do-select",
+        "over-end"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f70726f6772616d732f33312d6368616e6e656c2d73656c6563742d6f7665722d656e642e6f7265733a363a333a206572726f723a2027646f2073656c6563742720726571756972657320627261636564207374617469632063617365733b2064796e616d6963202773656c6563742066726f6d206361736573272070726f6475636573206120726573756c7420616e6420686173206e6f2063616c6c6261636b2061726d7320746f2068616e646c65206469736361726465642072656164730a",
+        "duration_ms": 414,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "import-cycles",
+      "name": "import-cycles",
+      "backend": "java",
+      "source_sha256": "82fc6abebae949d7730f3737eff52a359d961d686c3a0bb51efa31c504d62f63",
+      "graph_sha256": "148bace463497d253662b8fcffa8101e7dd2b2bae7dc06ea4f852bcffae62141",
+      "graph_files": [
+        "checks/import-cycles/a.ores",
+        "checks/import-cycles/b.ores",
+        "checks/import-cycles/c.ores",
+        "checks/import-cycles/main.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "imports",
+        "import-cycle",
+        "linking"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f696d706f72742d6379636c65732f6d61696e2e6f7265733a313a313a206572726f723a204f7265736c616e6720736f7572636520756e697420272f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f696d706f72742d6379636c65732f6d61696e2e6f726573273a206f70657261746f7220272b27206e65656473206e756d65726963206f706572616e64730a",
+        "duration_ms": 435,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "order-of-operations",
+      "name": "order-of-operations",
+      "backend": "java",
+      "source_sha256": "2566a1b8f4076fcf0e3c76243470a4baae94264b1b8d6f8fa29024340c775eb7",
+      "graph_sha256": "a3de66b7815f33e18d7f32b595f20202958a0d15d5d94ed9b119af42fdf5d243",
+      "graph_files": [
+        "checks/order-of-operations/associativity.ores",
+        "checks/order-of-operations/grouping.ores",
+        "checks/order-of-operations/main.ores",
+        "checks/order-of-operations/precedence.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "precedence",
+        "associativity",
+        "grouping"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f6f726465722d6f662d6f7065726174696f6e732f6d61696e2e6f7265733a313a313a206572726f723a204f7265736c616e6720736f7572636520756e697420272f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f6f726465722d6f662d6f7065726174696f6e732f6d61696e2e6f726573273a206f70657261746f7220272b27206e65656473206e756d65726963206f706572616e64730a",
+        "duration_ms": 433,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "fuzz-seeds",
+      "name": "fuzz-seeds",
+      "backend": "java",
+      "source_sha256": "22ee794db39bdf57724b3196729b8af1c10324ec25b5fab76524641f6e9a9899",
+      "graph_sha256": "71166cf3d0b67209fa441bdff14e00b20945b302f9c59360d3813ad7f03f776c",
+      "graph_files": [
+        "checks/fuzz-seeds/generator.ores",
+        "checks/fuzz-seeds/main.ores",
+        "checks/fuzz-seeds/metamorphic.ores",
+        "checks/fuzz-seeds/oracle.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "differential-fuzz",
+        "metamorphic",
+        "determinism"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f66757a7a2d73656564732f6d61696e2e6f7265733a313a313a206572726f723a204f7265736c616e6720736f7572636520756e697420272f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f66757a7a2d73656564732f6d61696e2e6f726573273a206f70657261746f7220272b27206e65656473206e756d65726963206f706572616e64730a",
+        "duration_ms": 434,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "mutex-locking",
+      "name": "mutex-locking",
+      "backend": "java",
+      "source_sha256": "a6038c49c22769672ace8e7e174ec7433d0e39e324e4d6224e7a0776181a3dca",
+      "graph_sha256": "2640bd1b9aa1d9bbe2fd964b46a68a44ce02fd3a382eca579431150f0cc53176",
+      "graph_files": [
+        "checks/mutex-locking/local.ores",
+        "checks/mutex-locking/main.ores",
+        "checks/mutex-locking/scoped.ores",
+        "checks/mutex-locking/shared.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "mutex",
+        "shared-mutex",
+        "locking"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f6d757465782d6c6f636b696e672f6d61696e2e6f7265733a313a313a206572726f723a204f7265736c616e6720736f7572636520756e697420272f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f6d757465782d6c6f636b696e672f6d61696e2e6f726573273a206f70657261746f7220272b27206e65656473206e756d65726963206f706572616e64730a",
+        "duration_ms": 423,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "task-blocks",
+      "name": "task-blocks",
+      "backend": "java",
+      "source_sha256": "9c5d9f9de6da0a9d1657d12e4cff66b397708e1d698c796c04998b21ac0f2f5a",
+      "graph_sha256": "c1e0cd9ad319e8a9a1584a479d85db07eb34228fd550e3e4bf33dd5426fb9f32",
+      "graph_files": [
+        "checks/task-blocks/main.ores",
+        "checks/task-blocks/nb.ores",
+        "checks/task-blocks/nested.ores",
+        "checks/task-blocks/task.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "task",
+        "nb-task",
+        "await"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f7461736b2d626c6f636b732f6d61696e2e6f7265733a313a313a206572726f723a204f7265736c616e6720736f7572636520756e697420272f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f7461736b2d626c6f636b732f6d61696e2e6f726573273a206177616974207265717569726573204675747572653c543e206f72204163746f725265663c543e3b20676f7420494e5354414e43450a",
+        "duration_ms": 414,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "actor-system",
+      "name": "actor-system",
+      "backend": "java",
+      "source_sha256": "674d2fe7eca1082b1bec9221cf1da938f50774f34f4b008d04d12a53de8d7890",
+      "graph_sha256": "df6fc2be200eee94b30937c31e505bdb41d6e06dc5136d49b2ddd2557ad7978b",
+      "graph_files": [
+        "checks/actor-system/counter.ores",
+        "checks/actor-system/echo.ores",
+        "checks/actor-system/main.ores",
+        "checks/actor-system/oracle.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "actor",
+        "spawn",
+        "mailbox",
+        "lifecycle"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f6163746f722d73797374656d2f6d61696e2e6f7265733a333a393a206572726f723a20657870656374656420272827206166746572206d6574686f64206e616d650a",
+        "duration_ms": 415,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "do-switch",
+      "name": "do-switch",
+      "backend": "java",
+      "source_sha256": "a5528f8c67e1b81f14590b880bc48c8269050d4cd8403d92d61a67298393a1f2",
+      "graph_sha256": "d40ac21d384f5f64cd4a847722e445ad27f765b134effc2ec3b5192842a182cb",
+      "graph_files": [
+        "checks/do-switch/main.ores",
+        "checks/do-switch/nested.ores",
+        "checks/do-switch/plain.ores",
+        "checks/do-switch/procedural.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "switch",
+        "do-switch",
+        "return-scope"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 436,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "5041524954595f4f4b7c646f2d7377697463687c3132360a",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 558,
+        "error": null
+      }
+    },
+    {
+      "suite": "checks",
+      "case_id": "do-match",
+      "name": "do-match",
+      "backend": "java",
+      "source_sha256": "b30d243741abc82e0d1b69e592d226726a3801890d38d20c5c4b55f96f3cd531",
+      "graph_sha256": "2262a4c0c131b226bccb4b6a07968a0b6ad73e5eebe822249813020a2f1d76e7",
+      "graph_files": [
+        "checks/do-match/guarded.ores",
+        "checks/do-match/main.ores",
+        "checks/do-match/plain.ores",
+        "checks/do-match/procedural.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "match",
+        "do-match",
+        "return-scope"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 440,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "5041524954595f4f4b7c646f2d6d617463687c3132360a",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 588,
+        "error": null
+      }
+    },
+    {
+      "suite": "checks",
+      "case_id": "nb-match",
+      "name": "nb-match",
+      "backend": "java",
+      "source_sha256": "057cadbc57aff4e2fe44fdf3c67f3247a2b54d52c0d04cb68e1f4835c2ff42d0",
+      "graph_sha256": "3992dd512ff40c7e0ed854f97e17b67dce8d0d03c7dc5d389acda91d463b08ac",
+      "graph_files": [
+        "checks/nb-match/arm.ores",
+        "checks/nb-match/guard.ores",
+        "checks/nb-match/main.ores",
+        "checks/nb-match/subject.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "match",
+        "await",
+        "negative-syntax"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f6e622d6d617463682f6d61696e2e6f7265733a313a313a206572726f723a204f7265736c616e6720736f7572636520756e697420272f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f6e622d6d617463682f6d61696e2e6f726573273a206177616974207265717569726573204675747572653c543e206f72204163746f725265663c543e3b20676f7420494e5354414e43450a",
+        "duration_ms": 474,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "nb-match/negative-1",
+      "name": "nb-match-negative-1",
+      "backend": "java",
+      "source_sha256": "2f5b2752efc6e48819520bd7db8de7a3347d27014a3c37a0fcf850e760de3760",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "unvalidated",
+      "features": [
+        "match",
+        "await",
+        "negative-syntax",
+        "negative-probe"
+      ],
+      "expected_diagnostic_category": "unsupported_nb_prefix",
+      "actual_diagnostic_category": "unsupported_nb_prefix",
+      "status": "exploratory_expected_reject_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f6e622d6d617463682f72656a6563742d6e622d6d617463682e6f7265733a323a333a206572726f723a20276e6227206d75737420707265666978207265616463682c20777269746563682c2073656c6563742c206f7220636220777269746563680a",
+        "duration_ms": 399,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "nb-switch",
+      "name": "nb-switch",
+      "backend": "java",
+      "source_sha256": "559ed8a4e9ef86f60aa2bf0a51661b46b8164ea41b26c3657172a599d50d2162",
+      "graph_sha256": "6031ae35522124dceffa87a970dd0bc56587965f4fcc5968d95a2760a3da7388",
+      "graph_files": [
+        "checks/nb-switch/arm.ores",
+        "checks/nb-switch/main.ores",
+        "checks/nb-switch/nested.ores",
+        "checks/nb-switch/procedural.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "switch",
+        "await",
+        "negative-syntax"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f6e622d7377697463682f6d61696e2e6f7265733a313a313a206572726f723a204f7265736c616e6720736f7572636520756e697420272f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f6e622d7377697463682f6d61696e2e6f726573273a206177616974207265717569726573204675747572653c543e206f72204163746f725265663c543e3b20676f7420494e5354414e43450a",
+        "duration_ms": 418,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "nb-switch/negative-1",
+      "name": "nb-switch-negative-1",
+      "backend": "java",
+      "source_sha256": "27e0e2c7cefcbbe9d4fef65c0835e583b17de63ef83265b49a6097261f06f667",
+      "graph_sha256": null,
+      "graph_files": null,
+      "validation_status": "unvalidated",
+      "features": [
+        "switch",
+        "await",
+        "negative-syntax",
+        "negative-probe"
+      ],
+      "expected_diagnostic_category": "unsupported_nb_prefix",
+      "actual_diagnostic_category": "unsupported_nb_prefix",
+      "status": "exploratory_expected_reject_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f6e622d7377697463682f72656a6563742d6e622d7377697463682e6f7265733a323a333a206572726f723a20276e6227206d75737420707265666978207265616463682c20777269746563682c2073656c6563742c206f7220636220777269746563680a",
+        "duration_ms": 423,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "named-parameters",
+      "name": "named-parameters",
+      "backend": "java",
+      "source_sha256": "936b7316ed436da21bd05edcb63840ef67fc4f074a08a5b00b9219501a67e1bd",
+      "graph_sha256": "f8783e7f261e76f2151aa1d9f8c4abdfe215262210191bc0ce266e3faa75330e",
+      "graph_files": [
+        "checks/named-parameters/main.ores",
+        "checks/named-parameters/mixed.ores",
+        "checks/named-parameters/positional.ores",
+        "checks/named-parameters/reordered.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "named-arguments",
+        "argument-reordering",
+        "mixed-arguments"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f6e616d65642d706172616d65746572732f6d61696e2e6f7265733a323a34383a206572726f723a2065787065637465642027292720616674657220617267756d656e74730a",
+        "duration_ms": 425,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "parameter-syntax",
+      "name": "parameter-syntax",
+      "backend": "java",
+      "source_sha256": "5a15f8f7fa5ecaf07f53a27a2d0e35eb9ee3b4de31079fe28f222e46c140458e",
+      "graph_sha256": "e2038ef163e6c54a10c599a1c07f977ae0a4d3cb98f63539f74e8bf9d186ff3c",
+      "graph_files": [
+        "checks/parameter-syntax/lambda-order.ores",
+        "checks/parameter-syntax/main.ores",
+        "checks/parameter-syntax/name-first.ores",
+        "checks/parameter-syntax/type-first.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "parameter-order",
+        "lambda-parameters",
+        "type-first",
+        "name-first"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 435,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "5041524954595f4f4b7c706172616d657465722d73796e7461787c3132360a",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 566,
+        "error": null
+      }
+    },
+    {
+      "suite": "checks",
+      "case_id": "optional-parameters",
+      "name": "optional-parameters",
+      "backend": "java",
+      "source_sha256": "931a1453dab28880dab9c0d42a4a8eb6917aa8de9b343b71b744227af4851fa4",
+      "graph_sha256": "58c65e7d39967964f689e8b770344d6b3e1767e5f059b6477e66c4a8961ac089",
+      "graph_files": [
+        "checks/optional-parameters/explicit-option.ores",
+        "checks/optional-parameters/main.ores",
+        "checks/optional-parameters/omittable.ores",
+        "checks/optional-parameters/option-type.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "option",
+        "omittable-parameters",
+        "named-arguments"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f6f7074696f6e616c2d706172616d65746572732f6d61696e2e6f7265733a32373a36333a206572726f723a2065787065637465642027292720616674657220617267756d656e74730a",
+        "duration_ms": 416,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "anonymous-functions",
+      "name": "anonymous-functions",
+      "backend": "java",
+      "source_sha256": "2a549f77d7dc2eb11e1029b1ce1898f8c8dc2b0fc40ede9aa28093c64b12ac0f",
+      "graph_sha256": "4f4944ece24520240c9b84ff2e73752c1202a34db79aad26daa21de8e8b48bec",
+      "graph_files": [
+        "checks/anonymous-functions/capture.ores",
+        "checks/anonymous-functions/main.ores",
+        "checks/anonymous-functions/pipe.ores",
+        "checks/anonymous-functions/typed.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "lambda",
+        "closure",
+        "capture"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f616e6f6e796d6f75732d66756e6374696f6e732f6d61696e2e6f7265733a313a313a206572726f723a204f7265736c616e6720736f7572636520756e697420272f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f616e6f6e796d6f75732d66756e6374696f6e732f706970652e6f726573273a206f70657261746f7220272b27206e65656473206e756d65726963206f706572616e64730a",
+        "duration_ms": 432,
+        "error": null
+      },
+      "run": null
+    },
+    {
+      "suite": "checks",
+      "case_id": "recursion",
+      "name": "recursion",
+      "backend": "java",
+      "source_sha256": "4c1010157759c4838ebe7a9341e0d0271531e03af73cbcec9ab50ee7640d3dfc",
+      "graph_sha256": "9d5d6af40670164f1a1b81917662102d62b49d80d75f50ed55047660f192d9a4",
+      "graph_files": [
+        "checks/recursion/even.ores",
+        "checks/recursion/factorial.ores",
+        "checks/recursion/fibonacci.ores",
+        "checks/recursion/main.ores",
+        "checks/recursion/odd.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "recursion",
+        "mutual-recursion",
+        "import-cycle"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "exploratory_match_not_parity_pass",
+      "compile": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "",
+        "stderr_hex": "",
+        "duration_ms": 442,
+        "error": null
+      },
+      "run": {
+        "status": "completed",
+        "exit_code": 0,
+        "stdout_hex": "5041524954595f4f4b7c726563757273696f6e7c3137360a",
+        "stderr_hex": "5741524e494e473a2041207465726d696e616c6c792064657072656361746564206d6574686f6420696e2073756e2e6d6973632e556e7361666520686173206265656e2063616c6c65640a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f666673657420686173206265656e2063616c6c656420627920636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c6444617461202866696c653a2f55736572732f616c6578616e6465726d696c6c732f2e6d322f7265706f7369746f72792f6f72672f677261616c766d2f74727566666c652f74727566666c652d6170692f32352e332e342e312f74727566666c652d6170692d32352e332e342e312e6a6172290a5741524e494e473a20506c6561736520636f6e7369646572207265706f7274696e67207468697320746f20746865206d61696e7461696e657273206f6620636c61737320636f6d2e6f7261636c652e74727566666c652e6170692e6e6f6465732e4e6f6465436c617373496d706c244e6f64654669656c64446174610a5741524e494e473a2073756e2e6d6973632e556e736166653a3a6f626a6563744669656c644f66667365742077696c6c2062652072656d6f76656420696e2061206675747572652072656c656173650a",
+        "duration_ms": 586,
+        "error": null
+      }
+    },
+    {
+      "suite": "checks",
+      "case_id": "classes-traits-casting",
+      "name": "classes-traits-casting",
+      "backend": "java",
+      "source_sha256": "3e5c6f0800ba01d2fb8af347aa691cd54d761b586f3cc771a0d9ea3cbf310b68",
+      "graph_sha256": "35d09099d73e23a6457ac1f7c4c792455f6b7fce674158e664e8e4c5d896d776",
+      "graph_files": [
+        "checks/classes-traits-casting/animals.ores",
+        "checks/classes-traits-casting/interfaces.ores",
+        "checks/classes-traits-casting/main.ores",
+        "checks/classes-traits-casting/traits.ores"
+      ],
+      "validation_status": "unvalidated",
+      "features": [
+        "class",
+        "inheritance",
+        "interface",
+        "trait",
+        "cast"
+      ],
+      "expected_diagnostic_category": null,
+      "actual_diagnostic_category": null,
+      "status": "compile_failure",
+      "compile": {
+        "status": "completed",
+        "exit_code": 1,
+        "stdout_hex": "",
+        "stderr_hex": "2f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f636c61737365732d7472616974732d63617374696e672f6d61696e2e6f7265733a313a313a206572726f723a20696d706f7274207472616974202753636f726564272066726f6d20272e2f7472616974732e6f7265732720696e20272f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f636c61737365732d7472616974732d63617374696e672f6d61696e2e6f7265732720646f6573206e6f74206d6174636820616e206578706f72746564206465636c61726174696f6e20696e20272f55736572732f616c6578616e6465726d696c6c732f636f6465732f6f7265732d74727566666c652d6f7265736c616e672f6f7265736c616e672d636f6d70696c6572732d7061726974792d74657374696e672f636865636b732f636c61737365732d7472616974732d63617374696e672f7472616974732e6f726573270a",
+        "duration_ms": 437,
+        "error": null
+      },
+      "run": null
+    }
+  ],
+  "summary": {
+    "compile_failure": 18,
+    "exploratory_expected_reject_not_parity_pass": 8,
+    "exploratory_match_not_parity_pass": 23
+  }
+}

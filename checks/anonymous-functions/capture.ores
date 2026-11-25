@@ -1,0 +1,5 @@
+pub fnc capture_lambda_case(): int {
+  val int base = 40;
+  val add_base = |x| -> { return base + x; };
+  return add_base(2);
+}

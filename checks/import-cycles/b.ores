@@ -1,0 +1,2 @@
+import fnc c_value from "./c.ores";
+pub fnc b_value(): int { return 20 + c_value(); }

@@ -1,0 +1,5 @@
+import fnc is_odd from "./odd.ores";
+pub fnc is_even(int n): int {
+  if n == 0 then return 1; fi
+  return is_odd(n - 1);
+}

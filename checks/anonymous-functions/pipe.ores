@@ -1,0 +1,4 @@
+pub fnc pipe_lambda_case(): int {
+  val add_one = |x| -> x + 1;
+  return add_one(41);
+}

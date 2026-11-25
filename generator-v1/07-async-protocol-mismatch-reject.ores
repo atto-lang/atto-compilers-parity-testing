@@ -1,0 +1,6 @@
+// generator-v1 07: async generator cannot expose sync iterator
+pub async gen* values(): Iterator<int> {
+  yield 1;
+  return;
+}
+pub fnc main(): int { return 0; }

@@ -1,0 +1,6 @@
+pub async fnc invalid_nb_switch(): int {
+  nb switch 1
+    case 1 -> { return 42; }
+    default -> { return 0; }
+  end
+}

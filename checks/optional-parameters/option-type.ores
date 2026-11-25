@@ -1,0 +1,6 @@
+pub fnc option_type_case(string? value): int {
+  match value over
+    on Some(text) -> { return 42; }
+    on None -> { return 0; }
+  end
+}

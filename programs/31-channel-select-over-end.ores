@@ -1,0 +1,12 @@
+// 31: channel-select-over-end
+// Java PR #2079 delimiter-equivalence contract
+pub fnc main(): int {
+  val Channel<int> input = Channel.new<int>(1);
+  writech input, 42;
+  do select first over
+    when readch input: val value {
+      return value;
+    }
+  end
+  return 1;
+}

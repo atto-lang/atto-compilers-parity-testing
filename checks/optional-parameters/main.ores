@@ -1,0 +1,32 @@
+import fnc option_type_case from "./option-type.ores";
+import fnc omittable_case from "./omittable.ores";
+import fnc explicit_option_case from "./explicit-option.ores";
+
+fnc assert_eq_int(String label, int actual, int expected): void {
+  if actual != expected then
+    stdio.stdout.write("PARITY_FAIL|optional-parameters|");
+    stdio.stdout.write(label);
+    stdio.stdout.write("|actual=");
+    stdio.stdout.write(actual);
+    stdio.stdout.write("|expected=");
+    stdio.stdout.println(expected);
+    val Result<bool, String> failure = Err(label);
+    failure.expect("cross-compiler parity assertion failed");
+  fi
+  return;
+}
+
+fnc parity_ok(int checksum): void {
+  stdio.stdout.write("PARITY_OK|optional-parameters|");
+  stdio.stdout.println(checksum);
+  return;
+}
+
+pub fnc main(): void {
+  assert_eq_int("type-question-mark", option_type_case(Some("x")), 42);
+  assert_eq_int("name-question-mark-omitted", omittable_case(a: 40, active: true), 42);
+  assert_eq_int("name-question-mark-supplied", omittable_case(a: 41, label: "x", active: true), 42);
+  assert_eq_int("explicit-option", explicit_option_case(Some("x")), 42);
+  parity_ok(168);
+  return;
+}

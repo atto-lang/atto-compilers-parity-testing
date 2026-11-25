@@ -1,0 +1,7 @@
+async fnc delayed_arm(int value): int { return value; }
+pub async fnc await_arm_case(): int {
+  return match<int> true over
+    on true -> { return await delayed_arm(42); }
+    on false -> { return 0; }
+  end;
+}

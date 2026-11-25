@@ -1,0 +1,7 @@
+pub fnc procedural_switch(int value): int {
+  do switch value
+    case 1 -> { return 10; }
+    case 2, 3 -> { return 42; }
+    default -> { return 0; }
+  end
+}

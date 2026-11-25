@@ -1,0 +1,6 @@
+pub async fnc invalid_nb_match(): int {
+  nb match true over
+    on true -> { return 42; }
+    on false -> { return 0; }
+  end
+}

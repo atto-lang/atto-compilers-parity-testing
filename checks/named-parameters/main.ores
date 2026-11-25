@@ -1,0 +1,31 @@
+import fnc positional_case from "./positional.ores";
+import fnc reordered_case from "./reordered.ores";
+import fnc mixed_case from "./mixed.ores";
+
+fnc assert_eq_int(String label, int actual, int expected): void {
+  if actual != expected then
+    stdio.stdout.write("PARITY_FAIL|named-parameters|");
+    stdio.stdout.write(label);
+    stdio.stdout.write("|actual=");
+    stdio.stdout.write(actual);
+    stdio.stdout.write("|expected=");
+    stdio.stdout.println(expected);
+    val Result<bool, String> failure = Err(label);
+    failure.expect("cross-compiler parity assertion failed");
+  fi
+  return;
+}
+
+fnc parity_ok(int checksum): void {
+  stdio.stdout.write("PARITY_OK|named-parameters|");
+  stdio.stdout.println(checksum);
+  return;
+}
+
+pub fnc main(): void {
+  assert_eq_int("positional", positional_case(), 123);
+  assert_eq_int("reordered", reordered_case(), 123);
+  assert_eq_int("mixed", mixed_case(), 123);
+  parity_ok(369);
+  return;
+}

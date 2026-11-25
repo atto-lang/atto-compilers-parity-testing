@@ -1,0 +1,6 @@
+fnc next_value(int x): int { return (x * 17 + 23) % 97; }
+pub fnc sequence_checksum(int seed, int count): int {
+  if count == 0 then return 0; fi
+  val int next = next_value(seed);
+  return next + sequence_checksum(next, count - 1);
+}
