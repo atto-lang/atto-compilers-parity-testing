@@ -43,11 +43,20 @@ export function fixtureBytes(path, expectedBlob) {
   if (gitBlob(b) !== expectedBlob) fail('fixture blob mismatch');
   return b;
 }
-export const fixture = Object.freeze({
-  id:'checked-i64-quotient',
-  blob:'d7b61afd0fe074395b092aa4abaa08de4961602e',
-  expected:Object.freeze({kind:'i64',value:'42'})
-});
+const numeric = JSON.parse(readFileSync(new URL('../../contracts/target-aware-v1/numeric-cases.json', import.meta.url),'utf8'));
+const cases = new Map(numeric.cases.map(c => [c.id,Object.freeze({...c,expected:Object.freeze(c.expected)})]));
+if (numeric.schema_version !== 1 || numeric.upstream_manifest_blob !== '8be4f89e994a4ace92f5de0f6d4b678ab60c1797' ||
+    cases.size !== 11 || numeric.cases.length !== 11 ||
+    numeric.cases.some(c => c.status !== 'NOT_EXECUTED' || !/^[a-f0-9]{40}$/.test(c.blob)))
+  fail('invalid numeric case registry');
+export function selectFixture(id = 'checked-i64-quotient') {
+  const c = cases.get(id);
+  if (!c) fail('unknown numeric fixture');
+  if (c.expected.kind !== 'i64') fail('structured failure oracle not implemented');
+  compareValue(c.expected,c.expected);
+  return c;
+}
+export const fixture = selectFixture();
 
 // A separate bounded child executes the emitted artifact, not the source or a model.
 const guest = `
@@ -80,6 +89,7 @@ export function decodeObservation(stdout) {
 export function execute(config) {
   const {lane, root, commit, tree, compiler_sha256, node_sha256, source} = config;
   if (lane !== 'js-esm' && lane !== 'rs-wasm') fail('lane adapter not implemented');
+  const fixture = selectFixture(config.case_id);
   checkout(root,commit,tree);
   const node = realpathSync(process.execPath);
   if (digest(regular(node,128*1024*1024)) !== node_sha256) fail('Node binary digest mismatch');
