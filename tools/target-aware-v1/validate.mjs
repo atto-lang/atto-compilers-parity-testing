@@ -31,6 +31,12 @@ export function compareValue(expected, observed) {
   if (expected?.kind !== observed?.kind) return false;
   switch (expected.kind) {
     case 'i64': return i64(expected.value) === i64(observed.value);
+    case 'error': {
+      const valid = v => ['division_by_zero','integer_overflow'].includes(v.code) &&
+        Object.keys(v).sort().join(',') === 'code,kind';
+      if (!valid(expected) || !valid(observed)) throw new Error('invalid arithmetic error observation');
+      return expected.code === observed.code;
+    }
     case 'bool':
       if (typeof expected.value !== 'boolean' || typeof observed.value !== 'boolean')
         throw new Error('expected boolean');
