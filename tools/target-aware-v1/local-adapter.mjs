@@ -1,6 +1,6 @@
 // Trusted local compiler checkouts only. This runner is not a hostile-code sandbox.
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync, rmSync, lstatSync, realpathSync, existsSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, rmSync, lstatSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, isAbsolute } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -49,10 +49,10 @@ if (numeric.schema_version !== 1 || numeric.upstream_manifest_blob !== '8be4f89e
     cases.size !== 11 || numeric.cases.length !== 11 ||
     numeric.cases.some(c => c.status !== 'NOT_EXECUTED' || !/^[a-f0-9]{40}$/.test(c.blob)))
   fail('invalid numeric case registry');
-export function selectFixture(id = 'checked-i64-quotient') {
+export function selectFixture(id = 'checked-i64-quotient', profile = 'strict-i64') {
   const c = cases.get(id);
   if (!c) fail('unknown numeric fixture');
-  if (c.expected.kind !== 'i64') fail('structured failure oracle not implemented');
+  if (c.expected.kind !== 'i64' && profile !== 'js-program-v2') fail('structured failure oracle not implemented for this profile');
   compareValue(c.expected,c.expected);
   return c;
 }
@@ -62,11 +62,23 @@ export const fixture = selectFixture();
 const guest = `
 import {readFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
-const [lane,path] = process.argv.slice(1);
-let value;
+const [lane,path,profile] = process.argv.slice(1);
+let value, observedError=false;
 if (lane === 'js-esm') {
   const m = await import(pathToFileURL(path).href);
-  value = await m.main();
+  // Only a trusted, exact-pinned JS compiler's frozen error envelope is
+  // a candidate observation. A generic host exception is not a match.
+  try { value = await m.main(); }
+  catch (e) {
+    if (profile !== 'js-program-v2' || !(e instanceof RangeError) || !Object.isFrozen(e)) throw e;
+    const field = k => Object.getOwnPropertyDescriptor(e,k)?.value;
+    const code = field('code'), name = field('name'), abi = field('abiCode');
+    if (!(code === 'division_by_zero' && name === 'DivisionByZeroError' && abi === 65538 ||
+          code === 'integer_overflow' && name === 'ArithmeticOverflowError' && abi === 65537)) throw e;
+    process.stdout.write(JSON.stringify({kind:'error',code})+'\\n');
+    process.exitCode = 0;
+    observedError = true;
+  }
 } else if (lane === 'rs-wasm') {
   const m = new WebAssembly.Module(readFileSync(path));
   if (WebAssembly.Module.imports(m).length !== 0) throw Error('unexpected host imports');
@@ -75,11 +87,15 @@ if (lane === 'js-esm') {
   value = i.exports.main();
   if (i.exports.panic_code.value !== 0) throw Error('guest panic');
 } else throw Error('unsupported lane');
-if (typeof value !== 'bigint' || value < -(1n<<63n) || value > (1n<<63n)-1n)
-  throw Error('not a signed i64 BigInt');
-process.stdout.write(JSON.stringify({kind:'i64',value:value.toString()})+'\\n');
+if (!observedError) {
+  if (typeof value !== 'bigint' || value < -(1n<<63n) || value > (1n<<63n)-1n)
+    throw Error('not a signed i64 BigInt');
+  process.stdout.write(JSON.stringify({kind:'i64',value:value.toString()})+'\\n');
+}
 `;
 export function decodeObservation(stdout) {
+  const error = /^\{"kind":"error","code":"(division_by_zero|integer_overflow)"\}\n$/.exec(stdout);
+  if (error && error[0] === stdout) return {kind:'error',code:error[1]};
   const m = /^\{"kind":"i64","value":"(0|-?[1-9][0-9]*)"\}\n$/.exec(stdout);
   if (!m || m[0] !== stdout) fail('invalid exact guest observation');
   const v = {kind:'i64',value:m[1]};
@@ -89,7 +105,10 @@ export function decodeObservation(stdout) {
 export function execute(config) {
   const {lane, root, commit, tree, compiler_sha256, node_sha256, source} = config;
   if (lane !== 'js-esm' && lane !== 'rs-wasm') fail('lane adapter not implemented');
-  const fixture = selectFixture(config.case_id);
+  const profile = config.profile ?? 'strict-i64';
+  if (profile !== 'strict-i64' && !(lane === 'js-esm' && profile === 'js-program-v2'))
+    fail('unsupported lane/profile combination');
+  const fixture = selectFixture(config.case_id,profile);
   checkout(root,commit,tree);
   const node = realpathSync(process.execPath);
   if (digest(regular(node,128*1024*1024)) !== node_sha256) fail('Node binary digest mismatch');
@@ -102,14 +121,14 @@ export function execute(config) {
     const artifact = join(dir,lane === 'js-esm'?'guest.mjs':'guest.wasm');
     writeFileSync(input,bytes,{flag:'wx',mode:0o600});
     const c = lane === 'js-esm'
-      ? invoke(node,[compiler,'--atto-scalar-v1',input,'--out='+artifact],dir)
+      ? invoke(node,[compiler,profile === 'js-program-v2'?'--program-v2':'--atto-scalar-v1',input,'--out='+artifact],dir)
       : invoke(compiler,[input,'-o',artifact],dir);
     if (c.status !== 0) {
-      if (existsSync(artifact)) fail('failed compiler left an artifact');
+      try { lstatSync(artifact); fail('failed compiler left an artifact'); } catch (e) { if (e.code !== 'ENOENT') throw e; }
       return {lane,case_id:fixture.id,status:'COMPILE_FAILED_UNCLASSIFIED',exit:c.status,stderr:c.stderr};
     }
     const before = digest(regular(artifact));
-    const r = invoke(node,['--input-type=module','-e',guest,lane,artifact],dir);
+    const r = invoke(node,['--input-type=module','-e',guest,lane,artifact,profile],dir);
     const after = digest(regular(artifact));
     if (before !== after || digest(regular(input)) !== digest(bytes) ||
         digest(regular(compiler,128*1024*1024)) !== compiler_sha256 ||
@@ -117,7 +136,7 @@ export function execute(config) {
     checkout(root,commit,tree);
     if (r.status !== 0 || r.stderr !== '') return {lane,case_id:fixture.id,status:'GUEST_FAILED_UNCLASSIFIED',exit:r.status,stderr:r.stderr};
     const observed = decodeObservation(r.stdout);
-    return {lane,case_id:fixture.id,compiler_commit:commit,compiler_tree:tree,compiler_sha256,
+    return {lane,profile,case_id:fixture.id,compiler_commit:commit,compiler_tree:tree,compiler_sha256,
       node_sha256,source_blob:fixture.blob,source_sha256:digest(bytes),artifact_sha256:before,
       artifact_before_run_sha256:before,artifact_after_run_sha256:after,observed,
       status:compareValue(fixture.expected,observed)?'LOCAL_CANDIDATE_MATCH':'LOCAL_CANDIDATE_MISMATCH',
