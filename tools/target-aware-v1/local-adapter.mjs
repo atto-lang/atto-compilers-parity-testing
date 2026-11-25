@@ -1,6 +1,6 @@
 // Trusted local compiler checkouts only. This runner is not a hostile-code sandbox.
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync, rmSync, lstatSync, realpathSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, rmSync, lstatSync, realpathSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, isAbsolute } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -94,7 +94,10 @@ export function execute(config) {
     const c = lane === 'js-esm'
       ? invoke(node,[compiler,'--atto-scalar-v1',input,'--out='+artifact],dir)
       : invoke(compiler,[input,'-o',artifact],dir);
-    if (c.status !== 0) return {lane,case_id:fixture.id,status:'COMPILE_FAILED_UNCLASSIFIED',exit:c.status,stderr:c.stderr};
+    if (c.status !== 0) {
+      if (existsSync(artifact)) fail('failed compiler left an artifact');
+      return {lane,case_id:fixture.id,status:'COMPILE_FAILED_UNCLASSIFIED',exit:c.status,stderr:c.stderr};
+    }
     const before = digest(regular(artifact));
     const r = invoke(node,['--input-type=module','-e',guest,lane,artifact],dir);
     const after = digest(regular(artifact));
