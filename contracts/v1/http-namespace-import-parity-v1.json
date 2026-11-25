@@ -1,0 +1,92 @@
+{
+  "schema": "atto.feature.parity.std_http_namespace.v1",
+  "status": "ALL_NOT_EXECUTED",
+  "feature_id": "stdlib.http.namespace_import",
+  "authority": "atto-lang/atto-platform-conformance/contracts/hosted-http-namespace-parity-v1.json",
+  "canonical_import": "import * as http from \"std.http\";",
+  "selective_import": "import module http3 from \"./library_public.atto\";",
+  "public_module_declaration": "define pub module",
+  "private_module_default": true,
+  "backend_owned_source": true,
+  "guest_required": true,
+  "required_positive": [
+    "builtin_namespace",
+    "selective_public_module",
+    "public_module_wildcard"
+  ],
+  "required_negative": [
+    "private_module",
+    "private_member",
+    "unregistered_builtin",
+    "duplicate_alias",
+    "public_member_private_module"
+  ],
+  "backends": [
+    {
+      "backend": "llvm",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0,
+      "source_stage": "SCALAR_NAMESPACE_AST_IMPORT_STAGED_UNVERIFIED"
+    },
+    {
+      "backend": "java",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0,
+      "source_stage": "PUBLIC_MODULE_VISIBILITY_STAGED_UNVERIFIED"
+    },
+    {
+      "backend": "net",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0,
+      "source_stage": "BOOL_PARAMETER_ABI_STAGED_IMPORT_UNSUPPORTED"
+    },
+    {
+      "backend": "wasm",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0,
+      "source_stage": "UNASSESSED"
+    },
+    {
+      "backend": "rs",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0,
+      "source_stage": "UNASSESSED"
+    },
+    {
+      "backend": "forge",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0,
+      "source_stage": "UNASSESSED"
+    },
+    {
+      "backend": "cranelift",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0,
+      "source_stage": "UNASSESSED"
+    },
+    {
+      "backend": "js",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0,
+      "source_stage": "UNASSESSED"
+    },
+    {
+      "backend": "atto",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0,
+      "source_stage": "UNASSESSED"
+    },
+    {
+      "backend": "hdl",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0,
+      "source_stage": "UNASSESSED"
+    },
+    {
+      "backend": "realtime",
+      "status": "NOT_EXECUTED",
+      "guest_executed_cases": 0,
+      "source_stage": "UNASSESSED"
+    }
+  ]
+}
