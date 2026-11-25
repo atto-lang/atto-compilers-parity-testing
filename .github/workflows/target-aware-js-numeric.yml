@@ -1,0 +1,56 @@
+name: Target-aware JS numeric candidate guests
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  js-program-v2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      JS_SHA: 472087eb1900135bd469ff86a8e5c3a39202fbf3
+      JS_TREE: 4bc6ea66cf791eaf6d5b7383743a81bbac8fe3f6
+      CORPUS_SHA: 57293adb917ef776795b78178cf66ceb09e9bb80
+      CORPUS_MANIFEST_BLOB: 8be4f89e994a4ace92f5de0f6d4b678ab60c1797
+      EXPECTED_HARNESS_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: harness
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: atto-lang/atto-source.js
+          ref: 472087eb1900135bd469ff86a8e5c3a39202fbf3
+          path: compiler
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: atto-lang/atto-platform-conformance
+          ref: 57293adb917ef776795b78178cf66ceb09e9bb80
+          path: corpus
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify all checkout pins and upstream manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C harness rev-parse HEAD)" = "$EXPECTED_HARNESS_SHA"
+          test "$(git -C compiler rev-parse HEAD)" = "$JS_SHA"
+          test "$(git -C compiler rev-parse 'HEAD^{tree}')" = "$JS_TREE"
+          test "$(git -C corpus rev-parse HEAD)" = "$CORPUS_SHA"
+          test "$(git -C corpus hash-object fixtures/numeric-guest-v1/manifest.json)" = "$CORPUS_MANIFEST_BLOB"
+          for repo in harness compiler corpus; do
+            test -z "$(git -C "$repo" status --porcelain --untracked-files=all)"
+            test -z "$(git -C "$repo" ls-files --others --ignored --exclude-standard)"
+            printf '%s head=%s tree=%s\n' "$repo" "$(git -C "$repo" rev-parse HEAD)" "$(git -C "$repo" rev-parse 'HEAD^{tree}')"
+          done
+          node --version
+      - name: Execute all eleven unchanged numeric guests using the real JS CLI
+        working-directory: harness
+        run: node tools/target-aware-v1/run-js-numeric-corpus.mjs
