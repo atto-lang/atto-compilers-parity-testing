@@ -1,0 +1,11 @@
+// rt mut share of a raw mutable object must not bypass guarded SharedMutex admission.
+@Inject(MutableStateContainer())
+define class Counter as
+  state { count: int = 0; }
+end
+
+pub routine main(): void {
+  let mut Counter counter = new Counter();
+  let shared = rt mut share counter;
+  return;
+}

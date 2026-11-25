@@ -1,0 +1,22 @@
+// Must reject a use of an owned state container after ownership transfer.
+@Inject(MutableStateContainer())
+define class Counter as
+  state { count: int = 0; }
+  pub increment(): void {
+    self.handle_state(critical[write] |s| -> {
+      s.count = s.count + 1;
+    });
+    return;
+  }
+end
+
+fnc consume(Counter moved): void {
+  return;
+}
+
+pub routine main(): void {
+  let mut Counter counter = new Counter();
+  consume(rt take counter);
+  counter.increment();
+  return;
+}

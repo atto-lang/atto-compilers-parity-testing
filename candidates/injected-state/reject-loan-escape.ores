@@ -1,0 +1,18 @@
+// Must reject state-loan escape, never return a borrowed state view.
+@Inject(MutableStateContainer())
+define class Counter as
+  state { count: int = 0; }
+  pub invalid(): void {
+    self.handle_state(critical[write] |s| -> {
+      let leaked = s;
+      return leaked;
+    });
+    return;
+  }
+end
+
+pub routine main(): void {
+  let mut Counter counter = new Counter();
+  counter.invalid();
+  return;
+}
