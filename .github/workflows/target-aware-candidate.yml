@@ -1,0 +1,29 @@
+name: Target-aware candidate contract
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  candidate-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify original head and record tree
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -eu
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          git rev-parse HEAD HEAD^{tree}
+          test -z "$(git status --porcelain)"
+      - name: Run source-only candidate contract tests
+        run: |
+          node --version
+          node --test tools/target-aware-v1/validate.test.mjs
+          echo 'HOST_CONTRACT_ONLY; NO ATTO GUEST EXECUTION'
