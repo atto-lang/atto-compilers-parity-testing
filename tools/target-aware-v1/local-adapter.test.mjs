@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, symlinkSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { decodeObservation, fixtureBytes, execute } from './local-adapter.mjs';
+import { decodeObservation, fixtureBytes, execute, selectFixture } from './local-adapter.mjs';
 
 test('lossless subprocess observation, not process exit status', () => {
   for (const value of ['42','298','-1','255','9007199254740993','-9223372036854775808'])
@@ -34,4 +34,21 @@ test('fixture pin checks exact Git blob, not merely text equivalence', () => {
 test('unimplemented or ambiguous lanes cannot fall back to a different compiler', () => {
   for (const lane of ['wasm','java-native','llvm-native','rs-wasm-worker','net-native','forge-native'])
     assert.throws(() => execute({lane}),/not implemented/);
+});
+
+test('eight shared numeric positive cases are selectable without changing expected source pins', () => {
+  for (const id of ['checked-i64-quotient','trap-division-by-zero','trap-integer-overflow',
+    'trap-result-no-doublewrap','ordered-float-nan','ordered-float-signed-zero',
+    'ordered-int-float-precision','equality-numeric-exact']) {
+    const c = selectFixture(id);
+    assert.equal(c.id,id);
+    assert.equal(c.expected.value,'42');
+    assert.equal(c.status,'NOT_EXECUTED');
+  }
+  assert.equal(selectFixture('ordered-int-float-precision').blob,'2d57f49dd16760f94bef1525b95dfc20ba654a9a');
+});
+test('negative numeric cases need a structured failure oracle, not a generic compiler failure', () => {
+  for (const id of ['reject-i64-zero-divisor','reject-i64-min-overflow','reject-i64-zero-remainder'])
+    assert.throws(() => selectFixture(id), /structured failure oracle/);
+  assert.throws(() => selectFixture('unknown'), /unknown numeric fixture/);
 });
