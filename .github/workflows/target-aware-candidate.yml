@@ -25,5 +25,5 @@ jobs:
       - name: Run source-only candidate contract tests
         run: |
           node --version
-          node --test tools/target-aware-v1/validate.test.mjs
+          node --test tools/target-aware-v1/validate.test.mjs tools/target-aware-v1/local-adapter.test.mjs
           echo 'HOST_CONTRACT_ONLY; NO ATTO GUEST EXECUTION'
