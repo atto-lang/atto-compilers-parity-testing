@@ -43,3 +43,9 @@ This README records the intended role of this repository; it is not a claim of f
 AttoLang is the canonical project name; new source, examples and documentation use `.atto` and the `atto-lang` repository organization. This README defines scope, not feature readiness.
 
 **Acceptance:** name the exact source SHA/tree, runtime/toolchain, positive and negative checks and execution receipt before claiming support. Host-only tests and empty CI steps do not prove guest execution.
+
+## Legacy provenance and transfer verification
+
+The historical predecessor, `ores-truffle-oreslang/oreslang-compilers-parity-testing`, is archived; the current `atto-lang/atto-compilers-parity-testing` has a separate numeric GitHub repository ID. Preserve working legacy `.ores` fixtures and package/CLI aliases until their canonical `.atto` replacements are verified. The scope is compiler-pinned cross-backend source corpora, differential tests and negative compiler admission checks, not implementing language features or treating host-only CI as guest execution.
+
+[atto-lang](https://github.com/atto-lang) owns language and portable tooling; [atto-co](https://github.com/atto-co) separately governs managed infrastructure, tenant hosting, identity and billing. Any future original-ID transfer or commercial carve-out requires separate owner authorization and independent security review. Inventory exact SHA/tree, numeric ID, access, protections, PRs, releases, packages, runners, secrets, deploy keys, apps, webhooks, Pages, consumers and rollback ownership; verify identity and retest after an authorized transfer. Never mirror private source without authorization. Zero-step jobs are NOT_EXECUTED; host/reference checks are not compiled guest evidence.

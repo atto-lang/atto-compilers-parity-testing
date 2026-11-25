@@ -1,0 +1,30 @@
+name: Source-free AttoLang define-scope reference
+on:
+  push:
+    branches: [feat/define-scope-source-free-ci-v1]
+  pull_request:
+    paths:
+      - tests/define-scope-reference.test.mjs
+      - .github/workflows/define-scope-reference.yml
+permissions:
+  contents: read
+jobs:
+  model-only-not-compiler:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact source-free reference head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Record exact test tree provenance
+        run: |
+          set -euo pipefail
+          printf 'REFERENCE_HEAD=%s\n' "$(git rev-parse HEAD)"
+          printf 'REFERENCE_TREE=%s\n' "$(git rev-parse HEAD^{tree})"
+      - name: Execute independent source-free policy vectors
+        run: |
+          node --version
+          node --test tests/define-scope-reference.test.mjs
+      - name: State evidence limitation
+        run: echo "SOURCE_FREE_MODEL_ONLY_NOT_COMPILER_NOT_GUEST_NOT_AOT"
