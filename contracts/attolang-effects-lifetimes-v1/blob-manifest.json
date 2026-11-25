@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "status": "SOURCE_ONLY_NOT_EXECUTED",
+  "contract_blob_sha": "1c46015be87c832da40dfad2e7b9fa382f666027",
+  "canonical_spec_pr": "https://github.com/ores-truffle-oreslang/attolang-language-spec.md/pull/33",
+  "fixtures": [
+    {
+      "id": "move-while-borrowed-reject",
+      "path": "contracts/attolang-effects-lifetimes-v1/fixtures/move-while-borrowed-reject.atto",
+      "git_blob_sha": "329e675b923c5b77865d8ab4e268f205ea7e9365"
+    },
+    {
+      "id": "read-write-alias-reject",
+      "path": "contracts/attolang-effects-lifetimes-v1/fixtures/read-write-alias-reject.atto",
+      "git_blob_sha": "346ffe8181a72c4bf4e91318f06fc0abc065172b"
+    },
+    {
+      "id": "borrow-across-suspension-reject",
+      "path": "contracts/attolang-effects-lifetimes-v1/fixtures/borrow-across-suspension-reject.atto",
+      "git_blob_sha": "7d1d591aee02e95765398685003b5131742e8ae7"
+    },
+    {
+      "id": "nll-last-use-positive",
+      "path": "contracts/attolang-effects-lifetimes-v1/fixtures/nll-last-use-positive.atto",
+      "git_blob_sha": "38a34fd39543f8cb18790da6575ef2eced1044d8"
+    }
+  ]
+}
