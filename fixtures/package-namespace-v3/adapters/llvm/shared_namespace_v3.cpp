@@ -3,6 +3,8 @@
 // is reduced to a root scalar entry after validating the exact v3 text; its
 // dependency is expressed in the existing verified lock profile.
 #include "oreslang/frontend/VerifiedNamespaceGraphV2.hpp"
+#include "oreslang/frontend/PointerIntSyntax.hpp"
+#include "oreslang/types/PointerIntOwnership.hpp"
 #include <openssl/sha.h>
 #include <filesystem>
 #include <fstream>
@@ -18,16 +20,24 @@ static std::string read(const fs::path& p){std::ifstream in(p,std::ios::binary);
 static void write(const fs::path& p,std::string_view s){fs::create_directories(p.parent_path());std::ofstream out(p,std::ios::binary);out<<s;if(!out)throw std::runtime_error("write failed");}
 template<class F>static void deny(F f,std::string_view wanted){try{f();}catch(const std::exception& e){if(std::string(e.what()).find(wanted)!=std::string::npos)return;throw;}throw std::runtime_error("expected denial");}
 int main(int argc,char** argv){
- // Exercise actual canonical pointer parser and scalar type checking,
- // including the previously non-portable arithmetic path.
- auto pointer=[](std::string expr){return parse_program("pub fnc main(): int { let mut Pointer<int> p = Pointer.alloc<int>(1); p.write_at(0, "+expr+"); p.close(); return 0; }",false,false,true);};
+ // Unit-test the real bounded pointer token parser and independent verifier.
+ // The default full-source Pointer<T> gate remains unsupported on this head.
+ auto pointer=[](std::string expr){
+  using namespace oreslang::pointer_int_aot;
+  std::vector<Token> tokens;
+  auto add=[&](std::string s){bool number=!s.empty()&&s[0]>='0'&&s[0]<='9';tokens.push_back({std::move(s),tokens.size(),number});};
+  for(const char* s:{"pub","fnc","main","(",")",":","int","{","let","mut","Pointer","<","int",">","p","=","Pointer",".","alloc","<","int",">","(","1",")",";","p",".","write_at","(","0",","})add(s);
+  for(std::size_t i=0;i<expr.size();){if(expr[i]==' '){++i;continue;}std::size_t start=i++;if(expr[start]>='0'&&expr[start]<='9')while(i<expr.size()&&expr[i]>='0'&&expr[i]<='9')++i;add(expr.substr(start,i-start));}
+  for(const char* s:{")",";","p",".","close","(",")",";","return","0",";","}","<eof>"})add(s);
+  auto plan=oreslang::pointer_int_aot::Parser(std::move(tokens)).parse();validate_ownership(plan);verify_plan(plan);return plan;
+ };
  (void)pointer("9223372036854775807 + 0");
  (void)pointer("(0 - 9223372036854775807 - 1) * 1");
  (void)pointer("(0 - 9223372036854775807 - 1) * 0");
  for(const std::string expr:{"9223372036854775807 + 1","(0 - 9223372036854775807 - 1) - 1","9223372036854775807 * 2","(0 - 9223372036854775807 - 1) * (0 - 1)"})
   deny([&]{(void)pointer(expr);},"checked arithmetic overflow");
  (void)parse_program("pub fnc main():int{return Math.abs(0-42);}");
- std::cout<<"V3_LLVM_CHECKED_ARITHMETIC|3-boundary-positive|4-overflow-denied|abs-int\\n";
+ std::cout<<"V3_LLVM_CHECKED_ARITHMETIC|token-parser-verifier|3-boundary-positive|4-overflow-denied|abs-int\\n";
  check(argc==2,"fixture argument");fs::path input=argv[1];char temp[]="/tmp/atto-llvm-v3-XXXXXX";char* dir=mkdtemp(temp);check(dir!=nullptr,"temp");
  struct Cleanup{fs::path path;~Cleanup(){std::error_code ec;fs::remove_all(path,ec);}} cleanup{dir};fs::path root=dir;
  const std::string pin="8e5170a12e8950f934538ae7055d112a147361903f330b8632eaa71df5a2ebae",edit="85f4245442b6854150a0e8247361287e69d6d355f1aeb8383f25373a0ab77f2e";

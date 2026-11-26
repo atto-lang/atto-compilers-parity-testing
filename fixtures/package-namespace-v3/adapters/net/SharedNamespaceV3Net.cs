@@ -68,6 +68,8 @@ internal static class SharedNamespaceV3Net
         var edited=clientSession.Compile(billing,new[]{p2});Check(!edited.Reused&&edited.Cil.AsSpan().SequenceEqual(Clean(billing,p2)),"edit differential");Write("edit",edited.Cil);
         var ob2=observerSession.Compile(observer,new[]{p2});Check(ob2.Cil.AsSpan().SequenceEqual(Clean(observer,p2)),"observer differential");Write("observer-edit",ob2.Cil);
         Console.WriteLine("V3_NET_OBSERVER_ARTIFACT_CHANGED="+!ob.Cil.AsSpan().SequenceEqual(ob2.Cil));
+        Check(ob.Cil.AsSpan().SequenceEqual(ob2.Cil),"unrelated observer artifact must remain byte-identical");
+        Check(semCold.Module.Helpers.Count==4&&semOther.Module.Helpers.Count==3,"reachable helper counts");
         files["src/unit0.ores"]="namespace billing;\npub fnc function0(int x): int { return x; }\n";Check(Digest(files)==Abi,"ABI pin");
         var bad=Verify(Adapt(files));
         try{clientSession.Compile(billing,new[]{bad});throw new InvalidOperationException("ABI admitted");}
