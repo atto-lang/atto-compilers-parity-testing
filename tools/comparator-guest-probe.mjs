@@ -8,13 +8,14 @@ import {pathToFileURL} from 'node:url';
 
 const SITE_HEAD='b8b22a955fa8d4f4018734f1ecb5758773a00f64';
 const SITE_TREE='359accbbf1564de2dd359b93d8b2a6439d8c1211';
-const [id,siteArg,compilerArg]=process.argv.slice(2);
-assert.ok(['rs','js','llvm','forge','cranelift'].includes(id),'explicit supported probe profile required');
+const [lane,siteArg,compilerArg]=process.argv.slice(2);
+const id=lane==='java-aot'?'java':lane==='net-aot'?'net':lane;
+assert.ok(['rs','js','llvm','forge','cranelift','java','java-aot','net','net-aot'].includes(lane),'explicit supported probe profile required');
 const site=resolve(siteArg), root=resolve(compilerArg);
 const sha256=b=>createHash('sha256').update(b).digest('hex');
 const blob=b=>createHash('sha1').update('blob '+b.length+'\0').update(b).digest('hex');
 function invoke(cmd,args,cwd){
-  const r=spawnSync(cmd,args,{cwd,encoding:'utf8',timeout:60000,maxBuffer:1048576,env:{PATH:process.env.PATH,HOME:process.env.HOME,LANG:'C.UTF-8',LC_ALL:'C.UTF-8'}});
+  const r=spawnSync(cmd,args,{cwd,encoding:'utf8',timeout:180000,maxBuffer:1048576,env:{PATH:process.env.PATH,HOME:process.env.HOME,LANG:'C.UTF-8',LC_ALL:'C.UTF-8',...(process.env.JAVA_HOME?{JAVA_HOME:process.env.JAVA_HOME}:{}),...(process.env.DOTNET_ROOT?{DOTNET_ROOT:process.env.DOTNET_ROOT}:{}),DOTNET_CLI_TELEMETRY_OPTOUT:'1',DOTNET_NOLOGO:'1'}});
   return {status:r.status,signal:r.signal,error:r.error?.message??null,stdout:r.stdout??'',stderr:r.stderr??''};
 }
 function git(dir,...args){const x=invoke('git',args,dir);assert.equal(x.status,0,x.stderr);assert.equal(x.error,null);return x.stdout.trim();}
@@ -36,6 +37,17 @@ const cases=m.cases.map(c=>{
 assert.equal(new Set(cases.map(c=>c.name)).size,cases.length);
 const tmp=mkdtempSync(join(tmpdir(),'atto-comparator-'));
 const result=[];
+const negatives=[];
+const javaJar=join(root,'target/oreslang-source-0.1.0-SNAPSHOT.jar');
+const javaNative=join(root,'target/native/liboresthread.so');
+const javaArgs=id==='java'&&lane==='java'?['--enable-native-access=ALL-UNNAMED','-Dpolyglot.engine.WarnInterpreterOnly=false','-Dores.thread.native.path='+javaNative,'-cp',javaJar+':'+readFileSync(join(root,'target/conformance-classpath.txt'),'utf8').trim(),'dev.oreslang.launcher.OresMain','--mode=aot','--no-core-log']:[];
+const javaCmd=lane==='java-aot'?join(root,'target/ores-aot'):'java';
+const netCompiler=join(root,'compiler/Atto.Cil.Compiler/Atto.Cil.Compiler.csproj');
+const netHost=join(root,'tests/Atto.Cil.Guest.Host/Atto.Cil.Guest.Host.csproj');
+const netGuest=join(root,'artifacts/AttoGuest.dll');
+if(id==='net'){assert.ok(existsSync(join(root,'artifacts')));assert.ok(!existsSync(netGuest),'stale guest artifact');}
+function validProcess(r){return !r.error&&!r.signal&&Number.isInteger(r.status);}
+function exitObservation(c,r,artifact,extra={}){if(!validProcess(r)||r.stderr!==''||BigInt(c.return)>255n)return {observation:'GUEST_EXECUTION_UNVERIFIED',status:r.status,diagnostic:r.stderr.slice(0,500)};return status(c,String(r.status),r.stdout,artifact,{return_encoding:'process_exit_status_0_255_only',...extra});}
 const errorKind=r=>r.error||r.signal?'PROCESS_ERROR':'COMPILE_OR_RUN_REJECTED';
 const compileFailure=(r,artifact)=>({observation:existsSync(artifact)?'REJECTED_WITH_ARTIFACT':errorKind(r),diagnostic:r.stderr.slice(0,500),status:r.status});
 const status=(c,value,stdout,artifact,extra={})=>({observation:value===c.return&&stdout===c.stdout?'MATCHED_POSITIVE_ORACLE':'ORACLE_MISMATCH',value,stdout,artifact_sha256:artifact&&existsSync(artifact)?sha256(readFileSync(artifact)):null,...extra});
@@ -50,7 +62,29 @@ try{
   for(const c of cases){
     const out=join(tmp,c.name+(id==='rs'?'.wasm':id==='js'?'.mjs':'.bin'));
     let o;
-    if(id==='rs'){
+    if(id==='java'){
+      const cc=invoke(javaCmd,[...javaArgs,'--check',c.src],root);
+      if(cc.status!==0||!validProcess(cc))o=compileFailure(cc,out);
+      else o=exitObservation(c,invoke(javaCmd,[...javaArgs,c.src],root),null,{execution:lane==='java-aot'?'native_image_host':'jvm_host_guest_jit_disabled'});
+    }else if(id==='net'){
+      rmSync(netGuest,{force:true});
+      const cc=invoke('dotnet',['run','--no-build','-c','Release','--project',netCompiler,'--',c.src,netGuest,'--allow-stdio'],root);
+      if(cc.status!==0||!validProcess(cc)||!existsSync(netGuest))o=compileFailure(cc,netGuest);
+      else{
+        const cilSha=sha256(readFileSync(netGuest));
+        const dir=join(tmp,c.name+'-host');
+        const buildArgs=lane==='net-aot'?['publish',netHost,'-c','Release','-r','linux-x64','-p:PublishAot=true','--self-contained','true','-o',dir]:['build',netHost,'-c','Release','--no-incremental','-o',dir];
+        const build=invoke('dotnet',buildArgs,root);
+        const host=join(dir,lane==='net-aot'?'Atto.Cil.Guest.Host':'Atto.Cil.Guest.Host.dll');
+        if(build.status!==0||!validProcess(build)||!existsSync(host))o={observation:'HOST_BUILD_FAILED',status:build.status,diagnostic:(build.stderr+' '+build.stdout).slice(-1200),cil_sha256:cilSha};
+        else{
+          const run=lane==='net-aot'?invoke(host,[],tmp):invoke('dotnet',[host],tmp);
+          assert.equal(sha256(readFileSync(netGuest)),cilSha);
+          o=exitObservation(c,run,host,{cil_sha256:cilSha,execution:lane==='net-aot'?'native_aot':'coreclr'});
+        }
+      }
+      rmSync(netGuest,{force:true});
+    }else if(id==='rs'){
       const cc=invoke(join(root,'target/release/attoc'),[c.src,'-o',out],root);
       o=cc.status===0&&!cc.error&&!cc.signal&&existsSync(out)?tagged(c,invoke(process.execPath,[wasmRunner,out,site],tmp),out):compileFailure(cc,out);
     }else if(id==='js'){
@@ -77,9 +111,27 @@ try{
     result.push({name:c.name,source_blob:c.blob,...o});
     console.log('COMPARATOR_CASE '+JSON.stringify(result.at(-1)));
   }
+  // Pin a known invalid source independently of the positive corpus. A generic
+  // compiler failure is not a typed negative match. No generated output may survive.
+  const invalid=join(site,'play/examples/error.atto');
+  assert.equal(blob(readFileSync(invalid)),'7c7f1673024e607cb4d0599048c346324854d2e5');
+  if(id==='rs'){
+    const artifact=join(tmp,'immutable-reject.wasm');
+    const rr=invoke(join(root,'target/release/attoc'),[invalid,'-o',artifact],root);
+    negatives.push({name:'immutable-reassignment',source_blob:blob(readFileSync(invalid)),observation:validProcess(rr)&&rr.status===1&&/^E_IMMUTABLE:/m.test(rr.stderr)&&!existsSync(artifact)?'MATCHED_NEGATIVE_ORACLE':'NEGATIVE_UNVERIFIED',diagnostic:rr.stderr.slice(0,500),artifact_exists:existsSync(artifact)});
+    const overflow=join(site,'play/examples/overflow.atto');
+    assert.equal(blob(readFileSync(overflow)),'e2ec3bb25ed02e47645946c1db221eed05579ee3');
+    const artifact2=join(tmp,'overflow.wasm');
+    const cc=invoke(join(root,'target/release/attoc'),[overflow,'-o',artifact2],root);
+    const runner=join(tmp,'panic-runner.mjs');
+    writeFileSync(runner,`import {readFileSync} from 'node:fs';import {pathToFileURL} from 'node:url';import {join} from 'node:path';const {guestImports,describePanic}=await import(pathToFileURL(join(process.argv[3],'play/src/guest.js')));const mod=await WebAssembly.compile(readFileSync(process.argv[2]));const output={text:'',truncated:false};const {imports,bind}=guestImports(mod,output);const ins=await WebAssembly.instantiate(mod,imports);bind(ins);try{ins.exports.main();process.exitCode=3;}catch(e){if(ins.exports.panic_code.value!==1||describePanic(ins,e)!=='E_PANIC: integer overflow'||output.truncated||!output.text.endsWith('4611686018427387904\\n'))process.exitCode=4;else console.log('E_PANIC: integer overflow');}`);
+    const rr2=cc.status===0&&validProcess(cc)&&existsSync(artifact2)?invoke(process.execPath,[runner,artifact2,site],tmp):null;
+    negatives.push({name:'checked-overflow',source_blob:blob(readFileSync(overflow)),observation:rr2&&validProcess(rr2)&&rr2.status===0&&rr2.stdout==='E_PANIC: integer overflow\n'&&rr2.stderr===''?'MATCHED_NEGATIVE_ORACLE':'NEGATIVE_UNVERIFIED',artifact_sha256:existsSync(artifact2)?sha256(readFileSync(artifact2)):null,diagnostic:rr2?.stderr??cc.stderr});
+  }
+  for(const n of negatives)console.log('COMPARATOR_NEGATIVE '+JSON.stringify(n));
   pin(site,SITE_HEAD,SITE_TREE);pin(root,b.commit,b.tree);
   const summary={};for(const v of result)summary[v.observation]=(summary[v.observation]||0)+1;
-  console.log('COMPARATOR_PROBE '+JSON.stringify({schema:'atto.comparator.positive-probe.v1',backend:id,compiler_commit:b.commit,compiler_tree:b.tree,site_commit:SITE_HEAD,site_tree:SITE_TREE,node:process.version,summary,negative_coverage:'NOT_EXECUTED_BY_THIS_PROBE',certified_parity:false}));
+  console.log('COMPARATOR_PROBE '+JSON.stringify({schema:'atto.comparator.positive-probe.v1',backend:id,lane,compiler_commit:b.commit,compiler_tree:b.tree,site_commit:SITE_HEAD,site_tree:SITE_TREE,node:process.version,summary,negative_coverage:negatives.length?negatives:'NOT_EXECUTED_BY_THIS_PROBE',certified_parity:false}));
   // A failed or rejected positive is a gap, never a green parity job.
-  if(result.some(x=>x.observation!=='MATCHED_POSITIVE_ORACLE'))process.exitCode=1;
+  if(result.some(x=>x.observation!=='MATCHED_POSITIVE_ORACLE')||negatives.some(n=>n.observation!=='MATCHED_NEGATIVE_ORACLE'))process.exitCode=1;
 }finally{rmSync(tmp,{recursive:true,force:true});}
