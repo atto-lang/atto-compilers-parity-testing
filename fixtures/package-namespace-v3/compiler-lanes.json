@@ -57,6 +57,14 @@
       "tree": "8e5ab59457bd7ea2997ac0e8d2697d5d848f29c4",
       "adapter": "adapters/net/SharedNamespaceV3Net.cs",
       "scope": "adapted namespace source; NativeAOT"
+    },
+    {
+      "backend": "rs",
+      "repository": "atto-lang/atto-source.rs",
+      "head": "b1b02a0f67fd4408c1e4da63fdb99b6c59ec5f19",
+      "tree": "626a591360ad158179c5676804c3c0c8fc8bd052",
+      "adapter": "adapters/rust/shared_namespace_v3.rs",
+      "scope": "registry-adapted actual Wasm guest; not native namespace linker"
     }
   ],
   "bootstrap_pending": [
@@ -73,5 +81,5 @@
     "production C++ LLVM guest",
     "general signed HDL semantics"
   ],
-  "note": "Rust adapter retained in canonical tree; latest receipt and head must be verified before adding to pinned matrix. These pins identify candidates, not approvals or test results on this combined tree."
+  "note": "These pins identify exact candidate compiler trees, not approvals or test results on the combined fixture. The Java package identity child is deliberately tested against the shared fixture rather than assuming its external adversarial receipt transfers."
 }
