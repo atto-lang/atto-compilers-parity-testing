@@ -71,8 +71,8 @@ internal static class SharedNamespaceV3Net
         files["src/unit0.ores"]="namespace billing;\npub fnc function0(int x): int { return x; }\n";Check(Digest(files)==Abi,"ABI pin");
         var bad=Verify(Adapt(files));
         try{clientSession.Compile(billing,new[]{bad});throw new InvalidOperationException("ABI admitted");}
-        catch(FormatException e){Check(e.Message.Contains("arity",StringComparison.OrdinalIgnoreCase)||e.Message.StartsWith("E_ARITY:",StringComparison.Ordinal),"wrong ABI rejection "+e.Message);Console.WriteLine("V3_NET_ABI_REJECT|"+e.Message);}
-        try{semantic.Compile(billing,new[]{bad});throw new InvalidOperationException("semantic ABI admitted");}catch(FormatException e){Check(e.Message.Contains("arity",StringComparison.OrdinalIgnoreCase)||e.Message.StartsWith("E_ARITY:",StringComparison.Ordinal),"wrong semantic ABI rejection "+e.Message);}
+        catch(FormatException e){Check(e.Message.StartsWith("E_IMPORT_KIND: selected function must accept exact signed-int arguments and return int",StringComparison.Ordinal)||e.Message.StartsWith("E_ARITY:",StringComparison.Ordinal),"wrong ABI rejection "+e.Message);Console.WriteLine("V3_NET_ABI_REJECT|"+e.Message);}
+        try{semantic.Compile(billing,new[]{bad});throw new InvalidOperationException("semantic ABI admitted");}catch(FormatException e){Check(e.Message.StartsWith("E_IMPORT_KIND: selected function must accept exact signed-int arguments and return int",StringComparison.Ordinal)||e.Message.StartsWith("E_ARITY:",StringComparison.Ordinal),"wrong semantic ABI rejection "+e.Message);}
         var semRecovery=semantic.Compile(billing,new[]{p2});Check(semRecovery.ReparsedProviders.Count==0&&semRecovery.ReusedProviders.Count==3,"semantic rollback");
         Console.WriteLine("V3_NET_NAMESPACE_PARSE|cold=3/0|warm=0/3|edit=1/2|observer=0/3|rollback=0/3");
         var recovered=clientSession.Compile(billing,new[]{p2});Check(recovered.Reused&&recovered.Cil.AsSpan().SequenceEqual(edited.Cil),"rollback");
