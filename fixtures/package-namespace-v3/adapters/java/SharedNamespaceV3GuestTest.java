@@ -116,7 +116,7 @@ final class SharedNamespaceV3GuestTest {
         var denied=new IsolatePolicy(Set.of(),64L*1024*1024,64,java.time.Duration.ofSeconds(10));
         assertThrows(Exception.class,()->LinkedProgramRunner.run(entry,denied,ExecutionProfile.serverJit(),Set.of(),Map.of(),out,new ByteArrayOutputStream()));
         assertEquals(0,out.size());
-        var provider=root.resolve("checkout/src/unit0.ores"),saved=root.resolve("checkout/src/unit0.saved");
+        Path provider=root.resolve("checkout/src/unit0.ores"),saved=root.resolve("checkout/src/unit0.saved");
         Files.move(provider,saved);Files.createSymbolicLink(provider,saved);
         var symlink=assertThrows(Exception.class,()->run(root,"client"));
         assertTrue(symlink.getMessage().contains("symlinked snapshot path"),symlink.getMessage());
