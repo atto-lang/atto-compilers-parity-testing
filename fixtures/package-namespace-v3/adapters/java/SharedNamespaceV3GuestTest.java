@@ -128,6 +128,32 @@ final class SharedNamespaceV3GuestTest {
         var ambiguous=assertThrows(Exception.class,()->run(root,"client"));assertTrue(ambiguous.getMessage().contains("ambiguous"));
         System.out.println("V3_JAVA_FILE_PLAN|physical-ids|validate|stdout-denied|symlink-denied|traversal-denied|ambiguous-denied");
     }
+    private static String digest(String text)throws Exception{
+        return HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)));
+    }
+    private static void repin(Path root)throws Exception{
+        var inventory=new TreeMap<String,String>();
+        try(var stream=Files.list(root.resolve("checkout/src"))){
+            for(Path p:stream.toList())inventory.put("src/"+p.getFileName(),digest(Files.readString(p)));
+        }
+        var data=new StringBuilder();inventory.forEach((p,d)->data.append(p).append('\n').append(d).append('\n'));
+        String pin=digest(data.toString());var manifest=root.resolve("client/.ores.pkg.toml");
+        Files.writeString(manifest,Files.readString(manifest).replaceAll("sources_sha256 = \"[0-9a-f]{64}\"","sources_sha256 = \""+pin+"\""));
+    }
+    @Test void parameterizedNamespaceGuest()throws Exception{
+        Path root=fixture(),provider=root.resolve("checkout/src/unit0.ores"),entry=root.resolve("client/src/main.ores");
+        String original=Files.readString(entry);
+        Files.writeString(provider,"namespace billing;\npub fnc function0(int x, int y): int { return x * y + 2; }\n");repin(root);
+        Files.writeString(entry,original.replace("provider.function0()","provider.function0(5+5,4)"));
+        assertEquals(List.of("42","1","2","3"),run(root,"client"));
+        Files.writeString(entry,original);var arity=assertThrows(Exception.class,()->run(root,"client"));assertTrue(arity.getMessage().contains("E_NAMESPACE_ARITY"),arity.getMessage());
+        Files.writeString(entry,original.replace("provider.function0()","provider.function0(5+5,4)"));
+        Files.writeString(provider,"namespace billing;\npub fnc function0(int x, int y): int { return stdio.println(x); }\n");repin(root);
+        var effect=assertThrows(Exception.class,()->run(root,"client"));assertTrue(effect.getMessage().contains("closed integer expression required"),effect.getMessage());
+        Files.writeString(provider,"namespace billing;\npub fnc function0(int x, int y): int { return x * y + 3; }\n");repin(root);
+        assertEquals(List.of("43","1","2","3"),run(root,"client"));
+        System.out.println("V3_JAVA_PARAMETERIZED|guest=42/43|arity-denied|effect-denied|actual-arithmetic");
+    }
     @Test void stalePinRejectsBeforeGuest()throws Exception{
         Path root=fixture();var provider=root.resolve("checkout/src/unit0.ores");
         // Baseline success is mandatory: a generic unsupported failure is
