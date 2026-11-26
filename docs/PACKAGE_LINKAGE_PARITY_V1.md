@@ -92,3 +92,13 @@ JS #159 integrates #154 with both parents preserved. Six local exact checked-IR 
 Java #1887: 5/5 standalone JDK21 identity cases executed locally against exact source/test blobs, compiler integration and three JUnit regressions authored but not yet executed. .NET #280: checked exclusive-staging CIL publication and actual source-compiled tests authored, not executed locally (SDK absent); trusted parent assumption, not general special-file/hostile-filesystem or directory-durability proof. LLVM #918: exact repaired test script passes bash syntax; extracted wrapper executes real Clang/LLD off/full/thin and both forced failure paths (5/5); complete driver and actual compiler-backed tests not yet executed locally. Source CI for all three returned zero jobs.
 
 New carrier capacity verified on pal-trace-test/atto-ci run 45754627008 and mean-muffin-test/atto-ci run 45754650640 (one allocated runner, five successful steps each). Public exact-head five-backend recovery submitted at pal-trace-test/atto-ci#2, head faa1912f06334f2283f3082143f12f0cd429be64. Public anonymous fetch and exact source commit/tree verification on runner, no private tree transfer. No source guest pass until actual job and test receipts are available.
+
+## Restricted independent native module object milestone (L61–L63)
+
+| ID | Required behavior |
+|---|---|
+| L61 | Independently compile two actual scalar source modules to separate native objects with distinct stable qualified symbols; verify physical ABI, object type, defined and undefined symbol inventory before publication. |
+| L62 | Edit only one provider; relink with byte-identical second provider and consumer, compare edited and clean rebuild results, preserve old executable; measure actual artifact generation. |
+| L63 | Wrong symbol/arity, malformed source, and unsafe destination reject without overwriting valid prior artifacts; no authenticated package or general namespace ABI claim based on host-only consumer. |
+
+LLVM #918 full source AOT scope PASS at 863276be9a5ab0d88335cacac55557ff208ad6d2, tree 9d23e3a4d1f4af69920303ab45f513a4b705a225; mean-muffin-test/atto-ci run 45758417854 job 139702422845 runner 1000000067, 10 real native guest executions and 10 invalid/unsupported rejections, complete scoped IR auditor and host harness. New stacked LLVM #951 at 95a77323204525dc853ad676ed1ffc0b5e0ab2a9 implements restricted i64() module-object emission from actual compiler IR with native C consumer. Run 45762731599 job 139716270205 admitted; exact public source tree verified; final test outcome pending. This is an independent module provider stage, not general namespace resolution, language consumer code generation, authenticated persistent cache or other backend parity.
