@@ -102,3 +102,19 @@ New carrier capacity verified on pal-trace-test/atto-ci run 45754627008 and mean
 | L63 | Wrong symbol/arity, malformed source, and unsafe destination reject without overwriting valid prior artifacts; no authenticated package or general namespace ABI claim based on host-only consumer. |
 
 LLVM #918 full source AOT scope PASS at 863276be9a5ab0d88335cacac55557ff208ad6d2, tree 9d23e3a4d1f4af69920303ab45f513a4b705a225; mean-muffin-test/atto-ci run 45758417854 job 139702422845 runner 1000000067, 10 real native guest executions and 10 invalid/unsupported rejections, complete scoped IR auditor and host harness. New stacked LLVM #951 at 95a77323204525dc853ad676ed1ffc0b5e0ab2a9 implements restricted i64() module-object emission from actual compiler IR with native C consumer. Run 45762731599 job 139716270205 admitted; exact public source tree verified; final test outcome pending. This is an independent module provider stage, not general namespace resolution, language consumer code generation, authenticated persistent cache or other backend parity.
+
+## Independent compiler-verified namespace consumers (L64–L70)
+
+All eleven target adapters (java, llvm, net, rs, wasm, js, forge, cranelift, hdl, atto, realtime) must record per-scenario, per-profile execution evidence. These are acceptance requirements, not completed implementations.
+
+| ID | Required behavior |
+|---|---|
+| L64 | Compile a real Atto namespace consumer against two independently generated compiler-verified public interfaces, with provider implementation sources absent; no hand-authored stub body or host-language consumer substitution. |
+| L65 | Independently emit each provider and consumer target artifact; prove exact imported physical ABI and unique qualified bindings, then link and execute 42. |
+| L66 | Cold build emits three artifacts; no-op emits none; body-only provider edit emits one and relinks to 43, with byte-identical other artifacts; compare with clean rebuild. |
+| L67 | Changed export arity, type, calling convention, visibility, logical namespace or target ABI invalidates affected consumers; stale consumer and forged interface fail closed. |
+| L68 | Missing, extra, duplicate, corrupted or wrong-target object/interface rejected before final execution; preserve prior artifact on failed admission. |
+| L69 | Source alias (including hardlink), symlink, directory and FIFO destinations reject without mutation; relink from admitted artifacts after provider source removal. |
+| L70 | Run O0/O2 or target-equivalent debug/release and record actual compiler invocation counters, artifact hashes, guest outputs, exact source tree and negative diagnostics; host-only checks and unsupported profiles remain separate. |
+
+LLVM prior head 95a77323204525dc853ad676ed1ffc0b5e0ab2a9 passed the scoped C-consumer provider workflow (run 45762731599/job 139716270205). New head 47930cf80c33682fde3892787a0b37e82317330c adds L69 regressions and exact receipt checks; execution pending. Existing native namespace graph and .oresi admission are metadata/host gates and do not authorize executable namespace imports. No L64–L68 source-consumer certification. NET #280 b1b8d3b46150cdf58bc9a6feb3b88c232b34931b repairs a stale local Pair fixture without relaxing the core identity gate; retry 45854746957 pending. Rust #521 exact-head scoped 31/31 run 45852161756/job 140021039922; not separate-object codegen. All new applicable cells NOT_EXECUTED until actual target receipts arrive.
