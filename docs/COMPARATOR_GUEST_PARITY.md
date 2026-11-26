@@ -14,3 +14,7 @@ Java JVM and Native Image are separate `java` and `java-aot` lanes (JDK classpat
 ## Third wave
 
 Rust completed all 33 positive and both exact negative cases on the reviewed source snapshot in [run 45733832607](https://github.com/declarative-migrations/atto-ci/actions/runs/45733832607/job/139622152383). Java JVM built and attempted all 33; 27 rejected, six executions remained unverified due to host stderr. The new strictly pinned JDK warning classifier records the exact four-line Truffle Unsafe warning as host evidence; every other stderr byte remains a guest-oracle blocker. No JVM security flag is changed. The `js-candidate` lane pins JS PR #161 separately from the baseline and grants bounded stdout only to the function-pipeline source. Re-execute all 33; do not infer a pass from a narrower regression suite.
+
+## Integrated .NET candidate replay
+
+`net-candidate` and `net-aot-candidate` are separate exact-tree lanes for .NET #16 (2ac98a727ee8906fd174514d25cf2b7dc2a9e311). The three source-native suite jobs passed, including exact comparator pipeline return/stdout on both runtimes. Run the complete 33 unchanged cases for updated coverage; do not carry forward baseline counts or infer full parity. The source snapshot and original baseline remain immutable.

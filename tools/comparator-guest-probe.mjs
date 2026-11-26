@@ -10,8 +10,8 @@ import {classifyJvmStderr} from './comparator-jvm-stderr.mjs';
 const SITE_HEAD='b8b22a955fa8d4f4018734f1ecb5758773a00f64';
 const SITE_TREE='359accbbf1564de2dd359b93d8b2a6439d8c1211';
 const [lane,siteArg,compilerArg]=process.argv.slice(2);
-const id=lane==='java-aot'?'java':lane==='net-aot'?'net':lane==='js-candidate'?'js':lane;
-assert.ok(['rs','js','js-candidate','llvm','forge','cranelift','java','java-aot','net','net-aot'].includes(lane),'explicit supported probe profile required');
+const id=lane==='java-aot'?'java':['net-aot','net-candidate','net-aot-candidate'].includes(lane)?'net':lane==='js-candidate'?'js':lane;
+assert.ok(['rs','js','js-candidate','llvm','forge','cranelift','java','java-aot','net','net-aot','net-candidate','net-aot-candidate'].includes(lane),'explicit supported probe profile required');
 const site=resolve(siteArg), root=resolve(compilerArg);
 const sha256=b=>createHash('sha256').update(b).digest('hex');
 const blob=b=>createHash('sha1').update('blob '+b.length+'\0').update(b).digest('hex');
@@ -25,7 +25,8 @@ pin(site,SITE_HEAD,SITE_TREE);
 const m=JSON.parse(readFileSync(join(site,'comparisons/parity-candidates.json'),'utf8'));
 assert.equal(m.schema,'atto.comparator.parity-candidates.v1');
 const baseline=m.backends.find(x=>x.id===id);assert.ok(baseline);
-const b=lane==='js-candidate'?{...baseline,commit:'19e6662fa3ce922799f398f10d04784a31f7d3bb',tree:'992155ee72fe654517ea8cad6a2e4b8f42ed7e11'}:baseline;
+const b=lane==='js-candidate'?{...baseline,commit:'19e6662fa3ce922799f398f10d04784a31f7d3bb',tree:'992155ee72fe654517ea8cad6a2e4b8f42ed7e11'}:['net-candidate','net-aot-candidate'].includes(lane)?{...baseline,commit:'2ac98a727ee8906fd174514d25cf2b7dc2a9e311',tree:'d7bd024a51f68b7ab8c62ffb74e353c23e3bf8a3'}:baseline;
+const netAot=['net-aot','net-aot-candidate'].includes(lane);
 pin(root,b.commit,b.tree);
 assert.equal(m.cases.length,33);
 const cases=m.cases.map(c=>{
@@ -81,14 +82,14 @@ try{
       else{
         const cilSha=sha256(readFileSync(netGuest));
         const dir=join(tmp,c.name+'-host');
-        const buildArgs=lane==='net-aot'?['publish',netHost,'-c','Release','-r','linux-x64','-p:PublishAot=true','--self-contained','true','-o',dir]:['build',netHost,'-c','Release','--no-incremental','-o',dir];
+        const buildArgs=netAot?['publish',netHost,'-c','Release','-r','linux-x64','-p:PublishAot=true','--self-contained','true','-o',dir]:['build',netHost,'-c','Release','--no-incremental','-o',dir];
         const build=invoke('dotnet',buildArgs,root);
-        const host=join(dir,lane==='net-aot'?'Atto.Cil.Guest.Host':'Atto.Cil.Guest.Host.dll');
+        const host=join(dir,netAot?'Atto.Cil.Guest.Host':'Atto.Cil.Guest.Host.dll');
         if(build.status!==0||!validProcess(build)||!existsSync(host))o={observation:'HOST_BUILD_FAILED',status:build.status,diagnostic:(build.stderr+' '+build.stdout).slice(-1200),cil_sha256:cilSha};
         else{
-          const run=lane==='net-aot'?invoke(host,[],tmp):invoke('dotnet',[host],tmp);
+          const run=netAot?invoke(host,[],tmp):invoke('dotnet',[host],tmp);
           assert.equal(sha256(readFileSync(netGuest)),cilSha);
-          o=exitObservation(c,run,host,{cil_sha256:cilSha,execution:lane==='net-aot'?'native_aot':'coreclr'});
+          o=exitObservation(c,run,host,{cil_sha256:cilSha,execution:netAot?'native_aot':'coreclr'});
         }
       }
       rmSync(netGuest,{force:true});
