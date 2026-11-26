@@ -5,7 +5,7 @@ import {readFileSync,readdirSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs
 import {spawnSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {LlvmV3Adapter as Session} from './native-session.mjs';
+import {LlvmV3Adapter as Session, orderedProviderCalls} from './native-session.mjs';
 const root=process.env.ATTO_V3_FIXTURE;
 const read=p=>readFileSync(join(root,p),'utf8');
 const oracle=JSON.parse(read('fixture.json'));
@@ -64,4 +64,34 @@ test('reject unlisted, foreign, private, removed, forged and invalid compiler li
  assert.throws(()=>c.build(repin('client',overflow)),/native compiler\/link:/);
  const recovered=c.build(args('client'));assert.equal(recovered.code,accepted.code);assert.deepEqual(counts(recovered),[0,12,0,4,0]);assert.deepEqual(await guest(recovered),oracle.lanes.cold.billing);
  console.log('V3_LLVM_NATIVE_NEGATIVES|unlisted|removed|foreign|unnamespaced|private|forged|compiler-overflow|rollback');
+});
+
+test('parameterized native provider and compiler-built argument helpers',async()=>{
+ const c=new Session(),o=new Session(),original=read('client/src/main.ores');
+ const consumer=original.replace('provider.function0()','provider.function0(5+5,4)');
+ const changed=new Map(files);changed.set('src/unit0.ores','namespace billing;\npub fnc function0(int x, int y): int { return x * y + 2; }\n');
+ const cold=c.build(repin('client',changed,consumer)),observer=o.build(repin('observer',changed));
+ assert.deepEqual(await guest(cold),['42','1','2','3']);assert.deepEqual(await guest(observer),['4','5','6']);
+ assert.deepEqual(counts(cold),[12,0,4,0,1]);assert.equal(cold.argumentCompiled,2);
+ const warm=c.build(repin('client',changed,consumer));assert.deepEqual(counts(warm),[0,12,0,4,0]);assert.equal(warm.argumentReused,2);
+ const argEdit=c.build(repin('client',changed,consumer.replace('5+5','5+6')));assert.deepEqual(await guest(argEdit),['46','1','2','3']);
+ assert.deepEqual(counts(argEdit),[0,12,0,4,1]);assert.equal(argEdit.argumentCompiled,1);assert.equal(argEdit.argumentReused,1);
+ const body=new Map(changed);body.set('src/unit0.ores',changed.get('src/unit0.ores').replace('+ 2','+ 3'));
+ const edit=c.build(repin('client',body,consumer));assert.deepEqual(await guest(edit),['43','1','2','3']);assert.deepEqual(counts(edit),[1,11,1,3,1]);
+ const untouched=o.build(repin('observer',body));assert.equal(untouched.code,observer.code);assert.deepEqual(counts(untouched),[1,11,0,3,0]);
+ assert.equal(new Session().build(repin('client',body,consumer)).code,edit.code);
+ assert.throws(()=>c.build(repin('client',body,original)),/E_NAMESPACE_ARITY/);
+ assert.throws(()=>c.build(repin('client',body,consumer.replace('5+5','stdio.println(5)'))),/E_NAMESPACE_PROFILE/);
+ const recovered=c.build(repin('client',body,consumer));assert.equal(recovered.code,edit.code);assert.deepEqual(counts(recovered),[0,12,0,4,0]);assert.equal(recovered.argumentReused,2);
+ console.log('V3_LLVM_NATIVE_PARAMETERIZED|guest=42/46/43|native-provider-abi|compiler-built-argument-objects|argument-only-provider-reuse|observer-byte-stable|rollback');
+});
+
+test('native host argument evaluation is explicitly sequenced',()=>{
+ const actual=orderedProviderCalls([{symbol:'f',args:['arg0','arg1']},{symbol:'g',args:[]}]);
+ assert.equal(actual,[
+  'int64_t v_0_0=argument_arg0();',
+  'int64_t v_0_1=argument_arg1();',
+  'printf("%" PRId64 "\\n",provider_f(v_0_0,v_0_1));',
+  'printf("%" PRId64 "\\n",provider_g());'
+ ].join('\n'));
 });
