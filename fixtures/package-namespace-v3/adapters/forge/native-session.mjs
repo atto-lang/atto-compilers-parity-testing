@@ -15,24 +15,28 @@ function scratch(fn){
  const d=mkdtempSync(join(tmpdir(),'forge-v3-'));
  try{return fn(d)}finally{rmSync(d,{recursive:true,force:true})}
 }
-function compile(source,ns,symbol){
+function compile(source,ns,symbol,arity,prefix='provider_'){
  return scratch(d=>{
-  const assembly=run(process.env.ATTO_FORGE_DRIVER,[ns,symbol],source);
+  const assembly=run(process.env.ATTO_FORGE_DRIVER,[ns,symbol,String(arity)],source);
   const raw=join(d,'raw.o'),out=join(d,'provider.o');
   run('cc',['-x','assembler','-c','-','-o',raw],assembly);
-  run('objcopy',['--redefine-sym','oresforge_entry=provider_'+symbol,raw,out]);
+  run('objcopy',['--redefine-sym','oresforge_entry='+prefix+symbol,raw,out]);
   return readFileSync(out).toString('base64');
  });
 }
-function link(symbols,exports){
+function link(calls,exports,argumentsByName){
  return scratch(d=>{
-  const unique=[...new Set(symbols)],objects=[];
+  const unique=[...new Set(calls.map(c=>c.symbol))],objects=[];
   for(const symbol of unique){
-   const p=join(d,'provider_'+symbol+'.o');writeFileSync(p,Buffer.from(exports.get(symbol),'base64'));objects.push(p);
+   const p=join(d,'provider_'+symbol+'.o');writeFileSync(p,Buffer.from(exports.get(symbol).code,'base64'));objects.push(p);
+  }
+  for(const [symbol,entry] of argumentsByName){
+   const p=join(d,'argument_'+symbol+'.o');writeFileSync(p,Buffer.from(entry.code,'base64'));objects.push(p);
   }
   const host='#include <stdint.h>\n#include <inttypes.h>\n#include <stdio.h>\n'+
-    unique.map(s=>'extern int64_t provider_'+s+'(void);').join('\n')+
-    '\nint main(void){\n'+symbols.map(s=>'printf("%" PRId64 "\\n",provider_'+s+'());').join('\n')+'\nreturn 0;\n}\n';
+    unique.map(s=>'extern int64_t provider_'+s+'('+ (Array(exports.get(s).info.arity).fill('int64_t').join(',')||'void')+');').join('\n')+
+    '\n'+[...argumentsByName.keys()].map(s=>'extern int64_t argument_'+s+'(void);').join('\n')+
+    '\nint main(void){\n'+calls.map(c=>'printf("%" PRId64 "\\n",provider_'+c.symbol+'('+c.args.map(a=>'argument_'+a+'()').join(',')+'));').join('\n')+'\nreturn 0;\n}\n';
   const obj=join(d,'host.o'),exe=join(d,'guest');
   run('cc',['-x','c','-c','-','-o',obj],host);
   run('cc',['-Wl,--build-id=none',obj,...objects,'-o',exe]);
@@ -69,26 +73,30 @@ function consumerManifest(s){
 }
 function classify(source){
   const m=exactMatch(new RegExp('^(?:namespace ('+namespace+');\\n)?(pub fnc ('+name+')\\(([^\\n()]*)\\): int \\{ return ([^\\n{};]+); \\})\\n$'),source);
-  if(m[4]!=='')throw Error('E_NAMESPACE_ARITY: zero-argument provider required');
-  if(!/^-?(?:0|[1-9][0-9]{0,18})$/.test(m[5]))deny('integer literal provider required');
-  return {namespace:m[1]??null,declaration:m[2],symbol:m[3]};
+  const params=m[4]===''?[]:m[4].split(', ');
+  if(params.length>4)throw Error('E_NAMESPACE_ARITY: runtime parameter budget');
+  if(params.some(p=>!new RegExp('^int '+name+'$').test(p))||new Set(params).size!==params.length)deny('exact integer parameters required');
+  if(!/^[A-Za-z_0-9+*() -]{1,1024}$/.test(m[5]))deny('closed integer expression required');
+  return {namespace:m[1]??null,declaration:m[2],symbol:m[3],arity:params.length};
 }
 function consumerSource(source){
   bounded(source,65536);
   const m=exactMatch(new RegExp('^namespace '+namespace+';\\nimport namespace ('+namespace+') as ('+name+') from "('+name+')";\\npub fnc main\\(\\): void \\{\\n([\\s\\S]*)  return;\\n\\}\\n$'),source);
-  const calls=m[4].split('\n');
-  if(calls.pop()!==''||!calls.length||calls.length>128)deny('consumer calls');
-  const symbols=calls.map(line=>{
-    const x=exactMatch(new RegExp('^  stdio\\.println\\(('+name+')\\.('+name+')\\(\\)\\);$'),line);
+  const lines=m[4].split('\n');
+  if(lines.pop()!==''||!lines.length||lines.length>128)deny('consumer calls');
+  const calls=lines.map(line=>{
+    const x=exactMatch(new RegExp('^  stdio\\.println\\(('+name+')\\.('+name+')\\(([^;{}\\n]*)\\)\\);$'),line);
     if(x[1]!==m[2])deny('foreign alias');
-    return x[2];
+    const args=x[3]===''?[]:x[3].split(',');
+    if(args.length>4||args.some(a=>!a.trim()||a.length>1024||!/^[0-9+*() -]+$/.test(a)))deny('closed integer argument required');
+    return {symbol:x[2],args};
   });
-  return {namespace:m[1],alias:m[3],symbols};
+  return {namespace:m[1],alias:m[3],calls};
 }
 
 
 export class ForgeV3Adapter {
-  #prior=new Map();#domain=null;#linked=null;#linkKey=null;
+  #prior=new Map();#domain=null;#linked=null;#linkKey=null;#args=new Map();
   build({consumer,consumerManifest:cm,providerManifest:pm,sources}={}){
     const dep=consumerManifest(cm),pkg=providerManifest(pm),selector=consumerSource(consumer);
     if(dep.alias!==selector.alias||dep.packageName!==pkg.packageName||sha(pm)!==dep.manifestPin)deny('manifest pin or identity mismatch');
@@ -114,18 +122,34 @@ export class ForgeV3Adapter {
         if(exports.has(entry.info.symbol))deny('duplicate selected symbol');
         // Actual Atto scalar compiler, not a host evaluator. Stage output
         // before updating any memo; failed validation cannot publish it.
-        if(entry.code===null){entry={...entry,code:compile(source,entry.info.namespace,entry.info.symbol)};compiled++;}
+        if(entry.code===null){entry={...entry,code:compile(source,entry.info.namespace,entry.info.symbol,entry.info.arity)};compiled++;}
         else artifactReused++;
-        exports.set(entry.info.symbol,entry.code);
+        exports.set(entry.info.symbol,entry);
       }
       next.set(p,entry);
     }
-    for(const symbol of selector.symbols)if(!exports.has(symbol))throw Error('E_NAMESPACE_SYMBOL: unavailable selected public symbol '+symbol);
-    const key=sha(JSON.stringify(selector.symbols.map(s=>[s,exports.get(s)])));
+    let argumentCompiled=0,argumentReused=0;
+    const nextArgs=new Map(),calls=[];
+    for(const {symbol,args} of selector.calls){
+      if(!exports.has(symbol))throw Error('E_NAMESPACE_SYMBOL: unavailable selected public symbol '+symbol);
+      if(args.length!==exports.get(symbol).info.arity)throw Error('E_NAMESPACE_ARITY: incompatible selected call');
+      const names=args.map(expr=>{
+        const name='arg'+nextArgs.size;
+        let entry=domain===this.#domain?this.#args.get(name):null;
+        if(entry?.expr===expr)argumentReused++;
+        else{
+          entry={expr,code:compile('namespace '+selector.namespace+';\npub fnc '+name+'(): int { return '+expr+'; }\n',selector.namespace,name,0,'argument_')};
+          argumentCompiled++;
+        }
+        nextArgs.set(name,entry);return name;
+      });
+      calls.push({symbol,args:names});
+    }
+    const key=sha(JSON.stringify([calls,calls.map(c=>[c.symbol,exports.get(c.symbol).code]),[...nextArgs]]));
     const hit=domain===this.#domain&&key===this.#linkKey;
-    const code=hit?this.#linked:link(selector.symbols,exports);
+    const code=hit?this.#linked:link(calls,exports,nextArgs);
     const relinked=hit?0:1;
-    this.#domain=domain;this.#prior=next;this.#linked=code;this.#linkKey=key;
-    return {code,classified,classificationReused,compiled,artifactReused,relinked,domain};
+    this.#domain=domain;this.#prior=next;this.#linked=code;this.#linkKey=key;this.#args=nextArgs;
+    return {code,classified,classificationReused,compiled,artifactReused,relinked,domain,argumentCompiled,argumentReused};
   }
 }
