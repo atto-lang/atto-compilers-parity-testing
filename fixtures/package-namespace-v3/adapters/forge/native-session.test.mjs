@@ -5,7 +5,7 @@ import {readFileSync,readdirSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs
 import {spawnSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {ForgeV3Adapter as Session} from './native-session.mjs';
+import {ForgeV3Adapter as Session, orderedProviderCalls} from './native-session.mjs';
 const root=process.env.ATTO_V3_FIXTURE;
 const read=p=>readFileSync(join(root,p),'utf8');
 const oracle=JSON.parse(read('fixture.json'));
@@ -84,4 +84,14 @@ test('parameterized native provider and compiler-built argument helpers',async()
  assert.throws(()=>c.build(repin('client',body,consumer.replace('5+5','stdio.println(5)'))),/E_NAMESPACE_PROFILE/);
  const recovered=c.build(repin('client',body,consumer));assert.equal(recovered.code,edit.code);assert.deepEqual(counts(recovered),[0,12,0,4,0]);assert.equal(recovered.argumentReused,2);
  console.log('V3_FORGE_PARAMETERIZED|guest=42/46/43|native-provider-abi|compiler-built-argument-objects|argument-only-provider-reuse|observer-byte-stable|rollback');
+});
+
+test('native host argument evaluation is explicitly sequenced',()=>{
+ const actual=orderedProviderCalls([{symbol:'f',args:['arg0','arg1']},{symbol:'g',args:[]}]);
+ assert.equal(actual,[
+  'int64_t v_0_0=argument_arg0();',
+  'int64_t v_0_1=argument_arg1();',
+  'printf("%" PRId64 "\\n",provider_f(v_0_0,v_0_1));',
+  'printf("%" PRId64 "\\n",provider_g());'
+ ].join('\n'));
 });
