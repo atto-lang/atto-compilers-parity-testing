@@ -80,3 +80,15 @@ JS #154: executed 6/6 Node 22.16.0 real filesystem/cache tests on exact store, t
 | L57 | Explicit empty linkage mode is invalid, unlike omitted mode; reject before compiler invocation or output mutation. Actual toolchain final-link assertion and separate-object guest checks must execute. |
 
 JS #159 integrates #154 with both parents preserved. Six local exact checked-IR emitter regression tests execute generated ESM and pass; constructed typed IR, NOT full source frontend. Persistent graph cache and full source consumer session tests authored, NOT_EXECUTED. Namespace slots are caller-selected scalar source-unit identities, not general Atto namespace lowering. LLVM #918 fixes explicit empty mode and corrupted off-LTO test assertion; local six admission-prefix cases pass; full native driver/compiler execution NOT_EXECUTED. All applicable backend cells need independent actual compiler evidence; no blanket parity claim.
+
+## Metadata identity and native publication audit (L58–L60)
+
+| ID | Required behavior |
+|---|---|
+| L58 | Structured package and namespace identities distinguish separator-bearing logical paths; strict source encoding rejects malformed input before cache reuse; canonical ABI digests ignore member ordering and change on interface or membership changes. |
+| L59 | Atomic compiled artifact publication owns exclusively created staging, rejects directory and symlink/reparse destinations and preserves their targets; failed publication cannot overwrite prior output. Qualify platform-specific constraints. |
+| L60 | Actual native final-link command carries the requested LTO flags; synthetic probe success alone cannot certify final link, and forced probe failure preserves previous output. |
+
+Java #1887: 5/5 standalone JDK21 identity cases executed locally against exact source/test blobs, compiler integration and three JUnit regressions authored but not yet executed. .NET #280: checked exclusive-staging CIL publication and actual source-compiled tests authored, not executed locally (SDK absent); trusted parent assumption, not general special-file/hostile-filesystem or directory-durability proof. LLVM #918: exact repaired test script passes bash syntax; extracted wrapper executes real Clang/LLD off/full/thin and both forced failure paths (5/5); complete driver and actual compiler-backed tests not yet executed locally. Source CI for all three returned zero jobs.
+
+New carrier capacity verified on pal-trace-test/atto-ci run 45754627008 and mean-muffin-test/atto-ci run 45754650640 (one allocated runner, five successful steps each). Public exact-head five-backend recovery submitted at pal-trace-test/atto-ci#2, head faa1912f06334f2283f3082143f12f0cd429be64. Public anonymous fetch and exact source commit/tree verification on runner, no private tree transfer. No source guest pass until actual job and test receipts are available.
