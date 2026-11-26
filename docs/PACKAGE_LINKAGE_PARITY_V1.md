@@ -22,3 +22,20 @@ L07 no-op warm zero recompilation; L08 compatible body edit (static relink, dyna
 
 ## Receipt requirements
 Compiler commit and root tree, each fixture digest, target, compiler/runtime toolchain, optimization/link/execution profiles, actual emitted artifact hashes, link dependency inspection, compile/relink/reuse counters, executed command exits and outputs, negative diagnostics and no artifact publication, runner allocation and executed steps. Record PASSED/FAILED/UNSUPPORTED/NOT_EXECUTED independently for each scenario/profile/target. Missing evidence never maps to PASSED. Do not bypass source-export policy or branch protections. Shared host canaries are separate receipts.
+
+## Direct multi-provider fixture (L30–L37)
+
+Executable adapter target: two independently compiled provider units, each exposing `value(): int`, and a consumer that binds their exported functions as distinct aliases. For explicit build-table adapters, use `cart@1 -> cart` and `tax@1 -> tax`; these are fixture logical identities, not a new normative package-import syntax or a signed identity. Initial values 40 + 2 produce 42. Replace cart with 41 (same interface), retain the exact consumer artifact and tax artifact, and obtain 43 from a new bound consumer; on dynamic generation-capable targets the original bound consumer still returns 42.
+
+| ID | Required behavior |
+|---|---|
+| L30 | Independently compiled providers with identical export names, explicitly distinct aliases, execute 42. |
+| L31 | Reorder dependency inventory; canonical dependency-plan identity and consumer artifact remain unchanged. |
+| L32 | Change one provider body; new consumer binding executes 43; unrelated provider and consumer artifacts unchanged. |
+| L33 | Duplicate dependency identity or alias, missing/extra provider, and unknown export fail closed. |
+| L34 | Provider ABI and logical identity changes invalidate the dependency plan; reject stale consumer. |
+| L35 | Tamper second provider bytes; all declared providers must pass admission before any trusted initializer executes. |
+| L36 | Wrong imported parameter signature rejected even with recomputed candidate manifest digest. |
+| L37 | Consumer artifact corruption rejected before provider access. |
+
+JS #159 implements a bounded direct-provider scalar adapter (wrapping-i64 provisional); 6 new synthetic ESM runtime tests passed locally, combined runtime suite 23/23; **actual independently compiled Atto guest tests NOT_EXECUTED**. No general transitive initialization, unload, actor upgrades or cryptographic package provenance established. For static-only targets L32 requires relink using reused consumer object, not live loading; L35 applies to artifact admission before executing a linked guest. For HDL use static elaboration and reject runtime-only features. Every applicable backend still requires actual compiler-backed evidence; do not copy JS host-only pass status into other cells.
