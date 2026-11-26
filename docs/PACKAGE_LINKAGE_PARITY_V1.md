@@ -54,3 +54,18 @@ JS #159 implements a bounded direct-provider scalar adapter (wrapping-i64 provis
 | L45 | Cache byte-budget eviction and oversize non-retention preserve cold/warm semantic equivalence. |
 
 JS #159: 7 planner and 4 runtime synthetic ESM cases executed locally, total 34/34 runtime/planner regressions. Exact leaf/body and intermediate artifact pins, no cryptographic registry provenance, namespace-specific initialization state or unload claim. Actual Atto compiler-backed transitive guests remain NOT_EXECUTED. Rust #521 adds retained payload byte budget (default 16 MiB, configurable maximum 64 MiB) and two compiler regression tests, NOT_EXECUTED until Cargo runner. This is a retention budget, not a bound on process memory. All eleven compiler adapters require independent source-backed execution; static-only targets prove relink/reuse instead of live replacement.
+
+## Persistent source-unit artifact store (L46–L53)
+
+| ID | Required behavior |
+|---|---|
+| L46 | Cold compilation and warm authenticated artifact reuse emit byte-identical guest output. |
+| L47 | Process restart reuses an independently pinned compiler artifact without compiler invocation. |
+| L48 | Compiler closure, target, toolchain, source, semantic configuration or package identity change invalidates the cache key. |
+| L49 | Authenticated receipt corruption, stale ledger epoch and wrong trusted key reject; no execution from unverified bytes. |
+| L50 | Failed compilation and oversized artifact publication preserve last committed artifact. |
+| L51 | Concurrent publishers expose only complete authenticated snapshots; contention never steals live staging. |
+| L52 | Bounded committed/staging storage and explicit abandoned-stage recovery; reject symlink/hardlink/root replacement. |
+| L53 | Independent namespace edits preserve unaffected namespace cache entries and generated artifacts; require actual per-unit compiler counters, not a whole-program cache hit. |
+
+JS #154: executed 6/6 Node 22.16.0 real filesystem/cache tests on exact store, test and receipt blobs; two concurrent processes and 256 publications included. Trusted Linux directory, 16 direct-mapped committed slots and 16 fixed staging names (128 MiB plus envelopes), offline stale cleanup. Actual closed scalar source-unit compiler integration and process-restart test authored, NOT_EXECUTED; not yet true namespace-selective code generation. All applicable atto-source.* compiler adapters must prove L46–L53 independently. HDL/realtime require target-appropriate static artifact and determinism receipts. No host-only pass propagated to guest cells.
