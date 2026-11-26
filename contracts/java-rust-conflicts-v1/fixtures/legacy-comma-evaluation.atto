@@ -1,0 +1,12 @@
+// OBSERVATION ONLY: legacy comma condition is eager in Rust but short-circuit in Java.
+fnc side_effect() -> bool {
+    stdio.println(99);
+    return true;
+}
+pub fnc main() -> int {
+    if false , side_effect() then
+        return 1;
+    fi
+    stdio.println(42);
+    return 0;
+}

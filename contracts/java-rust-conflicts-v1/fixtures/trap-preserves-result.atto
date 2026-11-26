@@ -1,0 +1,11 @@
+// trap must preserve the outer Result, not invent Option or nested Result.
+fnc checked_value() -> Result<int, Error> {
+    return Ok(42);
+}
+pub fnc main() -> int {
+    val result: Result<int, Error> = trap checked_value();
+    match result over
+        on Ok(value) -> { return value; }
+        on Err(_) -> { return 1; }
+    end
+}

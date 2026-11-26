@@ -1,0 +1,11 @@
+// Only an ordinary source throw may become Err(original Error).
+fnc fail() -> int throws Error {
+    throw Error("source error");
+}
+pub fnc main() -> int {
+    val result: Result<int, Error> = trap fail();
+    match result over
+        on Err(_) -> { return 42; }
+        on Ok(_) -> { return 1; }
+    end
+}

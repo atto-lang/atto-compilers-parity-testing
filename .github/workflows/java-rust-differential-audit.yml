@@ -1,0 +1,76 @@
+name: Java Rust differential candidate audit (not guest)
+on:
+  push:
+    branches:
+      - "feat/java-rust-semantic-differential-v1-20261120"
+    paths:
+      - "contracts/java-rust-conflicts-v1/**"
+      - "tools/run-java-rust-differential.mjs"
+      - "tools/java-rust-observation-policy.mjs"
+      - "tests/java-rust-*.test.mjs"
+      - "tools/guest/**"
+      - "tests/run-wasm-i64.test.mjs"
+      - "tests/validate-wasm-adapter.test.mjs"
+      - "tests/validate-native-adapter.test.mjs"
+      - "docs/JAVA_RUST_DIFFERENTIAL_V1.md"
+      - ".github/workflows/java-rust-differential-audit.yml"
+  pull_request:
+    paths:
+      - "contracts/java-rust-conflicts-v1/**"
+      - "tools/run-java-rust-differential.mjs"
+      - "tests/java-rust-*.test.mjs"
+      - "tools/guest/**"
+      - "tests/run-wasm-i64.test.mjs"
+      - "tests/validate-wasm-adapter.test.mjs"
+      - "tools/java-rust-observation-policy.mjs"
+      - "docs/JAVA_RUST_DIFFERENTIAL_V1.md"
+      - ".github/workflows/java-rust-differential-audit.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  metadata-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact PR head, no persistent credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Assert exact head/tree and tracked candidate blobs
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          echo "head=$(git rev-parse HEAD)"
+          echo "tree=$(git rev-parse 'HEAD^{tree}')"
+          test -z "$(git status --porcelain)"
+          while IFS= read -r -d '' f; do
+            test ! -L "$f"
+            test "$(git hash-object "$f")" = "$(git rev-parse "HEAD:$f")"
+          done < <(git ls-files -z -- contracts/java-rust-conflicts-v1 tools/run-java-rust-differential.mjs tools/java-rust-observation-policy.mjs tests/java-rust-differential.test.mjs tests/java-rust-observation-policy.test.mjs docs/JAVA_RUST_DIFFERENTIAL_V1.md tools/guest/run-wasm-i64.mjs tools/guest/validate-wasm-adapter.mjs tests/run-wasm-i64.test.mjs tests/validate-wasm-adapter.test.mjs tools/guest/validate-native-adapter.mjs tests/validate-native-adapter.test.mjs .github/workflows/java-rust-differential-audit.yml)
+      - name: Setup Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Test source-only differential manifest and hostile adapters
+        run: node --test tests/java-rust-differential.test.mjs
+      - name: Test adversarial observation classification (not a guest)
+        run: node --test tests/java-rust-observation-policy.test.mjs
+      - name: Test source-free strict WebAssembly guest host and pinned argv
+        run: node --test tests/run-wasm-i64.test.mjs tests/validate-wasm-adapter.test.mjs
+      - name: Test source-free native ELF/link/sandbox admission
+        run: node --test tests/validate-native-adapter.test.mjs
+      - name: Assert thirty untouched NOT_EXECUTED cells
+        run: |
+          node tools/run-java-rust-differential.mjs --audit > /tmp/atto-java-rust-audit.json
+          node --input-type=module - <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const d=JSON.parse(readFileSync('/tmp/atto-java-rust-audit.json','utf8'));
+          if(d.cases!==10||d.records.length!==30||d.guest_parity_certified!==false||d.mode!=='METADATA_ONLY') process.exit(1);
+          if(!d.records.every(r=>r.status==='NOT_EXECUTED'&&r.guest_executed===false&&r.executed_steps===0&&r.provenance===null)) process.exit(1);
+          console.log('30 candidates NOT_EXECUTED; no guest parity claim');
+          NODE

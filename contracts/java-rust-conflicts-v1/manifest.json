@@ -1,0 +1,378 @@
+{
+  "schema": "atto.java_rust.differential.v1",
+  "status": "CANDIDATE_NOT_EXECUTED",
+  "source_policy": {
+    "canonical_extension": ".atto",
+    "source_rewrite": "forbidden",
+    "simulated_compilers": "not_evidence"
+  },
+  "scope": {
+    "required_backends": [
+      "java-graal",
+      "rust-wasm",
+      "rust-cranelift"
+    ],
+    "historical_repos": [
+      "ores-truffle-oreslang/oreslang-source.java",
+      "ores-truffle-oreslang/oreslang-source.rs"
+    ],
+    "destinations": [
+      "atto-lang/atto-source.java",
+      "atto-lang/atto-source.rs"
+    ],
+    "baseline": "NOT_EXECUTED",
+    "no_legacy_53_case_renumbering": true
+  },
+  "cases": [
+    {
+      "id": "caret-return-int-xor",
+      "feature": "operator-caret-xor",
+      "path": "contracts/java-rust-conflicts-v1/fixtures/caret-return-int-xor.atto",
+      "sha256": "2158bf6f071c75d3ff52e9376630dbc2fba978c20ca9e2862f46999d291d0b13",
+      "authority": "candidate",
+      "kind": "value",
+      "expected_value": 42,
+      "spec": "atto-spec#143",
+      "status": "AUTHORED_NOT_EXECUTED"
+    },
+    {
+      "id": "infix-caret-reject",
+      "feature": "operator-caret-xor",
+      "path": "contracts/java-rust-conflicts-v1/fixtures/infix-caret-reject.atto",
+      "sha256": "42a140b069b0ed42f3bd6fb14009cec764ba8c04b7bd1e2c11f3f5b6c223623a",
+      "authority": "candidate",
+      "kind": "reject",
+      "expected_diagnostic": "E_OPERATOR_CARET",
+      "spec": "atto-spec#143",
+      "status": "AUTHORED_NOT_EXECUTED"
+    },
+    {
+      "id": "constant-overflow-reject",
+      "feature": "checked-i64",
+      "path": "contracts/java-rust-conflicts-v1/fixtures/constant-overflow-reject.atto",
+      "sha256": "1ba8bcbc6c712f47467539b7552b1d4bfd88697fe3bb06e41c934d905ed9bdfb",
+      "authority": "canonical",
+      "kind": "reject",
+      "expected_diagnostic": "E_CONST_OVERFLOW",
+      "spec": "atto-spec/spec/17-primitives-and-core-types.md",
+      "status": "AUTHORED_NOT_EXECUTED"
+    },
+    {
+      "id": "runtime-overflow-panic",
+      "feature": "checked-i64",
+      "path": "contracts/java-rust-conflicts-v1/fixtures/runtime-overflow-panic.atto",
+      "sha256": "32c7300c7f8e3fda2ed167ed1db5c64ac3aed4c9890b52e8dfedf3cae7ab1137",
+      "authority": "canonical",
+      "kind": "trap",
+      "expected_diagnostic": "INTEGER_OVERFLOW",
+      "spec": "atto-spec/spec/17-primitives-and-core-types.md",
+      "status": "AUTHORED_NOT_EXECUTED"
+    },
+    {
+      "id": "trap-preserves-result",
+      "feature": "trap-result",
+      "path": "contracts/java-rust-conflicts-v1/fixtures/trap-preserves-result.atto",
+      "sha256": "aa99f1dd8432e6e62c5b4e0155e3f54da96172c5484614931a7d7701b63f5320",
+      "authority": "canonical",
+      "kind": "value",
+      "expected_value": 42,
+      "spec": "atto-spec/language/trap-result-v1.md",
+      "status": "AUTHORED_NOT_EXECUTED"
+    },
+    {
+      "id": "trap-catches-ordinary-throw",
+      "feature": "trap-result",
+      "path": "contracts/java-rust-conflicts-v1/fixtures/trap-catches-ordinary-throw.atto",
+      "sha256": "08bae0c4a7b67f7b9cbd0893d0fdba22ce9a1f255266b39939ab859270c0121a",
+      "authority": "canonical",
+      "kind": "value",
+      "expected_value": 42,
+      "spec": "atto-spec/language/trap-result-v1.md",
+      "status": "AUTHORED_NOT_EXECUTED"
+    },
+    {
+      "id": "lazy-bool-guards",
+      "feature": "lazy-boolean",
+      "path": "contracts/java-rust-conflicts-v1/fixtures/lazy-bool-guards.atto",
+      "sha256": "3ae8223ab88ed95a5dda0f54f7424fc22103de94ee3ece72c017485c35394c3f",
+      "authority": "canonical",
+      "kind": "stdout",
+      "expected_stdout": "42\n",
+      "expected_exit": 0,
+      "spec": "atto-spec/spec/17-primitives-and-core-types.md",
+      "status": "AUTHORED_NOT_EXECUTED"
+    },
+    {
+      "id": "legacy-comma-evaluation",
+      "feature": "legacy-comma-bool",
+      "path": "contracts/java-rust-conflicts-v1/fixtures/legacy-comma-evaluation.atto",
+      "sha256": "3785f5a599d3da10ddf936e5263238fce85e90af6004396986d42a91cd4d96f2",
+      "authority": "decision_required",
+      "kind": "observe",
+      "spec": "atto-source.rs/README.md",
+      "status": "AUTHORED_NOT_EXECUTED"
+    },
+    {
+      "id": "void-result-binding",
+      "feature": "void-result-bind",
+      "path": "contracts/java-rust-conflicts-v1/fixtures/void-result-binding.atto",
+      "sha256": "9ff15ec97d71a79f3f365155d82d2a8438542eb53cd9215bfaf5fe1458547be7",
+      "authority": "decision_required",
+      "kind": "observe",
+      "spec": "atto-source.rs/README.md",
+      "status": "AUTHORED_NOT_EXECUTED"
+    },
+    {
+      "id": "implicit-int-float",
+      "feature": "numeric-coercion",
+      "path": "contracts/java-rust-conflicts-v1/fixtures/implicit-int-float.atto",
+      "sha256": "1e0006b9d0046a56c57ab1e31a44a7866e5e2cbd18fdd1bb8f8b4c5aa88fa2ba",
+      "authority": "decision_required",
+      "kind": "observe",
+      "spec": "atto-source.rs/README.md",
+      "status": "AUTHORED_NOT_EXECUTED"
+    }
+  ],
+  "baseline": [
+    {
+      "case_id": "caret-return-int-xor",
+      "backend": "java-graal",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "caret-return-int-xor",
+      "backend": "rust-wasm",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "caret-return-int-xor",
+      "backend": "rust-cranelift",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "infix-caret-reject",
+      "backend": "java-graal",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "infix-caret-reject",
+      "backend": "rust-wasm",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "infix-caret-reject",
+      "backend": "rust-cranelift",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "constant-overflow-reject",
+      "backend": "java-graal",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "constant-overflow-reject",
+      "backend": "rust-wasm",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "constant-overflow-reject",
+      "backend": "rust-cranelift",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "runtime-overflow-panic",
+      "backend": "java-graal",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "runtime-overflow-panic",
+      "backend": "rust-wasm",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "runtime-overflow-panic",
+      "backend": "rust-cranelift",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "trap-preserves-result",
+      "backend": "java-graal",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "trap-preserves-result",
+      "backend": "rust-wasm",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "trap-preserves-result",
+      "backend": "rust-cranelift",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "trap-catches-ordinary-throw",
+      "backend": "java-graal",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "trap-catches-ordinary-throw",
+      "backend": "rust-wasm",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "trap-catches-ordinary-throw",
+      "backend": "rust-cranelift",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "lazy-bool-guards",
+      "backend": "java-graal",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "lazy-bool-guards",
+      "backend": "rust-wasm",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "lazy-bool-guards",
+      "backend": "rust-cranelift",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "legacy-comma-evaluation",
+      "backend": "java-graal",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "legacy-comma-evaluation",
+      "backend": "rust-wasm",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "legacy-comma-evaluation",
+      "backend": "rust-cranelift",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "void-result-binding",
+      "backend": "java-graal",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "void-result-binding",
+      "backend": "rust-wasm",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "void-result-binding",
+      "backend": "rust-cranelift",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "implicit-int-float",
+      "backend": "java-graal",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "implicit-int-float",
+      "backend": "rust-wasm",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    },
+    {
+      "case_id": "implicit-int-float",
+      "backend": "rust-cranelift",
+      "status": "NOT_EXECUTED",
+      "guest_executed": false,
+      "executed_steps": 0,
+      "provenance": null
+    }
+  ]
+}

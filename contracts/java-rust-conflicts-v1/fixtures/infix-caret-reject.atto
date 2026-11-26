@@ -1,0 +1,4 @@
+// Candidate negative: infix single caret is not XOR or exponentiation.
+pub fnc main() -> int {
+    return 40 ^ 2;
+}
