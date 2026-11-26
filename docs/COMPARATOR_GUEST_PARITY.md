@@ -1,0 +1,8 @@
+# Comparator exact-source positive guest probe (candidate)
+The site comparison PR [#235](https://github.com/atto-lang/atto-lang.github.io/pull/235) pins 33 public .atto fixtures and expected return/stdout in `comparisons/parity-candidates.json`. The current probe checks out that exact site commit/tree, never rewrites fixture bytes, checks all Git blob SHA-1 values and pins each compiler's own main snapshot. It emits per-case observations; only exact positive oracles are matches, not full parity.
+
+`node tools/comparator-guest-probe.mjs <rs|js|llvm|forge|cranelift> <exact-site-checkout> <exact-compiler-checkout>`
+
+Build the compiler in the checked-out repo first. Rust runs native attoc output in the reviewed site's guest runtime; JS executes generated ESM (explicit scalar/pipeline profile); LLVM runs its emitted native executable; Forge uses runtime assembly, not its interpreter-derived constant assembly; Cranelift runs its native JIT and only compares cases with empty expected stdout (CLI return line). Unavailable profiles, rejection, malformed or wrong results remain gaps. This is an exploratory positive probe, not negative coverage or target certification.
+
+Remaining independent execution adapters: Java JVM and Graal Native Image; .NET CoreCLR and NativeAOT; Wasm integration with pinned producer and worker host; Atto Stage-0 and later bootstrap rebuild; HDL simulation/synthesis; realtime admission/WCET. No simulated success, host-only evidence, or zero-step CI counts. Shared negative tests must classify diagnostics and absence of artifacts, runtime traps and cancellation; all target-specific prerequisites need separate proof. Keep exact source/head/tree, toolchain, generated artifact digest, executed runner steps and independent review.
