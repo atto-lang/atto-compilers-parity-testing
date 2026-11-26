@@ -1,0 +1,47 @@
+{
+  "schema": 2,
+  "scope": "restricted parameterized adapted execution; no full production parity claim",
+  "lanes": [
+    {
+      "backend": "java",
+      "head": "2822277adcdb1e80e0ed84635744885bc358156e",
+      "tree": "33c1c54d85b52fbc84c88144812a4733d083c8e9"
+    },
+    {
+      "backend": "rs",
+      "head": "b1b02a0f67fd4408c1e4da63fdb99b6c59ec5f19",
+      "tree": "626a591360ad158179c5676804c3c0c8fc8bd052"
+    },
+    {
+      "backend": "net",
+      "head": "a1c39c2df9e9ef638650fb406d512233e573fcb6",
+      "tree": "8e5ab59457bd7ea2997ac0e8d2697d5d848f29c4"
+    },
+    {
+      "backend": "js",
+      "head": "77ee06f8e691d1ebf68d5d9c529758d2043694b7",
+      "tree": "1ac6d44d32f73ddc15e2a91650003bcd96bffb71"
+    },
+    {
+      "backend": "forge",
+      "head": "631b5adb3e6e6031f5b541e5e919cef847cce9b2",
+      "tree": "25e6b1ad466c8362185f2eab1d6674fa3f4ff2f8"
+    },
+    {
+      "backend": "cranelift",
+      "head": "8465728eb28e58ea49f598c7d769e3db1a2fa955",
+      "tree": "cbcc01cedf188abec4c9062cf2db6dae35702ca4"
+    },
+    {
+      "backend": "llvm",
+      "head": "5797bd366f0958355ac8e1a2c433e12c689443b6",
+      "tree": "81518863e3b997512a11c0f15adeea95e4b49e45"
+    },
+    {
+      "backend": "hdl",
+      "head": "de0077ff582e5b137e964059ca8eb8616a2a33fd",
+      "tree": null
+    }
+  ],
+  "note": "HDL root and execution not yet verified. Original fixture inventory and oracle unchanged. Historical receipts do not prove this combined tree."
+}
