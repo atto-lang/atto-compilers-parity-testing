@@ -8,9 +8,11 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-// The six oreslang-source.* backends are mandatory. JavaScript is
-// independently selectable for exploratory transpiler coverage.
-const BACKENDS: [(&str, &str); 7] = [
+// Preserve the original six required backends and existing 54 x 6 baseline.
+// All eleven Atto compiler profiles can be selected, but enumeration alone
+// is never evidence of guest execution or runtime permission.
+const REQUIRED_BACKENDS: [&str; 6] = ["llvm", "java", "wasm", "dotnet", "forge", "cranelift"];
+const BACKENDS: [(&str, &str); 11] = [
     ("llvm", "LLVM"),
     ("java", "JAVA"),
     ("wasm", "WASM"),
@@ -18,6 +20,10 @@ const BACKENDS: [(&str, &str); 7] = [
     ("forge", "FORGE"),
     ("cranelift", "CRANELIFT"),
     ("js", "JS"),
+    ("rs", "RS"),
+    ("hdl", "HDL"),
+    ("realtime", "REALTIME"),
+    ("atto", "ATTO"),
 ];
 
 #[derive(Debug, Deserialize)]
@@ -54,7 +60,8 @@ struct Expectation {
     entry: String,
     stable_stdout_prefix: String,
     imported_files: usize,
-    maturity: String,
+    #[serde(rename = "maturity")]
+    _maturity: String,
     #[serde(default)]
     features: Vec<String>,
     verified: bool,
@@ -145,7 +152,7 @@ fn hex(bytes: &[u8]) -> String {
 }
 
 fn ascii_lower_hex(input: &str) -> Option<String> {
-    if input.len() % 2 != 0 {
+    if !input.len().is_multiple_of(2) {
         return None;
     }
     let bytes = input.as_bytes();
@@ -158,7 +165,7 @@ fn ascii_lower_hex(input: &str) -> Option<String> {
             _ => None,
         }
     };
-    for pair in bytes.chunks_exact(2) {
+    for pair in bytes.as_chunks::<2>().0 {
         let high = nibble(pair[0])?;
         let low = nibble(pair[1])?;
         decoded.push((high << 4 | low).to_ascii_lowercase());
@@ -174,12 +181,15 @@ fn classify_diagnostic(
     invocation: &Invocation,
 ) -> Option<String> {
     let backend_rules = rules.get(backend)?;
-    let raw = format!("{}{}", invocation.stdout_hex, invocation.stderr_hex);
-    let haystack = ascii_lower_hex(&raw)?;
+    // Stdout and stderr are independently captured pipes, not one ordered
+    // diagnostic stream. Never join their bytes: doing so could synthesize a
+    // semantic error token that the compiler never emitted on either stream.
+    let stdout = ascii_lower_hex(&invocation.stdout_hex)?;
+    let stderr = ascii_lower_hex(&invocation.stderr_hex)?;
     for (category, needles) in backend_rules {
         for needle in needles {
             let encoded = hex(needle.to_ascii_lowercase().as_bytes());
-            if haystack.contains(&encoded) {
+            if stdout.contains(&encoded) || stderr.contains(&encoded) {
                 return Some(category.clone());
             }
         }
@@ -467,6 +477,138 @@ fn expand(
         .collect())
 }
 
+// Canonical Atto actor-critical cases are opt-in, never mixed into the
+// historical .ores baseline. Source pins are authenticated before a compiler
+// adapter can run; authored source alone never upgrades a guest to PASS.
+fn load_actor_critical_cases(root: &Path) -> Result<(Vec<TestCase>, Corpus), String> {
+    let registry: serde_json::Value = serde_json::from_slice(
+        &fs::read(root.join("contracts/atto-actor-critical-v1/all-eleven-backend-admission.json"))
+            .map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
+    if registry["contract_id"] != "atto-actor-critical-all-eleven-v1"
+        || registry["status"] != "AUTHORED_NOT_EXECUTED"
+        || registry["canonical_contract"]["id"] != "atto-actor-critical-v1"
+    {
+        return Err("unrecognized or promoted actor-critical admission registry".into());
+    }
+
+    let definitions = [
+        (
+            "two-actor-snapshot-positive",
+            "contracts/atto-actor-critical-v1/fixtures/two-actor-snapshot-positive.atto",
+            "a6189d92c813426ecf54a09cf535c3874de45942",
+            "exit",
+            None,
+        ),
+        (
+            "deny-send-inside-read",
+            "contracts/atto-actor-critical-v1/fixtures/deny-send-inside-read.atto",
+            "89eb278a139eb13079e8eda69a943f94591671cc",
+            "compile_reject",
+            Some("actor_state_loan_escape_to_mailbox"),
+        ),
+        (
+            "deny-write-inside-read",
+            "contracts/atto-actor-critical-v1/fixtures/deny-write-inside-read.atto",
+            "b279055abc2ee5175299a74fe5b66662581a87cf",
+            "compile_reject",
+            Some("write_through_read_only_actor_loan"),
+        ),
+    ];
+    let negative_manifest = registry["canonical_contract"]["negative_cases"]
+        .as_array()
+        .ok_or("missing actor-critical negative manifest")?;
+    if negative_manifest.len() != 2
+        || registry["canonical_contract"]["positive_fixture"] != definitions[0].1
+        || registry["canonical_contract"]["positive_git_blob_sha"] != definitions[0].2
+    {
+        return Err("canonical actor-critical source identity mismatch".into());
+    }
+    let canonical: serde_json::Value = serde_json::from_slice(
+        &fs::read(root.join("contracts/atto-actor-critical-v1/contract.json"))
+            .map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
+    if canonical["status"] != "AUTHORED_NOT_EXECUTED"
+        || canonical["positive"]["expected_stdout_line"] != "ATTO_TWO_ACTOR_LOGICAL_ISOLATION=PASS"
+    {
+        return Err("canonical actor-critical guest expectations changed".into());
+    }
+
+    let mut cases = Vec::new();
+    for (index, (id, path, pin, kind, category)) in definitions.into_iter().enumerate() {
+        if index > 0 {
+            let entry = &negative_manifest[index - 1];
+            if entry["id"] != id
+                || entry["path"] != path
+                || entry["git_blob_sha"] != pin
+                || entry["expected_category"] != category.expect("negative category")
+            {
+                return Err(format!("actor-critical negative manifest drift: {id}"));
+            }
+        }
+        let source = safe_file(root, path)?;
+        if fs::symlink_metadata(root.join(path))
+            .map_err(|e| e.to_string())?
+            .file_type()
+            .is_symlink()
+        {
+            return Err(format!(
+                "actor-critical source must be a regular file: {path}"
+            ));
+        }
+        let output = Command::new("git")
+            .arg("hash-object")
+            .arg("--no-filters")
+            .arg(&source)
+            .output()
+            .map_err(|e| format!("git hash-object failed: {e}"))?;
+        if !output.status.success()
+            || String::from_utf8(output.stdout)
+                .map_err(|e| e.to_string())?
+                .trim()
+                != pin
+        {
+            return Err(format!("actor-critical fixture blob differs: {path}"));
+        }
+        cases.push(TestCase {
+            suite: "atto-actor-critical-v1".into(),
+            case_id: id.into(),
+            name: id.into(),
+            source_sha256: sha256_file(&source)?,
+            source,
+            graph_sha256: None,
+            graph_files: None,
+            expected_kind: kind.into(),
+            expected_value: if index == 0 { Some(0) } else { None },
+            expected_diagnostic_category: category.map(str::to_owned),
+            expected_stdout_prefix: if index == 0 {
+                Some("ATTO_TWO_ACTOR_LOGICAL_ISOLATION=PASS".into())
+            } else {
+                None
+            },
+            // No backend has a certified compiler+guest receipt yet. Even
+            // explicit --execute --allow-unvalidated is exploratory only.
+            validation_status: "unvalidated".into(),
+            features: vec![
+                "actor".into(),
+                "sealed-state".into(),
+                "critical-loan".into(),
+            ],
+        });
+    }
+    Ok((
+        cases,
+        Corpus {
+            legacy_cases: 0,
+            multifile_checks: 0,
+            negative_probes: 2,
+            total_cases: 3,
+        },
+    ))
+}
+
 // Source compilers and guest programs are not trusted to emit bounded output.
 // Drain to EOF even after the capture limit, so a full pipe cannot block a
 // child, but never promote truncated diagnostics to parity success.
@@ -626,6 +768,17 @@ fn temp_dir(case_id: &str, backend: &str) -> Result<PathBuf, String> {
     Ok(path)
 }
 
+// Treat any emitted file, directory or symlink (including a dangling one)
+// as an artifact. A successful semantic rejection must leave no product at
+// the runner's compiler output path. Permission errors fail closed.
+fn artifact_emitted(path: &Path) -> Result<bool, String> {
+    match fs::symlink_metadata(path) {
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(format!("cannot inspect compiler artifact: {error}")),
+    }
+}
+
 fn evaluate_case(
     case: &TestCase,
     diagnostic_rules: &DiagnosticRules,
@@ -685,6 +838,10 @@ fn evaluate_case(
     } else if case.expected_kind == "compile_reject" {
         if compile_exit == Some(0) {
             record.status = "unexpected_compile_success".into();
+        } else if artifact_emitted(&artifact)? {
+            // Even a perfectly matching semantic diagnostic cannot certify a
+            // negative if the compiler also published a guest artifact.
+            record.status = "negative_artifact_emitted".into();
         } else {
             record.actual_diagnostic_category = record
                 .compile
@@ -723,6 +880,11 @@ fn evaluate_case(
         } else {
             "compile_failure".into()
         };
+    } else if case.suite == "atto-actor-critical-v1" && !artifact_emitted(&artifact)? {
+        // Canonical actor guest certification requires a physical compiler
+        // product. A fake zero-exit compile script cannot pair with a fake
+        // run command to manufacture an Atto guest pass.
+        record.status = "compile_artifact_missing".into();
     } else {
         let run_argv = expand(
             run_template.as_ref().expect("checked above"),
@@ -762,10 +924,20 @@ fn is_verified_execution_status(status: &str) -> bool {
     matches!(status, "pass" | "expected_reject")
 }
 
+/// Six core backends are mandatory by default; opt-in profiles are explicit.
+fn is_backend_selected(backend: &str, selected: Option<&str>, all_backends: bool) -> bool {
+    match selected {
+        Some(name) => name == backend,
+        None => all_backends || REQUIRED_BACKENDS.contains(&backend),
+    }
+}
+
 fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     let execute = args.iter().any(|arg| arg == "--execute");
     let allow_unvalidated = args.iter().any(|arg| arg == "--allow-unvalidated");
+    let all_backends = args.iter().any(|arg| arg == "--all-backends");
+    let actor_critical = args.iter().any(|arg| arg == "--actor-critical");
     let selected_backend = args
         .iter()
         .position(|arg| arg == "--backend")
@@ -774,11 +946,14 @@ fn main() -> Result<(), String> {
                 .filter(|name| BACKENDS.iter().any(|(backend, _)| backend == name))
                 .cloned()
                 .ok_or_else(|| {
-                    "--backend requires llvm, java, wasm, dotnet, forge, cranelift, or js"
+                    "--backend requires llvm, java, wasm, dotnet, forge, cranelift, js, rs, hdl, realtime or atto"
                         .to_string()
                 })
         })
         .transpose()?;
+    if all_backends && selected_backend.is_some() {
+        return Err("--all-backends conflicts with --backend".into());
+    }
     let output = args
         .windows(2)
         .find(|window| window[0] == "--output")
@@ -798,7 +973,11 @@ fn main() -> Result<(), String> {
         .join("../..")
         .canonicalize()
         .map_err(|e| e.to_string())?;
-    let (cases, corpus) = load_cases(&root)?;
+    let (cases, corpus) = if actor_critical {
+        load_actor_critical_cases(&root)?
+    } else {
+        load_cases(&root)?
+    };
     let diagnostic_rules: DiagnosticRules = serde_json::from_str(
         &fs::read_to_string(root.join("diagnostics.json")).map_err(|e| e.to_string())?,
     )
@@ -807,14 +986,11 @@ fn main() -> Result<(), String> {
     let mut records = Vec::new();
     for case in &cases {
         for &(backend, env_name) in &BACKENDS {
-            // Omit the optional JS transpiler from default required parity.
-            if selected_backend.is_none() && backend == "js" {
-                continue;
-            }
-            if selected_backend
-                .as_deref()
-                .is_some_and(|selected| selected != backend)
-            {
+            if !is_backend_selected(
+                backend,
+                selected_backend.as_deref(),
+                all_backends || actor_critical,
+            ) {
                 continue;
             }
             records.push(evaluate_case(
@@ -841,10 +1017,11 @@ fn main() -> Result<(), String> {
         backends: BACKENDS
             .iter()
             .filter(|entry| {
-                (selected_backend.is_some() || entry.0 != "js")
-                    && selected_backend
-                        .as_deref()
-                        .is_none_or(|name| name == entry.0)
+                is_backend_selected(
+                    entry.0,
+                    selected_backend.as_deref(),
+                    all_backends || actor_critical,
+                )
             })
             .map(|entry| entry.0.to_string())
             .collect(),
@@ -878,10 +1055,38 @@ fn main() -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        ascii_lower_hex, classify_diagnostic, hex, import_target, is_verified_execution_status,
-        lowercase_kebab, Invocation,
+        ascii_lower_hex, classify_diagnostic, hex, import_target, is_backend_selected,
+        is_verified_execution_status, lowercase_kebab, Invocation, BACKENDS, REQUIRED_BACKENDS,
     };
     use std::collections::BTreeMap;
+
+    #[test]
+    fn full_eleven_compiler_roster_requires_explicit_opt_in() {
+        let unique: std::collections::BTreeSet<&str> =
+            BACKENDS.iter().map(|(name, _)| *name).collect();
+        assert_eq!(unique.len(), 11);
+        assert_eq!(REQUIRED_BACKENDS.len(), 6);
+        assert_eq!(
+            BACKENDS
+                .iter()
+                .filter(|(name, _)| is_backend_selected(name, None, false))
+                .count(),
+            6
+        );
+        assert_eq!(
+            BACKENDS
+                .iter()
+                .filter(|(name, _)| is_backend_selected(name, None, true))
+                .count(),
+            11
+        );
+        for backend in ["js", "rs", "hdl", "realtime", "atto"] {
+            assert!(!is_backend_selected(backend, None, false));
+            assert!(is_backend_selected(backend, None, true));
+            assert!(is_backend_selected(backend, Some(backend), false));
+            assert!(!is_backend_selected(backend, Some("java"), true));
+        }
+    }
 
     #[test]
     fn exploratory_and_unrecognized_execution_results_fail_closed() {
@@ -923,6 +1128,105 @@ mod tests {
             classify_diagnostic(&rules, "dotnet", &invocation).as_deref(),
             Some("unsupported_select")
         );
+    }
+
+    #[test]
+    fn split_stdout_stderr_cannot_forge_semantic_negative() {
+        let mut backend = BTreeMap::new();
+        backend.insert(
+            "actor_state_loan_escape_to_mailbox".to_string(),
+            vec!["ACTOR_LOAN_ESCAPE".to_string()],
+        );
+        let mut rules = BTreeMap::new();
+        rules.insert("java".to_string(), backend);
+        let mut invocation = Invocation {
+            status: "completed".into(),
+            exit_code: Some(1),
+            stdout_hex: hex(b"ACTOR_LOAN_"),
+            stderr_hex: hex(b"ESCAPE"),
+            duration_ms: 1,
+            error: None,
+        };
+        assert_eq!(classify_diagnostic(&rules, "java", &invocation), None);
+        invocation.stderr_hex = hex(b"ACTOR_LOAN_ESCAPE");
+        assert_eq!(
+            classify_diagnostic(&rules, "java", &invocation).as_deref(),
+            Some("actor_state_loan_escape_to_mailbox")
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn negative_artifact_and_missing_positive_artifact_fail_closed() {
+        let name = "ARTIFACT_PROOF_TEST";
+        let key = format!("ORES_PARITY_{name}_COMPILE");
+        let run_key = format!("ORES_PARITY_{name}_RUN");
+        let testcase = |kind: &str| super::TestCase {
+            suite: "atto-actor-critical-v1".into(),
+            case_id: format!("artifact-guard-{kind}"),
+            name: "artifact-guard".into(),
+            source: std::env::temp_dir().join("never-opened-atto-testcase.atto"),
+            source_sha256: "source-probe".into(),
+            graph_sha256: None,
+            graph_files: None,
+            expected_kind: kind.into(),
+            expected_value: if kind == "exit" { Some(0) } else { None },
+            expected_diagnostic_category: Some("actor_loan_deny".into()),
+            expected_stdout_prefix: None,
+            validation_status: "unvalidated".into(),
+            features: vec![],
+        };
+        let mut backend = BTreeMap::new();
+        backend.insert(
+            "actor_loan_deny".to_string(),
+            vec!["ACTOR_LOAN_DENIED".to_string()],
+        );
+        let mut rules = BTreeMap::new();
+        rules.insert("java".to_string(), backend);
+        let timeout = std::time::Duration::from_secs(5);
+
+        std::env::set_var(
+            &key,
+            "sh -c 'printf compiled > \"{artifact}\"; printf ACTOR_LOAN_DENIED >&2; exit 7'",
+        );
+        let negative = super::evaluate_case(
+            &testcase("compile_reject"),
+            &rules,
+            "java",
+            name,
+            true,
+            true,
+            timeout,
+        )
+        .unwrap();
+        assert_eq!(negative.status, "negative_artifact_emitted");
+        assert_eq!(negative.compile.unwrap().exit_code, Some(7));
+
+        std::env::set_var(&key, "sh -c 'printf ACTOR_LOAN_DENIED >&2; exit 7'");
+        let rejected = super::evaluate_case(
+            &testcase("compile_reject"),
+            &rules,
+            "java",
+            name,
+            true,
+            true,
+            timeout,
+        )
+        .unwrap();
+        assert_eq!(
+            rejected.status,
+            "exploratory_expected_reject_not_parity_pass"
+        );
+
+        std::env::set_var(&key, "sh -c 'exit 0'");
+        std::env::set_var(&run_key, "sh -c 'exit 0'");
+        let positive =
+            super::evaluate_case(&testcase("exit"), &rules, "java", name, true, true, timeout)
+                .unwrap();
+        assert_eq!(positive.status, "compile_artifact_missing");
+        assert!(positive.run.is_none(), "no guest artifact means no run");
+        std::env::remove_var(&key);
+        std::env::remove_var(&run_key);
     }
 
     #[test]
