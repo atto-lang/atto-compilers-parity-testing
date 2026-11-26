@@ -89,6 +89,7 @@ fn execute(bytes:&[u8],expected:&str){
   let roots=[SnapshotSource{path:"main.atto",source:&app}];let lockroot=lock(ROOT,&roots);let rp=hex_digest(lockroot.as_bytes());
   let snap=||Snapshot{entry:"main.atto",manifest:ROOT,lockfile:&lockroot,trusted_lock_sha256:&rp,sources:&roots};
   let mut prior=None;
+  let mut parameterized_artifacts=Vec::new();
   for (add,sourcepin,expected) in [(2,"541dfd09d7f18114efd7ec9711721c57a9b14695624a72046425e6db22ccad80","42010203"),(3,"4e1e57d3e7a37978f99dc79399799a994e3d06d7284cbb8e4eb09e46a7c531e7","43010203")]{
    files.insert("src/unit0.ores".into(),format!("namespace billing;\npub fnc function0(int x, int y): int {{ return x * y + {add}; }}\n"));assert_eq!(digest(&files),sourcepin);
    let adapted=adapted(&files);let i=inputs(&adapted);let l=lock(MANIFEST,&i);let p=hex_digest(l.as_bytes());let dep=||RegistryDependency{name:PKG,manifest:MANIFEST,lockfile:&l,trusted_lock_sha256:&p,sources:&i};
@@ -98,7 +99,13 @@ fn execute(bytes:&[u8],expected:&str){
    let denied=session.build_registry(Mode::Incremental,&pin,MASTER,Snapshot{entry:"main.atto",manifest:ROOT,lockfile:&rl,trusted_lock_sha256:&hex_digest(rl.as_bytes()),sources:&[SnapshotSource{path:"main.atto",source:&applications[0]}]},&[dep()]).unwrap_err();assert_eq!(denied.code,"E_ARITY");
    let again=session.build_registry(Mode::Incremental,&pin,MASTER,snap(),&[dep()]).unwrap();assert_eq!(again.bytes,build.bytes);
    if let Some(previous)=prior{assert_ne!(previous,build.bytes);}
+   parameterized_artifacts.push((if add==2{"parameterized"}else{"parameterized-edit"},build.bytes.clone()));
+   if add==2{parameterized_artifacts.push(("parameterized-warm",warm.bytes.clone()));}
    prior=Some(build.bytes);
+  }
+  if let Ok(dir)=std::env::var("ATTO_V3_PARAMETERIZED_ARTIFACTS"){
+   let dir=PathBuf::from(dir);fs::create_dir(&dir).unwrap();
+   for (lane,bytes) in parameterized_artifacts{fs::write(dir.join(format!("{lane}.wasm")),bytes).unwrap();}
   }
   println!("V3_RUST_PARAMETERIZED|guest=42010203/43010203|clean-differential|warm|arity-denied|rollback");
  }
