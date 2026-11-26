@@ -18,3 +18,7 @@ Rust completed all 33 positive and both exact negative cases on the reviewed sou
 ## Integrated .NET candidate replay
 
 `net-candidate` and `net-aot-candidate` are separate exact-tree lanes for .NET #16 (2ac98a727ee8906fd174514d25cf2b7dc2a9e311). The three source-native suite jobs passed, including exact comparator pipeline return/stdout on both runtimes. Run the complete 33 unchanged cases for updated coverage; do not carry forward baseline counts or infer full parity. The source snapshot and original baseline remain immutable.
+
+## Forge functional C++ candidate
+
+`forge-candidate` pins Forge #45 at f84900637f3d1faaf192688b212a2b7ef52b206e, after normal and sanitizer suites passed. The probe compiles original bytes to C++, builds actual native executables, and distinguishes the emitted pure i64 return wrapper from the explicitly granted stdout/exit wrapper. A wrapper/profile mismatch cannot satisfy either oracle; no guest source is rewritten. The original assembly backend baseline remains separate. Full 33-source replay is required.

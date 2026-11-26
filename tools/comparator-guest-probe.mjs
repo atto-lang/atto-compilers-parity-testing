@@ -10,8 +10,8 @@ import {classifyJvmStderr} from './comparator-jvm-stderr.mjs';
 const SITE_HEAD='b8b22a955fa8d4f4018734f1ecb5758773a00f64';
 const SITE_TREE='359accbbf1564de2dd359b93d8b2a6439d8c1211';
 const [lane,siteArg,compilerArg]=process.argv.slice(2);
-const id=lane==='java-aot'?'java':['net-aot','net-candidate','net-aot-candidate'].includes(lane)?'net':lane==='js-candidate'?'js':lane;
-assert.ok(['rs','js','js-candidate','llvm','forge','cranelift','java','java-aot','net','net-aot','net-candidate','net-aot-candidate'].includes(lane),'explicit supported probe profile required');
+const id=lane==='java-aot'?'java':['net-aot','net-candidate','net-aot-candidate'].includes(lane)?'net':lane==='js-candidate'?'js':lane==='forge-candidate'?'forge':lane;
+assert.ok(['rs','js','js-candidate','llvm','forge','forge-candidate','cranelift','java','java-aot','net','net-aot','net-candidate','net-aot-candidate'].includes(lane),'explicit supported probe profile required');
 const site=resolve(siteArg), root=resolve(compilerArg);
 const sha256=b=>createHash('sha256').update(b).digest('hex');
 const blob=b=>createHash('sha1').update('blob '+b.length+'\0').update(b).digest('hex');
@@ -25,7 +25,7 @@ pin(site,SITE_HEAD,SITE_TREE);
 const m=JSON.parse(readFileSync(join(site,'comparisons/parity-candidates.json'),'utf8'));
 assert.equal(m.schema,'atto.comparator.parity-candidates.v1');
 const baseline=m.backends.find(x=>x.id===id);assert.ok(baseline);
-const b=lane==='js-candidate'?{...baseline,commit:'19e6662fa3ce922799f398f10d04784a31f7d3bb',tree:'992155ee72fe654517ea8cad6a2e4b8f42ed7e11'}:['net-candidate','net-aot-candidate'].includes(lane)?{...baseline,commit:'2ac98a727ee8906fd174514d25cf2b7dc2a9e311',tree:'d7bd024a51f68b7ab8c62ffb74e353c23e3bf8a3'}:baseline;
+const b=lane==='js-candidate'?{...baseline,commit:'19e6662fa3ce922799f398f10d04784a31f7d3bb',tree:'992155ee72fe654517ea8cad6a2e4b8f42ed7e11'}:['net-candidate','net-aot-candidate'].includes(lane)?{...baseline,commit:'2ac98a727ee8906fd174514d25cf2b7dc2a9e311',tree:'d7bd024a51f68b7ab8c62ffb74e353c23e3bf8a3'}:lane==='forge-candidate'?{...baseline,commit:'f84900637f3d1faaf192688b212a2b7ef52b206e',tree:'5a6f0dc2d20f5173fff2e63983f8edce928852bd'}:baseline;
 const netAot=['net-aot','net-aot-candidate'].includes(lane);
 pin(root,b.commit,b.tree);
 assert.equal(m.cases.length,33);
@@ -106,6 +106,28 @@ try{
       const cc=invoke('bash',[join(root,'scripts/compile-aot.sh'),c.src,out],root);
       if(cc.status!==0||cc.error||cc.signal||!existsSync(out))o=compileFailure(cc,out);
       else {const rr=invoke(out,[],tmp);o=rr.error||rr.signal||rr.status===null||rr.stderr!==''?{observation:'GUEST_EXECUTION_UNVERIFIED',status:rr.status,diagnostic:rr.stderr.slice(0,500)}:status(c,String(rr.status),rr.stdout,out,{return_encoding:'process_exit_status_0_255_only'});}
+    }else if(lane==='forge-candidate'){
+      // This pinned compiler emits two distinct wrappers: pure i64 results
+      // via a single stdout line, and effectful guests via process exit.
+      // Never infer which wrapper ran from the expected numeric result.
+      const cpp=out+'.cpp';
+      const grant=c.stdout!=='';
+      const cc=invoke(join(root,'build/forge_functional'),[...(grant?['--allow-stdio']:[]),c.src,'-o',cpp],root);
+      if(cc.status!==0||!validProcess(cc)||!existsSync(cpp))o=compileFailure(cc,cpp);
+      else {
+        const generated=readFileSync(cpp,'utf8');
+        const pure=generated.includes('std::printf("%lld\\n", static_cast<long long>(*value));')&&generated.endsWith('  return 0;\n}\n');
+        const effectful=generated.includes('E_EXIT_RANGE')&&generated.endsWith('  return static_cast<int>(*value);\n}\n');
+        const link=invoke('c++',['-std=c++20','-Wall','-Wextra','-Werror','-pedantic','-I'+join(root,'include'),cpp,'-o',out],tmp);
+        if(link.status!==0||!validProcess(link)||!existsSync(out))o={observation:'HOST_BUILD_FAILED',diagnostic:(link.stderr+' '+link.stdout).slice(-1200),status:link.status};
+        else {
+          const run=invoke(out,[],tmp);
+          if(effectful&&!pure&&grant)o=exitObservation(c,run,out,{execution:'functional_cpp_native_effectful',cpp_sha256:sha256(readFileSync(cpp))});
+          else if(pure&&!effectful&&!grant&&validProcess(run)&&run.status===0&&run.stderr===''&&/^-?\d+\n$/.test(run.stdout))
+            o=status(c,run.stdout.trim(),'',out,{execution:'functional_cpp_native_pure',cpp_sha256:sha256(readFileSync(cpp))});
+          else o={observation:'GUEST_EXECUTION_UNVERIFIED',status:run.status,diagnostic:'wrapper/oracle profile mismatch; '+run.stderr.slice(0,500)};
+        }
+      }
     }else if(id==='forge'){
       const asm=out+'.s';const cc=invoke(join(root,'build/oresforge'),['emit-runtime-asm','x86_64',c.src],root);
       if(cc.status!==0||cc.error||cc.signal||!cc.stdout.includes('oresforge_entry:'))o=compileFailure(cc,out);
