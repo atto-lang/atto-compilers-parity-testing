@@ -83,6 +83,25 @@ fn execute(bytes:&[u8],expected:&str){
  assert_eq!(rejected.code,"E_ARITY");
  println!("V3_RUST_ABI_REJECT|{}|{}",rejected.code,rejected.message);
  let recovered=session.build_registry(Mode::Incremental,&pin,MASTER,snap(),&[next()]).unwrap();execute(&recovered.bytes,"42010203");assert_eq!(recovered.bytes,changed.bytes);
+ // Opt-in parameterized fixture: independent positive ABI and body-edit lane.
+ if std::env::var_os("ATTO_V3_PARAMETERIZED").is_some(){
+  let app=applications[0].replace("provider.function0()","provider.function0(5+5,4)");
+  let roots=[SnapshotSource{path:"main.atto",source:&app}];let lockroot=lock(ROOT,&roots);let rp=hex_digest(lockroot.as_bytes());
+  let snap=||Snapshot{entry:"main.atto",manifest:ROOT,lockfile:&lockroot,trusted_lock_sha256:&rp,sources:&roots};
+  let mut prior=None;
+  for (add,sourcepin,expected) in [(2,"541dfd09d7f18114efd7ec9711721c57a9b14695624a72046425e6db22ccad80","42010203"),(3,"4e1e57d3e7a37978f99dc79399799a994e3d06d7284cbb8e4eb09e46a7c531e7","43010203")]{
+   files.insert("src/unit0.ores".into(),format!("namespace billing;\npub fnc function0(int x, int y): int {{ return x * y + {add}; }}\n"));assert_eq!(digest(&files),sourcepin);
+   let adapted=adapted(&files);let i=inputs(&adapted);let l=lock(MANIFEST,&i);let p=hex_digest(l.as_bytes());let dep=||RegistryDependency{name:PKG,manifest:MANIFEST,lockfile:&l,trusted_lock_sha256:&p,sources:&i};
+   let build=session.build_registry(Mode::Incremental,&pin,MASTER,snap(),&[dep()]).unwrap();execute(&build.bytes,expected);
+   let verified=FrozenRegistry::verify(PKG,MANIFEST,&l,&p,&i).unwrap();assert_eq!(build.bytes,compile_registry_guest(&app,&[&verified]).unwrap());
+   let warm=session.build_registry(Mode::Incremental,&pin,MASTER,snap(),&[dep()]).unwrap();assert_eq!(warm.outcome,Outcome::Reused);assert_eq!(warm.bytes,build.bytes);
+   let denied=session.build_registry(Mode::Incremental,&pin,MASTER,Snapshot{entry:"main.atto",manifest:ROOT,lockfile:&rl,trusted_lock_sha256:&hex_digest(rl.as_bytes()),sources:&[SnapshotSource{path:"main.atto",source:&applications[0]}]},&[dep()]).unwrap_err();assert_eq!(denied.code,"E_ARITY");
+   let again=session.build_registry(Mode::Incremental,&pin,MASTER,snap(),&[dep()]).unwrap();assert_eq!(again.bytes,build.bytes);
+   if let Some(previous)=prior{assert_ne!(previous,build.bytes);}
+   prior=Some(build.bytes);
+  }
+  println!("V3_RUST_PARAMETERIZED|guest=42010203/43010203|clean-differential|warm|arity-denied|rollback");
+ }
  if let Ok(dir)=std::env::var("ATTO_V3_ARTIFACTS"){
   let dir=PathBuf::from(dir);fs::create_dir(&dir).unwrap();
   for (lane,bytes) in [("cold",&cold.bytes),("warm",&warm.bytes),("edit",&changed.bytes),("observer",&identity.bytes),("observer-edit",&unchanged.bytes)]{

@@ -78,6 +78,19 @@ internal static class SharedNamespaceV3Net
         var semRecovery=semantic.Compile(billing,new[]{p2});Check(semRecovery.ReparsedProviders.Count==0&&semRecovery.ReusedProviders.Count==3,"semantic rollback");
         Console.WriteLine("V3_NET_NAMESPACE_PARSE|cold=3/0|warm=0/3|edit=1/2|observer=0/3|rollback=0/3");
         var recovered=clientSession.Compile(billing,new[]{p2});Check(recovered.Reused&&recovered.Cil.AsSpan().SequenceEqual(edited.Cil),"rollback");
+        if(Environment.GetEnvironmentVariable("ATTO_V3_PARAMETERIZED")!=null){
+            string app=billing.Replace("provider.billing.function0()","provider.billing.function0(5+5,4)",StringComparison.Ordinal);
+            byte[]? previous=null;
+            foreach(var (add,pin,lane) in new[]{(2,"541dfd09d7f18114efd7ec9711721c57a9b14695624a72046425e6db22ccad80","parameterized"),(3,"4e1e57d3e7a37978f99dc79399799a994e3d06d7284cbb8e4eb09e46a7c531e7","parameterized-edit")}){
+                files["src/unit0.ores"]="namespace billing;\npub fnc function0(int x, int y): int { return x * y + "+add+"; }\n";Check(Digest(files)==pin,"parameterized source pin");
+                var provider=Verify(Adapt(files));var built=clientSession.Compile(app,new[]{provider});Check(built.Cil.AsSpan().SequenceEqual(Clean(app,provider)),"parameterized clean differential");
+                Check(clientSession.Compile(app,new[]{provider}).Reused,"parameterized warm");if(previous!=null)Check(!previous.AsSpan().SequenceEqual(built.Cil),"body edit changes artifact");
+                try{clientSession.Compile(billing,new[]{provider});throw new InvalidOperationException("parameterized arity admitted");}catch(FormatException e){Check(e.Message.StartsWith("E_IMPORT_KIND: selected function must accept exact signed-int arguments and return int",StringComparison.Ordinal)||e.Message.StartsWith("E_ARITY:",StringComparison.Ordinal),"wrong arity diagnostic");}
+                var again=clientSession.Compile(app,new[]{provider});Check(again.Reused&&again.Cil.AsSpan().SequenceEqual(built.Cil),"parameterized rollback");
+                Write(lane,built.Cil);previous=built.Cil;
+            }
+            Console.WriteLine("V3_NET_PARAMETERIZED_CIL|clean-differential|warm|arity-denied|rollback");
+        }
         Console.WriteLine("V3_NET_CIL|cold-warm|clean-differential|stale-pin|abi-denied|rollback|adapted-one-file-per-namespace");
     }
 }

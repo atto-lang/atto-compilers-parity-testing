@@ -50,5 +50,18 @@ test('shared v3 closed scalar ESM differential and fragment reuse',async()=>{
  const bad=new Map(changed);bad.set('src/unit0.ores','namespace billing;\npub fnc function0(int x): int { return x; }\n');
  const rejected=billing(bad,abi);let diagnostic;try{compile(rejected)}catch(e){diagnostic=e.message}assert.ok(diagnostic);assert.throws(()=>s.build(rejected),e=>e.message===diagnostic);
  const recovered=s.build(edited);assert.deepEqual([recovered.emitted,recovered.reused],[0,5]);assert.equal(recovered.code,ec.code);
+ if(process.env.ATTO_V3_PARAMETERIZED){
+  let previous;
+  for(const [add,p,expected] of [[2,'541dfd09d7f18114efd7ec9711721c57a9b14695624a72046425e6db22ccad80',42010203n],[3,'4e1e57d3e7a37978f99dc79399799a994e3d06d7284cbb8e4eb09e46a7c531e7',43010203n]]){
+   const f=new Map(files);f.set('src/unit0.ores','namespace billing;\npub fnc function0(int x, int y): int { return x * y + '+add+'; }\n');
+   const invalid=billing(f,p),valid=invalid.replace('+function0()','+function0(5+5,4)');assert.notEqual(valid,invalid);
+   const built=s.build(valid);assert.equal(built.code,compile(valid));assert.equal(await run(built.code),expected);
+   const warm=s.build(valid);assert.deepEqual([warm.emitted,warm.reused],[0,5]);assert.equal(warm.code,built.code);
+   let diagnostic;try{compile(invalid)}catch(e){diagnostic=e.message}assert.ok(diagnostic);assert.throws(()=>s.build(invalid),e=>e.message===diagnostic);
+   const again=s.build(valid);assert.deepEqual([again.emitted,again.reused],[0,5]);assert.equal(again.code,built.code);
+   if(previous!==undefined)assert.notEqual(previous,built.code);previous=built.code;
+  }
+  console.log('V3_JS_PARAMETERIZED|guest=42010203/43010203|clean-differential|warm|arity-denied|rollback');
+ }
  console.log('V3_JS_ADAPTED_ESM|actual=10203/42010203/40506|fragments=5/0,0/5,1/4|observer=0/4|byte-stable|stale-pin|abi-denied|rollback');
 });
