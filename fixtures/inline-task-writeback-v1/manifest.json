@@ -51,8 +51,8 @@
       "e291ea41becf367162347a16c6556e2677a3e6d2"
     ],
     "hdl": [
-      "d6718c4f540847c7fdc0981245cf4675246d7055",
-      "fd218fc54103c861e5bc74cb5565cc2366c73ff1"
+      "b043f33733ecfc0eaa0a4f45d35a1b3a7a8d3edf",
+      "788b1269326c37fbf4e1c74b00c92eebac8db686"
     ],
     "realtime": [
       "8161daa8654a55abbf6260470272814012ef5911",
@@ -62,9 +62,9 @@
   "scope": {
     "java": "existing exact-source PRs #1846/#1875",
     "net": "existing NativeAOT/CoreCLR PR #272 and prior receipts",
-    "wasm": "external Rust/LLVM compiler and independent host; not a second source compiler",
+    "wasm": "pinned Rust source compiler plus separately pinned Wasm host admission, not an independent frontend",
     "atto": "bootstrap only; no general compiler CLI",
-    "hdl": "hardware target, dynamic tasks must reject without RTL",
+    "hdl": "candidate #84, exact task-specific negative admission, no RTL",
     "realtime": "planned backend, no compiler CLI"
   }
 }
