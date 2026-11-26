@@ -39,3 +39,18 @@ Executable adapter target: two independently compiled provider units, each expos
 | L37 | Consumer artifact corruption rejected before provider access. |
 
 JS #159 implements a bounded direct-provider scalar adapter (wrapping-i64 provisional); 6 new synthetic ESM runtime tests passed locally, combined runtime suite 23/23; **actual independently compiled Atto guest tests NOT_EXECUTED**. No general transitive initialization, unload, actor upgrades or cryptographic package provenance established. For static-only targets L32 requires relink using reused consumer object, not live loading; L35 applies to artifact admission before executing a linked guest. For HDL use static elaboration and reject runtime-only features. Every applicable backend still requires actual compiler-backed evidence; do not copy JS host-only pass status into other cells.
+
+## Transitive closure and bounded artifact retention (L38–L45)
+
+| ID | Required behavior |
+|---|---|
+| L38 | Diamond dependencies resolve a single exact shared package slot in dependency-first order. |
+| L39 | Reordered inventory and import edges produce identical canonical release locks. |
+| L40 | Compatible leaf edit changes release lock without recompiling unaffected consumers; new dynamic binding observes update, old binding retains old version. |
+| L41 | Self-cycle, indirect cycle, missing dependency, duplicate package slot and unreachable package reject before artifact evaluation. |
+| L42 | Transitive ABI mismatch and forged imported signature reject before any initializer executes. |
+| L43 | All artifact bytes and separately trusted exact release lock admitted before evaluation; stale lock and tampered leaf reject. |
+| L44 | Bound package invocation preserves scalar arity and numeric boundary checks. |
+| L45 | Cache byte-budget eviction and oversize non-retention preserve cold/warm semantic equivalence. |
+
+JS #159: 7 planner and 4 runtime synthetic ESM cases executed locally, total 34/34 runtime/planner regressions. Exact leaf/body and intermediate artifact pins, no cryptographic registry provenance, namespace-specific initialization state or unload claim. Actual Atto compiler-backed transitive guests remain NOT_EXECUTED. Rust #521 adds retained payload byte budget (default 16 MiB, configurable maximum 64 MiB) and two compiler regression tests, NOT_EXECUTED until Cargo runner. This is a retention budget, not a bound on process memory. All eleven compiler adapters require independent source-backed execution; static-only targets prove relink/reuse instead of live replacement.
