@@ -58,3 +58,30 @@ test('reject unlisted, foreign, private, removed, forged and invalid compiler li
  const recovered=c.build(args('client'));assert.equal(recovered.code,accepted.code);assert.deepEqual(counts(recovered),[0,12,0,4,0]);assert.deepEqual(await guest(recovered),oracle.lanes.cold.billing);
  console.log('V3_JS_NEGATIVES|unlisted|removed|foreign|unnamespaced|private|forged|compiler-overflow|rollback');
 });
+
+test('parameterized compiler ESM: actual integer arguments, body edit, observer and rollback',async()=>{
+ const c=new Session(),o=new Session();
+ const original=read('client/src/main.ores');
+ const consumer=original.replace('provider.function0()','provider.function0(5+5,4)');
+ const changed=new Map(files);changed.set('src/unit0.ores','namespace billing;\npub fnc function0(int x, int y): int { return x * y + 2; }\n');
+ const cold=c.build(repin('client',changed,consumer)),observer=o.build(repin('observer',changed));
+ assert.deepEqual(await guest(cold),['42','1','2','3']);
+ assert.deepEqual(await guest(observer),['4','5','6']);
+ assert.deepEqual(counts(cold),[12,0,4,0,1]);assert.equal(cold.argumentCompiled,1);
+ const warm=c.build(repin('client',changed,consumer));
+ assert.deepEqual(counts(warm),[0,12,0,4,0]);assert.equal(warm.argumentReused,1);
+ const argEdit=c.build(repin('client',changed,consumer.replace('5+5','5+6')));
+ assert.deepEqual(await guest(argEdit),['46','1','2','3']);
+ assert.deepEqual(counts(argEdit),[0,12,0,4,1]);assert.equal(argEdit.argumentCompiled,1);
+ const body=new Map(changed);body.set('src/unit0.ores',changed.get('src/unit0.ores').replace('+ 2','+ 3'));
+ const edit=c.build(repin('client',body,consumer));
+ assert.deepEqual(await guest(edit),['43','1','2','3']);assert.deepEqual(counts(edit),[1,11,1,3,1]);
+ const untouched=o.build(repin('observer',body));assert.equal(untouched.code,observer.code);assert.deepEqual(counts(untouched),[1,11,0,3,0]);
+ assert.equal(new Session().build(repin('client',body,consumer)).code,edit.code);
+ assert.throws(()=>c.build(repin('client',body,original)),/E_NAMESPACE_ARITY/);
+ assert.throws(()=>c.build(repin('client',body,consumer.replace('5+5','stdio.println(5)'))),/E_NAMESPACE_PROFILE/);
+ const bad=new Map(body);bad.set('src/unit4.ores',files.get('src/unit4.ores').replace('return 4','return 9999999999999999999'));
+ assert.throws(()=>c.build(repin('client',bad,consumer)),/error:/);
+ const restored=c.build(repin('client',body,consumer));assert.equal(restored.code,edit.code);assert.deepEqual(counts(restored),[0,12,0,4,0]);assert.equal(restored.argumentReused,1);
+ console.log('V3_JS_PARAMETERIZED|guest=42/46/43|actual-compiler-arguments|provider-reuse|argument-memo|observer-byte-stable|arity-effect-unselected-overflow-denied|rollback');
+});
