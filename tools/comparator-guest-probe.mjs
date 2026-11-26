@@ -5,12 +5,13 @@ import {readFileSync,writeFileSync,mkdtempSync,rmSync,existsSync} from 'node:fs'
 import {resolve,join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {pathToFileURL} from 'node:url';
+import {classifyJvmStderr} from './comparator-jvm-stderr.mjs';
 
 const SITE_HEAD='b8b22a955fa8d4f4018734f1ecb5758773a00f64';
 const SITE_TREE='359accbbf1564de2dd359b93d8b2a6439d8c1211';
 const [lane,siteArg,compilerArg]=process.argv.slice(2);
-const id=lane==='java-aot'?'java':lane==='net-aot'?'net':lane;
-assert.ok(['rs','js','llvm','forge','cranelift','java','java-aot','net','net-aot'].includes(lane),'explicit supported probe profile required');
+const id=lane==='java-aot'?'java':lane==='net-aot'?'net':lane==='js-candidate'?'js':lane;
+assert.ok(['rs','js','js-candidate','llvm','forge','cranelift','java','java-aot','net','net-aot'].includes(lane),'explicit supported probe profile required');
 const site=resolve(siteArg), root=resolve(compilerArg);
 const sha256=b=>createHash('sha256').update(b).digest('hex');
 const blob=b=>createHash('sha1').update('blob '+b.length+'\0').update(b).digest('hex');
@@ -23,7 +24,8 @@ function pin(dir,commit,tree){assert.equal(git(dir,'rev-parse','HEAD'),commit);a
 pin(site,SITE_HEAD,SITE_TREE);
 const m=JSON.parse(readFileSync(join(site,'comparisons/parity-candidates.json'),'utf8'));
 assert.equal(m.schema,'atto.comparator.parity-candidates.v1');
-const b=m.backends.find(x=>x.id===id);assert.ok(b);
+const baseline=m.backends.find(x=>x.id===id);assert.ok(baseline);
+const b=lane==='js-candidate'?{...baseline,commit:'19e6662fa3ce922799f398f10d04784a31f7d3bb',tree:'992155ee72fe654517ea8cad6a2e4b8f42ed7e11'}:baseline;
 pin(root,b.commit,b.tree);
 assert.equal(m.cases.length,33);
 const cases=m.cases.map(c=>{
@@ -52,7 +54,7 @@ const errorKind=r=>r.error||r.signal?'PROCESS_ERROR':'COMPILE_OR_RUN_REJECTED';
 const compileFailure=(r,artifact)=>({observation:existsSync(artifact)?'REJECTED_WITH_ARTIFACT':errorKind(r),diagnostic:r.stderr.slice(0,500),status:r.status});
 const status=(c,value,stdout,artifact,extra={})=>({observation:value===c.return&&stdout===c.stdout?'MATCHED_POSITIVE_ORACLE':'ORACLE_MISMATCH',value,stdout,artifact_sha256:artifact&&existsSync(artifact)?sha256(readFileSync(artifact)):null,...extra});
 const jsRunner=join(tmp,'js-runner.mjs');
-writeFileSync(jsRunner,`import {pathToFileURL} from 'node:url';const m=await import(pathToFileURL(process.argv[2]));const v=await m.main();if(typeof v!=='bigint'&&!(typeof v==='number'&&Number.isSafeInteger(v)))throw Error('not an integer main result');process.stderr.write('ATTO_PROBE_RETURN='+String(v)+'\\n');`);
+writeFileSync(jsRunner,`import {pathToFileURL} from 'node:url';const m=await import(pathToFileURL(process.argv[2]));const v=await m.main(...(process.argv[3]==='stdout'?[v=>{if(typeof v!=='bigint')throw Error('unexpected stdout type');process.stdout.write(String(v)+'\\n');}]:[]));if(typeof v!=='bigint'&&!(typeof v==='number'&&Number.isSafeInteger(v)))throw Error('not an integer main result');process.stderr.write('ATTO_PROBE_RETURN='+String(v)+'\\n');`);
 const wasmRunner=join(tmp,'wasm-runner.mjs');
 writeFileSync(wasmRunner,`import {readFileSync} from 'node:fs';import {pathToFileURL} from 'node:url';import {join} from 'node:path';const base=process.argv[3];const {guestImports,usesStateLeases}=await import(pathToFileURL(join(base,'play/src/guest.js')));const {createStateRuntime}=await import(pathToFileURL(join(base,'play/src/state-runtime.js')));const m=await WebAssembly.compile(readFileSync(process.argv[2]));const out={text:'',truncated:false};const state=usesStateLeases(m)?createStateRuntime():null;const {imports,bind}=guestImports(m,out,null,null,{state});const i=await WebAssembly.instantiate(m,imports);bind(i);const v=i.exports.main();state?.complete();if(out.truncated||typeof v!=='bigint'||i.exports.panic_code?.value!==0)throw Error('invalid guest outcome');process.stdout.write(out.text);process.stderr.write('ATTO_PROBE_RETURN='+String(v)+'\\n');`);
 const cWrapper=join(tmp,'entry.c');
@@ -65,7 +67,13 @@ try{
     if(id==='java'){
       const cc=invoke(javaCmd,[...javaArgs,'--check',c.src],root);
       if(cc.status!==0||!validProcess(cc))o=compileFailure(cc,out);
-      else o=exitObservation(c,invoke(javaCmd,[...javaArgs,c.src],root),null,{execution:lane==='java-aot'?'native_image_host':'jvm_host_guest_jit_disabled'});
+      else {
+        const rr=invoke(javaCmd,[...javaArgs,c.src],root);
+        const diagnostic=lane==='java'?classifyJvmStderr(rr.stderr,process.env.HOME):{hostWarning:null,guestStderr:rr.stderr};
+        o=exitObservation(c,{...rr,stderr:diagnostic.guestStderr},null,{execution:lane==='java-aot'?'native_image_host':'jvm_host_guest_jit_disabled',host_warning:diagnostic.hostWarning});
+        // Preserve the exact warning in all outcomes, including failures.
+        if(diagnostic.hostWarning)o.host_warning=diagnostic.hostWarning;
+      }
     }else if(id==='net'){
       rmSync(netGuest,{force:true});
       const cc=invoke('dotnet',['run','--no-build','-c','Release','--project',netCompiler,'--',c.src,netGuest,'--allow-stdio'],root);
@@ -90,8 +98,9 @@ try{
     }else if(id==='js'){
       const pipeline=c.name==='function-pipeline';
       const cli=join(root,pipeline?'bin/atto-jsc.mjs':'bin/oreslang-jsc.mjs');
-      const cc=invoke(process.execPath,[cli,pipeline?'--functional-source':'--atto-scalar-v1',c.src,'--out='+out],root);
-      o=cc.status===0&&!cc.error&&!cc.signal&&existsSync(out)?tagged(c,invoke(process.execPath,[jsRunner,out],tmp),out):compileFailure(cc,out);
+      const granted=pipeline&&lane==='js-candidate';
+      const cc=invoke(process.execPath,[cli,pipeline?'--functional-source':'--atto-scalar-v1',...(granted?['--allow-stdio']:[]),c.src,'--out='+out],root);
+      o=cc.status===0&&!cc.error&&!cc.signal&&existsSync(out)?tagged(c,invoke(process.execPath,[jsRunner,out,...(granted?['stdout']:[])],tmp),out):compileFailure(cc,out);
     }else if(id==='llvm'){
       const cc=invoke('bash',[join(root,'scripts/compile-aot.sh'),c.src,out],root);
       if(cc.status!==0||cc.error||cc.signal||!existsSync(out))o=compileFailure(cc,out);
