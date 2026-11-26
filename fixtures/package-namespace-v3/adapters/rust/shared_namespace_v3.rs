@@ -75,10 +75,12 @@ fn execute(bytes:&[u8],expected:&str){
  // Record unrelated artifact churn as a real parity gap, not a failure of guest output.
  let observer_artifact_changed=unchanged.bytes!=identity.bytes;
  println!("V3_RUST_OBSERVER_ARTIFACT_CHANGED={observer_artifact_changed}");
+ assert!(!observer_artifact_changed,"unreachable namespace body must not change observer artifact");
  files.insert("src/unit0.ores".into(),"namespace billing;\npub fnc function0(int x): int { return x; }\n".into());assert_eq!(digest(&files),ABI);
  let bad=adapted(&files);let ai=inputs(&bad);let al=lock(MANIFEST,&ai);let ap=hex_digest(al.as_bytes());
  let bad_dep=RegistryDependency{sources:&ai,lockfile:&al,trusted_lock_sha256:&ap,..dep()};
  let rejected=session.build_registry(Mode::Incremental,&pin,MASTER,snap(),&[bad_dep]).unwrap_err();
+ assert_eq!(rejected.code,"E_ARITY");
  println!("V3_RUST_ABI_REJECT|{}|{}",rejected.code,rejected.message);
  let recovered=session.build_registry(Mode::Incremental,&pin,MASTER,snap(),&[next()]).unwrap();execute(&recovered.bytes,"42010203");assert_eq!(recovered.bytes,changed.bytes);
  println!("V3_RUST_REGISTRY_ADAPTER|guest=0/1/2/3->42/1/2/3|observer=4/5/6|warm-reuse|stale-pin|abi-denied|rollback|cold-checks={}|edit-checks={}|observer-edit-checks={}",cold.checked_namespaces,changed.checked_namespaces,unchanged.checked_namespaces);
