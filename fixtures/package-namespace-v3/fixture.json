@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "id": "package-namespace-v3-12-providers-two-consumers",
+  "classification": "synthetic-fixture-not-backend-evidence",
+  "provider_count": 12,
+  "namespaces": {
+    "billing": 4,
+    "identity": 3,
+    "telemetry": 3
+  },
+  "unnamespaced": 2,
+  "consumer_count": 2,
+  "manifest_sha256": "72721b058d5367d74ed1bc4694e79ad13742db24513a192fb25851a3d391912f",
+  "sources_sha256": "8e5170a12e8950f934538ae7055d112a147361903f330b8632eaa71df5a2ebae",
+  "lanes": {
+    "cold": {
+      "billing": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "identity": [
+        "4",
+        "5",
+        "6"
+      ]
+    },
+    "warm": {
+      "billing": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "identity": [
+        "4",
+        "5",
+        "6"
+      ],
+      "required_semantic_rebuilds": []
+    },
+    "body_edit": {
+      "path": "src/unit0.ores",
+      "old": "return 0",
+      "new": "return 42",
+      "repinned_sources_sha256": "85f4245442b6854150a0e8247361287e69d6d355f1aeb8383f25373a0ab77f2e",
+      "billing": [
+        "42",
+        "1",
+        "2",
+        "3"
+      ],
+      "identity": [
+        "4",
+        "5",
+        "6"
+      ],
+      "required_semantic_rebuilds": [
+        "src/unit0.ores"
+      ],
+      "required_output_relink": [
+        "client"
+      ]
+    },
+    "abi_edit": {
+      "path": "src/unit0.ores",
+      "new_source": "namespace billing;\npub fnc function0(int x): int { return x; }\n",
+      "repinned_sources_sha256": "dbe6a14b22fba63b297c140b7b6b0f0e49e6a46b5646fc8d23682fd0c66ef069",
+      "expected": "client-arity-rejection",
+      "must_preserve_last_accepted_snapshot": true
+    },
+    "stale_pin": {
+      "expected": "reject-before-compile"
+    },
+    "unlisted_file": {
+      "expected": "not-admitted-as-provider"
+    },
+    "foreign_namespace": {
+      "expected": "reject"
+    },
+    "deleted_provider": {
+      "expected": "reject-missing-symbol"
+    }
+  },
+  "status_enum": [
+    "PASSED",
+    "FAILED",
+    "UNSUPPORTED",
+    "NOT_EXECUTED"
+  ]
+}

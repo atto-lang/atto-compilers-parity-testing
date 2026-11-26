@@ -1,0 +1,24 @@
+name: Incremental namespace fixture integrity
+on:
+  pull_request:
+    paths:
+      - 'fixtures/package-namespace-v3/**'
+      - 'tools/parity-runner/tests/package_namespace_incremental_v3.rs'
+      - '.github/workflows/package-namespace-incremental-v3.yml'
+permissions:
+  contents: read
+jobs:
+  fixture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify fixture integrity (source-only)
+        run: |
+          set -eu
+          test "$(git write-tree)" = "$(git rev-parse HEAD^{tree})"
+          git diff --quiet HEAD --
+          test -z "$(git ls-files --others --exclude-standard)"
+          cargo test --manifest-path tools/parity-runner/Cargo.toml --test package_namespace_fixture --test package_namespace_incremental_v3 -- --nocapture

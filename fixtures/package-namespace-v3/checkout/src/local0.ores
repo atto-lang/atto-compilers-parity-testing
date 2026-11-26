@@ -1,0 +1,1 @@
+pub fnc local0(): int { return 10; }
