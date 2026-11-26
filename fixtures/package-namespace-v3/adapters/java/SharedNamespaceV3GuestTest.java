@@ -106,6 +106,28 @@ final class SharedNamespaceV3GuestTest {
         assertEquals(List.of("4","5","6"),run(root,"observer"));
         System.out.println("V3_JAVA_GUEST|cold=0/1/2/3|edited=42/1/2/3|observer=4/5/6|clean-only");
     }
+    @Test void launcherValidateAndRejectUnsafeFilePlan()throws Exception{
+        Path root=fixture(),entry=root.resolve("client/src/main.ores");
+        var build=LinkedProgramRunner.validate(entry,Map.of());
+        assertEquals(5,build.units().size());
+        assertTrue(build.units().containsKey(entry.toAbsolutePath().toString()));
+        assertTrue(build.units().containsKey(root.resolve("checkout/src/unit0.ores").toAbsolutePath().toString()));
+        var out=new ByteArrayOutputStream();
+        var denied=new IsolatePolicy(Set.of(),64L*1024*1024,64,java.time.Duration.ofSeconds(10));
+        assertThrows(Exception.class,()->LinkedProgramRunner.run(entry,denied,ExecutionProfile.serverJit(),Set.of(),Map.of(),out,new ByteArrayOutputStream()));
+        assertEquals(0,out.size());
+        var provider=root.resolve("checkout/src/unit0.ores"),saved=root.resolve("checkout/src/unit0.saved");
+        Files.move(provider,saved);Files.createSymbolicLink(provider,saved);
+        var symlink=assertThrows(Exception.class,()->run(root,"client"));
+        assertTrue(symlink.getMessage().contains("symlinked snapshot path"),symlink.getMessage());
+        Files.delete(provider);Files.move(saved,provider);
+        var manifest=root.resolve("client/.ores.pkg.toml");String original=Files.readString(manifest);
+        Files.writeString(manifest,original.replace("../checkout/.ores.pkg.toml","../../checkout/.ores.pkg.toml"));
+        assertThrows(Exception.class,()->run(root,"client"));Files.writeString(manifest,original);
+        Files.writeString(root.resolve("client/.atto.pkg.toml"),"schema_version = \"1\"\n");
+        var ambiguous=assertThrows(Exception.class,()->run(root,"client"));assertTrue(ambiguous.getMessage().contains("ambiguous"));
+        System.out.println("V3_JAVA_FILE_PLAN|physical-ids|validate|stdout-denied|symlink-denied|traversal-denied|ambiguous-denied");
+    }
     @Test void stalePinRejectsBeforeGuest()throws Exception{
         Path root=fixture();var provider=root.resolve("checkout/src/unit0.ores");
         // Baseline success is mandatory: a generic unsupported failure is

@@ -83,5 +83,11 @@ fn execute(bytes:&[u8],expected:&str){
  assert_eq!(rejected.code,"E_ARITY");
  println!("V3_RUST_ABI_REJECT|{}|{}",rejected.code,rejected.message);
  let recovered=session.build_registry(Mode::Incremental,&pin,MASTER,snap(),&[next()]).unwrap();execute(&recovered.bytes,"42010203");assert_eq!(recovered.bytes,changed.bytes);
+ if let Ok(dir)=std::env::var("ATTO_V3_ARTIFACTS"){
+  let dir=PathBuf::from(dir);fs::create_dir(&dir).unwrap();
+  for (lane,bytes) in [("cold",&cold.bytes),("warm",&warm.bytes),("edit",&changed.bytes),("observer",&identity.bytes),("observer-edit",&unchanged.bytes)]{
+   fs::write(dir.join(format!("{lane}.wasm")),bytes).unwrap();
+  }
+ }
  println!("V3_RUST_REGISTRY_ADAPTER|guest=0/1/2/3->42/1/2/3|observer=4/5/6|warm-reuse|stale-pin|abi-denied|rollback|cold-checks={}|edit-checks={}|observer-edit-checks={}",cold.checked_namespaces,changed.checked_namespaces,unchanged.checked_namespaces);
 }
