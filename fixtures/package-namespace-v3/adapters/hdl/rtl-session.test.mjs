@@ -25,7 +25,7 @@ const guest=async artifact=>{
   const build=spawnSync('iverilog',['-g2012','-s','tb','-o',exe,rtl],{encoding:'utf8',timeout:10000});
   assert.equal(build.status,0,String(build.error??build.stderr));
   const p=spawnSync('vvp',[exe],{encoding:'utf8',timeout:5000});
-  assert.equal(p.status,0,String(p.error??p.stderr));return p.stdout.trim().split('\n').filter(x=>/^[0-9]+$/.test(x));
+  assert.equal(p.status,0,String(p.error??p.stderr));return p.stdout.trim().split('\n').filter(x=>!/^.*guest\.sv:\d+: \$finish called at \d+ \(.*\)$/.test(x));
  }finally{rmSync(d,{recursive:true,force:true})}
 };
 const counts=x=>[x.classified,x.classificationReused,x.compiled,x.artifactReused,x.relinked];
