@@ -41,5 +41,23 @@ fn shared_v3_native_units(){
    assert!(sessions[0].build("pub fnc main(): int { return missing; }",false).is_err());
    let good=fs::read_to_string(root.join("edit/unit0.atto")).unwrap();assert!(sessions[0].build(&good,false).unwrap().1);
  }
+ #[cfg(atto_v3_llvm)]
+ if std::env::var_os("ATTO_V3_PARAMETERIZED").is_some(){
+  let mut previous=None;
+  for (lane,expected) in [("parameterized",42),("parameterized-edit",43)]{
+   let source=fs::read_to_string(root.join(lane).join("call0.atto")).unwrap();
+   let bad=fs::read_to_string(root.join(lane).join("bad0.atto")).unwrap();
+   let (ir,hit)=sessions[0].build(&source,LibraryProfile::FreestandingCore,false).unwrap();assert!(!hit);
+   assert_eq!(ir,compile_ir_with_profile(&source,LibraryProfile::FreestandingCore).unwrap());
+   if let Some(old)=previous{assert_ne!(old,ir);}
+   let path=dir.join("parameterized.ll");let exe=dir.join("parameterized-guest");fs::write(&path,&ir).unwrap();
+   assert!(Command::new("clang").arg(&path).arg("-o").arg(&exe).status().unwrap().success());
+   assert_eq!(Command::new(&exe).status().unwrap().code(),Some(expected));
+   assert!(sessions[0].build(&bad,LibraryProfile::FreestandingCore,false).is_err());
+   let (warm,hit)=sessions[0].build(&source,LibraryProfile::FreestandingCore,false).unwrap();assert!(hit);assert_eq!(warm,ir);
+   previous=Some(ir);
+   println!("V3_LLVM_PARAMETERIZED|{lane}|guest={expected}|warm|arity-denied|rollback");
+  }
+ }
  println!("V3_NATIVE_UNIT_ROLLBACK|{target}|adapted-not-namespace-linking");
 }

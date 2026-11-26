@@ -1,5 +1,6 @@
 #include "compiler/frontend.hpp"
 #include <filesystem>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -19,4 +20,16 @@ int main(int argc,char** argv){check(argc==2);fs::path root=argv[1];std::vector<
  }
  bool denied=false;try{sessions[0].build(read(root/"abi/call0.atto"),Arch::X86_64);}catch(const std::runtime_error&){denied=true;}check(denied);check(sessions[0].build(read(root/"edit/call0.atto"),Arch::X86_64).reused);
  std::cout<<"V3_FORGE_ABI_DENIAL_ROLLBACK\n";
+ if(std::getenv("ATTO_V3_PARAMETERIZED")){
+  std::string previous;
+  for(std::string lane:{"parameterized","parameterized-edit"}){
+   auto src=read(root/lane/"call0.atto");auto a=sessions[0].build(src,Arch::X86_64);
+   check(!a.reused);check(a.assembly==emit_runtime_asm(parse_runtime_source(src),Arch::X86_64));check(previous!=a.assembly);
+   bool denied=false;try{sessions[0].build(read(root/lane/"bad0.atto"),Arch::X86_64);}catch(const std::runtime_error&){denied=true;}check(denied);
+   auto warm=sessions[0].build(src,Arch::X86_64);check(warm.reused&&warm.assembly==a.assembly);
+   std::ofstream out(root/(lane+"-0.s"));out<<a.assembly;check(bool(out));previous=a.assembly;
+   std::cout<<"V3_FORGE_PARAMETERIZED|"<<lane<<"|warm|arity-denied|rollback\n";
+  }
+ }
+
 }

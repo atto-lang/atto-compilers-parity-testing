@@ -38,3 +38,18 @@ emit(files,pin,'cold');const changed=new Map(files);changed.set('src/unit0.ores'
 assert.throws(()=>emit(changed,pin,'stale'),/stale source pin/);emit(changed,edit,'edit');
 const bad=new Map(changed);bad.set('src/unit0.ores','namespace billing;\npub fnc function0(int x): int { return x; }\n');emit(bad,abi,'abi');
 console.log('V3_NATIVE_ADAPTER|12-authenticated|7-selected|stale-pin-denied|test-only-lowering');
+
+if(process.env.ATTO_V3_PARAMETERIZED){
+ for(const [add,expected,lane] of [[2,'541dfd09d7f18114efd7ec9711721c57a9b14695624a72046425e6db22ccad80','parameterized'],[3,'4e1e57d3e7a37978f99dc79399799a994e3d06d7284cbb8e4eb09e46a7c531e7','parameterized-edit']]){
+  const variant=new Map(files);
+  variant.set('src/unit0.ores','namespace billing;\npub fnc function0(int x, int y): int { return x * y + '+add+'; }\n');
+  assert.equal(digest(variant),expected);
+  const decl=variant.get('src/unit0.ores').split('\n').slice(1).join('\n');
+  mkdirSync(join(out,lane),{recursive:true});
+  writeFileSync(join(out,lane,'call0.atto'),decl+'pub fnc main(): int { return function0(5+5,4); }\n');
+  writeFileSync(join(out,lane,'bad0.atto'),decl+'pub fnc main(): int { return function0(5+5); }\n');
+  // Standalone two-parameter entry, for a native ABI without helper calls.
+  writeFileSync(join(out,lane,'unit0.atto'),decl.replace('function0(','main('));
+ }
+ console.log('V3_NATIVE_PARAMETERIZED_INPUT|two-pinned-variants|real-body-and-arguments');
+}
