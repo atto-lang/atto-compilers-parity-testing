@@ -24,6 +24,17 @@ function compile(source,ns,symbol,arity,prefix='provider_'){
   return readFileSync(out).toString('base64');
  });
 }
+// C does not specify function-argument evaluation order.
+// Emit one full expression per argument before the provider call.
+export function orderedProviderCalls(calls){
+ return calls.map((c,i)=>{
+  if(!new RegExp('^'+name+'$').test(c.symbol)||c.args.some(a=>!/^arg[0-9]+$/.test(a)))deny('invalid host call');
+  const values=c.args.map((_,j)=>'v_'+i+'_'+j);
+  return c.args.map((a,j)=>'int64_t '+values[j]+'=argument_'+a+'();').concat(
+   'printf("%" PRId64 "\\n",provider_'+c.symbol+'('+values.join(',')+'));'
+  ).join('\n');
+ }).join('\n');
+}
 function link(calls,exports,argumentsByName){
  return scratch(d=>{
   const unique=[...new Set(calls.map(c=>c.symbol))],objects=[];
@@ -36,7 +47,7 @@ function link(calls,exports,argumentsByName){
   const host='#include <stdint.h>\n#include <inttypes.h>\n#include <stdio.h>\n'+
     unique.map(s=>'extern int64_t provider_'+s+'('+ (Array(exports.get(s).info.arity).fill('int64_t').join(',')||'void')+');').join('\n')+
     '\n'+[...argumentsByName.keys()].map(s=>'extern int64_t argument_'+s+'(void);').join('\n')+
-    '\nint main(void){\n'+calls.map(c=>'printf("%" PRId64 "\\n",provider_'+c.symbol+'('+c.args.map(a=>'argument_'+a+'()').join(',')+'));').join('\n')+'\nreturn 0;\n}\n';
+    '\nint main(void){\n'+orderedProviderCalls(calls)+'\nreturn 0;\n}\n';
   const obj=join(d,'host.o'),exe=join(d,'guest');
   run('cc',['-x','c','-c','-','-o',obj],host);
   run('cc',['-Wl,--build-id=none',obj,...objects,'-o',exe]);
