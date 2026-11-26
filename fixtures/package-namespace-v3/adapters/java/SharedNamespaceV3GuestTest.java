@@ -34,6 +34,28 @@ final class SharedNamespaceV3GuestTest {
             ExecutionProfile.serverJit(),Set.of(),Map.of(),out,new ByteArrayOutputStream());
         return out.toString(StandardCharsets.UTF_8).lines().toList();
     }
+    @Test void exactPinnedInventoryAdmission()throws Exception{
+        Path root=fixture();
+        var providerManifest=Files.readString(root.resolve("checkout/.ores.pkg.toml"));
+        var sources=new TreeMap<String,String>();
+        try(var files=Files.list(root.resolve("checkout/src"))){
+            for(Path p:files.toList())sources.put("src/"+p.getFileName(),Files.readString(p));
+        }
+        assertEquals(12,sources.size());
+        for(String consumer:List.of("client","observer")){
+            var program=dev.oreslang.parser.Parser.parse(Files.readString(root.resolve(consumer+"/src/main.ores")));
+            var manifest=Files.readString(root.resolve(consumer+"/.ores.pkg.toml"));
+            var selected=dev.oreslang.compiler.PinnedNamespaceInventory.admit(program.imports().getFirst(),manifest,providerManifest,sources);
+            assertEquals(consumer.equals("client")?4:3,selected.providers().size());
+            assertEquals(consumer.equals("client")?"billing":"identity",selected.namespace());
+            var changed=new TreeMap<>(sources);changed.put("src/unit0.ores",changed.get("src/unit0.ores").replace("return 0","return 42"));
+            var stale=assertThrows(IllegalArgumentException.class,()->dev.oreslang.compiler.PinnedNamespaceInventory.admit(program.imports().getFirst(),manifest,providerManifest,changed));
+            assertTrue(stale.getMessage().contains("source pin mismatch"),stale.getMessage());
+            var updated=manifest.replace("8e5170a12e8950f934538ae7055d112a147361903f330b8632eaa71df5a2ebae","85f4245442b6854150a0e8247361287e69d6d355f1aeb8383f25373a0ab77f2e");
+            assertEquals(selected.providers().size(),dev.oreslang.compiler.PinnedNamespaceInventory.admit(program.imports().getFirst(),updated,providerManifest,changed).providers().size());
+        }
+        System.out.println("V3_JAVA_INVENTORY|12-providers|two-consumers|4/3-selection|stale-pin-denied|repinned-edit-admitted|not-linked");
+    }
     @Test void actualColdBodyEditAndIndependentConsumer()throws Exception{
         Path root=fixture();
         assertEquals(List.of("0","1","2","3"),run(root,"client"));
