@@ -37,7 +37,7 @@ internal static class SharedNamespaceV3Net
         =>FrozenImportSnapshot.Verify(Name,"1.0.0",Sha(s.locked),s.manifest,s.locked,s.sources);
     internal static void Run(string root,string output){
         var files=new SortedDictionary<string,string>(StringComparer.Ordinal);
-        foreach(var p in Directory.GetFiles(Path.Combine(root,"checkout/src"))){Check((File.GetAttributes(p)&FileAttributes.ReparsePoint)==0,"fixture symlink");files.Add("src/"+Path.GetFileName(p),File.ReadAllText(p));}
+        foreach(var file in Directory.GetFiles(Path.Combine(root,"checkout/src"))){Check((File.GetAttributes(file)&FileAttributes.ReparsePoint)==0,"fixture symlink");files.Add("src/"+Path.GetFileName(file),File.ReadAllText(file));}
         Check(files.Count==12&&Digest(files)==Pin,"original inventory pin");
         Check(Sha(File.ReadAllBytes(Path.Combine(root,"checkout/.ores.pkg.toml")))=="72721b058d5367d74ed1bc4694e79ad13742db24513a192fb25851a3d391912f","manifest pin");
         string Consumer(string client,string ns,int start,int end){
@@ -51,6 +51,9 @@ internal static class SharedNamespaceV3Net
         Directory.CreateDirectory(output);
         var original=Adapt(files);var p=Verify(original);
         var clientSession=new FrozenCilSession();var observerSession=new FrozenCilSession();
+        var semantic=new OresStructuredParser.FrozenScalarSession();
+        var semCold=semantic.Compile(billing,new[]{p});Check(semCold.ReparsedProviders.Count==3&&semCold.ReusedProviders.Count==0,"cold parser counts");
+        var semWarm=semantic.Compile(billing,new[]{p});Check(semWarm.ReparsedProviders.Count==0&&semWarm.ReusedProviders.Count==3,"warm parser counts");
         byte[] Clean(string consumer,FrozenImportSnapshot provider)=>CilEmitter.BuildLibrary(OresStructuredParser.CompileFrozenScalar(consumer,new[]{provider}));
         void Write(string lane,byte[] b)=>File.WriteAllBytes(Path.Combine(output,lane+".dll"),b);
         var cold=clientSession.Compile(billing,new[]{p},true);Check(!cold.Reused&&cold.Cil.AsSpan().SequenceEqual(Clean(billing,p)),"cold clean");Write("cold",cold.Cil);
@@ -58,13 +61,20 @@ internal static class SharedNamespaceV3Net
         var ob=observerSession.Compile(observer,new[]{p});Write("observer",ob.Cil);
         files["src/unit0.ores"]=files["src/unit0.ores"].Replace("return 0","return 42",StringComparison.Ordinal);Check(Digest(files)==Edit,"edit pin");
         var changed=Adapt(files);Deny("E_LOCK_HASH",()=>FrozenImportSnapshot.Verify(Name,"1.0.0",Sha(original.locked),original.manifest,original.locked,changed.sources));
-        var p2=Verify(changed);var edited=clientSession.Compile(billing,new[]{p2});Check(!edited.Reused&&edited.Cil.AsSpan().SequenceEqual(Clean(billing,p2)),"edit differential");Write("edit",edited.Cil);
+        var p2=Verify(changed);
+        var semEdit=semantic.Compile(billing,new[]{p2});Check(semEdit.ReparsedProviders.Count==1&&semEdit.ReusedProviders.Count==2,"repinned namespace parser counts");
+        Check(CilEmitter.BuildLibrary(semEdit.Module).AsSpan().SequenceEqual(Clean(billing,p2)),"semantic clean differential");
+        var semOther=semantic.Compile(observer,new[]{p2});Check(semOther.ReparsedProviders.Count==0&&semOther.ReusedProviders.Count==3,"observer parse counts");
+        var edited=clientSession.Compile(billing,new[]{p2});Check(!edited.Reused&&edited.Cil.AsSpan().SequenceEqual(Clean(billing,p2)),"edit differential");Write("edit",edited.Cil);
         var ob2=observerSession.Compile(observer,new[]{p2});Check(ob2.Cil.AsSpan().SequenceEqual(Clean(observer,p2)),"observer differential");Write("observer-edit",ob2.Cil);
         Console.WriteLine("V3_NET_OBSERVER_ARTIFACT_CHANGED="+!ob.Cil.AsSpan().SequenceEqual(ob2.Cil));
         files["src/unit0.ores"]="namespace billing;\npub fnc function0(int x): int { return x; }\n";Check(Digest(files)==Abi,"ABI pin");
         var bad=Verify(Adapt(files));
         try{clientSession.Compile(billing,new[]{bad});throw new InvalidOperationException("ABI admitted");}
         catch(FormatException e){Check(e.Message.Contains("arity",StringComparison.OrdinalIgnoreCase)||e.Message.StartsWith("E_ARITY:",StringComparison.Ordinal),"wrong ABI rejection "+e.Message);Console.WriteLine("V3_NET_ABI_REJECT|"+e.Message);}
+        try{semantic.Compile(billing,new[]{bad});throw new InvalidOperationException("semantic ABI admitted");}catch(FormatException e){Check(e.Message.Contains("arity",StringComparison.OrdinalIgnoreCase)||e.Message.StartsWith("E_ARITY:",StringComparison.Ordinal),"wrong semantic ABI rejection "+e.Message);}
+        var semRecovery=semantic.Compile(billing,new[]{p2});Check(semRecovery.ReparsedProviders.Count==0&&semRecovery.ReusedProviders.Count==3,"semantic rollback");
+        Console.WriteLine("V3_NET_NAMESPACE_PARSE|cold=3/0|warm=0/3|edit=1/2|observer=0/3|rollback=0/3");
         var recovered=clientSession.Compile(billing,new[]{p2});Check(recovered.Reused&&recovered.Cil.AsSpan().SequenceEqual(edited.Cil),"rollback");
         Console.WriteLine("V3_NET_CIL|cold-warm|clean-differential|stale-pin|abi-denied|rollback|adapted-one-file-per-namespace");
     }
