@@ -39,9 +39,9 @@
     },
     {
       "backend": "hdl",
-      "head": "de0077ff582e5b137e964059ca8eb8616a2a33fd",
+      "head": "0d6dc2e81242ac94b535a481c48afa5d25f18182",
       "tree": null
     }
   ],
-  "note": "HDL root and execution not yet verified. Original fixture inventory and oracle unchanged. Historical receipts do not prove this combined tree."
+  "note": "Corrected HDL lexer and reference-validation candidate pinned; HDL root and simulation still require actual CI. Original fixture inventory and oracle unchanged. Historical receipts do not prove this combined tree."
 }
