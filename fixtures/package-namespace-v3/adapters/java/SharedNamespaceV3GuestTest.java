@@ -69,26 +69,26 @@ final class SharedNamespaceV3GuestTest {
         String cs=Files.readString(root.resolve("client/src/main.ores")),os=Files.readString(root.resolve("observer/src/main.ores"));
         var out=new ByteArrayOutputStream();var err=new ByteArrayOutputStream();
         var cold=client.run(cs,cm,providerManifest,sources,out,err);assertEquals(List.of("0","1","2","3"),out.toString(StandardCharsets.UTF_8).lines().toList());
-        assertEquals(5,cold.build().rebuiltUnits().size());out.reset();
+        assertEquals(5,cold.build().rebuiltUnits().size());assertEquals(12,cold.inventoryParsed());assertEquals(0,cold.inventoryReused());assertEquals(1,cold.consumerParsed());out.reset();
         var other=observer.run(os,om,providerManifest,sources,out,err);assertEquals(List.of("4","5","6"),out.toString(StandardCharsets.UTF_8).lines().toList());assertEquals(4,other.build().rebuiltUnits().size());out.reset();
-        var warm=client.run(cs,cm,providerManifest,sources,out,err);assertEquals(List.of("0","1","2","3"),out.toString(StandardCharsets.UTF_8).lines().toList());assertTrue(warm.build().rebuiltUnits().isEmpty());assertTrue(warm.build().reparsedUnits().isEmpty());out.reset();
+        var warm=client.run(cs,cm,providerManifest,sources,out,err);assertEquals(List.of("0","1","2","3"),out.toString(StandardCharsets.UTF_8).lines().toList());assertTrue(warm.build().rebuiltUnits().isEmpty());assertTrue(warm.build().reparsedUnits().isEmpty());assertEquals(0,warm.inventoryParsed());assertEquals(12,warm.inventoryReused());assertEquals(0,warm.consumerParsed());out.reset();
         var changed=new TreeMap<>(sources);changed.put("src/unit0.ores",changed.get("src/unit0.ores").replace("return 0","return 42"));
         var stale=assertThrows(IllegalArgumentException.class,()->client.run(cs,cm,providerManifest,changed,out,err));assertTrue(stale.getMessage().contains("source pin mismatch"));assertEquals(0,out.size());
         String old="8e5170a12e8950f934538ae7055d112a147361903f330b8632eaa71df5a2ebae";
         String edit="85f4245442b6854150a0e8247361287e69d6d355f1aeb8383f25373a0ab77f2e";
         String editedManifest=cm.replace(old,edit);
         var edited=client.run(cs,editedManifest,providerManifest,changed,out,err);assertEquals(List.of("42","1","2","3"),out.toString(StandardCharsets.UTF_8).lines().toList());
-        assertEquals(Set.of("provider/src/unit0.ores"),edited.build().rebuiltUnits());assertEquals(Set.of("provider/src/unit0.ores"),edited.build().reparsedUnits());out.reset();
+        assertEquals(Set.of("provider/src/unit0.ores"),edited.build().rebuiltUnits());assertEquals(Set.of("provider/src/unit0.ores"),edited.build().reparsedUnits());assertEquals(1,edited.inventoryParsed());assertEquals(11,edited.inventoryReused());assertEquals(0,edited.consumerParsed());out.reset();
         var unaffected=observer.run(os,om.replace(old,edit),providerManifest,changed,out,err);
-        assertEquals(List.of("4","5","6"),out.toString(StandardCharsets.UTF_8).lines().toList());assertTrue(unaffected.build().rebuiltUnits().isEmpty());out.reset();
+        assertEquals(List.of("4","5","6"),out.toString(StandardCharsets.UTF_8).lines().toList());assertTrue(unaffected.build().rebuiltUnits().isEmpty());assertEquals(1,unaffected.inventoryParsed());assertEquals(11,unaffected.inventoryReused());out.reset();
         var clean=new dev.oreslang.runtime.PinnedScalarNamespaceSession();
         clean.run(cs,editedManifest,providerManifest,changed,out,err);assertEquals(List.of("42","1","2","3"),out.toString(StandardCharsets.UTF_8).lines().toList());out.reset();
         var abi=new TreeMap<>(changed);abi.put("src/unit0.ores","namespace billing;\npub fnc function0(int x): int { return x; }\n");
         String abiManifest=cm.replace(old,"dbe6a14b22fba63b297c140b7b6b0f0e49e6a46b5646fc8d23682fd0c66ef069");
         var bad=assertThrows(IllegalArgumentException.class,()->client.run(cs,abiManifest,providerManifest,abi,out,err));assertTrue(bad.getMessage().startsWith("E_NAMESPACE_ARITY:"),bad.getMessage());assertEquals(0,out.size());
-        var recovered=client.run(cs,editedManifest,providerManifest,changed,out,err);assertTrue(recovered.build().rebuiltUnits().isEmpty());
+        var recovered=client.run(cs,editedManifest,providerManifest,changed,out,err);assertTrue(recovered.build().rebuiltUnits().isEmpty());assertEquals(0,recovered.inventoryParsed());assertEquals(12,recovered.inventoryReused());
         assertEquals(List.of("42","1","2","3"),out.toString(StandardCharsets.UTF_8).lines().toList());
-        System.out.println("V3_JAVA_SCALAR_SESSION|guest=0/1/2/3->42/1/2/3|observer=4/5/6|checked=5/0/1|observer-edit=0|clean-differential|stale-pin|abi-denial|rollback|fresh-runtime");
+        System.out.println("V3_JAVA_SCALAR_SESSION|guest=0/1/2/3->42/1/2/3|observer=4/5/6|checked=5/0/1|observer-edit=0|clean-differential|stale-pin|abi-denial|rollback|inventory-parse=12/0/1|consumer-parse=1/0/0|fresh-runtime");
     }
     @Test void actualColdBodyEditAndIndependentConsumer()throws Exception{
         Path root=fixture();
