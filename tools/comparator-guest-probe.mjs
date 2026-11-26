@@ -38,7 +38,7 @@ assert.equal(new Set(cases.map(c=>c.name)).size,cases.length);
 const tmp=mkdtempSync(join(tmpdir(),'atto-comparator-'));
 const result=[];
 const negatives=[];
-const javaJar=join(root,'target/oreslang-source-0.1.0-SNAPSHOT.jar');
+const javaJar=join(root,'target/oreslang-source-0.1.0-hotload-SNAPSHOT.jar');
 const javaNative=join(root,'target/native/liboresthread.so');
 const javaArgs=id==='java'&&lane==='java'?['--enable-native-access=ALL-UNNAMED','-Dpolyglot.engine.WarnInterpreterOnly=false','-Dores.thread.native.path='+javaNative,'-cp',javaJar+':'+readFileSync(join(root,'target/conformance-classpath.txt'),'utf8').trim(),'dev.oreslang.launcher.OresMain','--mode=aot','--no-core-log']:[];
 const javaCmd=lane==='java-aot'?join(root,'target/ores-aot'):'java';
@@ -118,7 +118,7 @@ try{
   if(id==='rs'){
     const artifact=join(tmp,'immutable-reject.wasm');
     const rr=invoke(join(root,'target/release/attoc'),[invalid,'-o',artifact],root);
-    negatives.push({name:'immutable-reassignment',source_blob:blob(readFileSync(invalid)),observation:validProcess(rr)&&rr.status===1&&/^E_IMMUTABLE:/m.test(rr.stderr)&&!existsSync(artifact)?'MATCHED_NEGATIVE_ORACLE':'NEGATIVE_UNVERIFIED',diagnostic:rr.stderr.slice(0,500),artifact_exists:existsSync(artifact)});
+    negatives.push({name:'immutable-reassignment',source_blob:blob(readFileSync(invalid)),observation:validProcess(rr)&&rr.status===1&&rr.stderr.startsWith(invalid+': 4:3: E_IMMUTABLE:')&&!existsSync(artifact)?'MATCHED_NEGATIVE_ORACLE':'NEGATIVE_UNVERIFIED',diagnostic:rr.stderr.slice(0,500),artifact_exists:existsSync(artifact)});
     const overflow=join(site,'play/examples/overflow.atto');
     assert.equal(blob(readFileSync(overflow)),'e2ec3bb25ed02e47645946c1db221eed05579ee3');
     const artifact2=join(tmp,'overflow.wasm');
