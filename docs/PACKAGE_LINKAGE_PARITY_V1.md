@@ -69,3 +69,14 @@ JS #159: 7 planner and 4 runtime synthetic ESM cases executed locally, total 34/
 | L53 | Independent namespace edits preserve unaffected namespace cache entries and generated artifacts; require actual per-unit compiler counters, not a whole-program cache hit. |
 
 JS #154: executed 6/6 Node 22.16.0 real filesystem/cache tests on exact store, test and receipt blobs; two concurrent processes and 256 publications included. Trusted Linux directory, 16 direct-mapped committed slots and 16 fixed staging names (128 MiB plus envelopes), offline stale cleanup. Actual closed scalar source-unit compiler integration and process-restart test authored, NOT_EXECUTED; not yet true namespace-selective code generation. All applicable atto-source.* compiler adapters must prove L46–L53 independently. HDL/realtime require target-appropriate static artifact and determinism receipts. No host-only pass propagated to guest cells.
+
+## Integrated emitter and persistent ABI-keyed package artifacts (L54–L57)
+
+| ID | Required behavior |
+|---|---|
+| L54 | Full checked IR is validated before function-fragment reuse; cold/no-op/one-body-edit emission counters are 2/0, 0/2, 1/1 on the two-function fixture; emitted guest executes 42/43. |
+| L55 | Imported slot boundary, target indices, public exports and provider signatures are reconstructed or invalidated correctly; failed edit preserves previous session; no externally supplied executable memo text. |
+| L56 | Persistent consumer key uses namespace/source-unit slot, reviewed compiler closure, target/toolchain, source and canonical dependency ABI, not compatible provider implementation bytes. Actual source provider edit 42→43 reuses consumer bytes; ABI drift requires re-emission. |
+| L57 | Explicit empty linkage mode is invalid, unlike omitted mode; reject before compiler invocation or output mutation. Actual toolchain final-link assertion and separate-object guest checks must execute. |
+
+JS #159 integrates #154 with both parents preserved. Six local exact checked-IR emitter regression tests execute generated ESM and pass; constructed typed IR, NOT full source frontend. Persistent graph cache and full source consumer session tests authored, NOT_EXECUTED. Namespace slots are caller-selected scalar source-unit identities, not general Atto namespace lowering. LLVM #918 fixes explicit empty mode and corrupted off-LTO test assertion; local six admission-prefix cases pass; full native driver/compiler execution NOT_EXECUTED. All applicable backend cells need independent actual compiler evidence; no blanket parity claim.
