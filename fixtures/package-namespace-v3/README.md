@@ -25,3 +25,12 @@ diagnostics and rollback receipts. Unsupported or unexecuted is not a pass.
 A compiler may conservatively rebuild more units, but that is a measured
 incremental-parity gap, not full success. No synthetic oracle counts as compiler
 execution.
+
+## Consolidated restricted adapter candidates
+
+`compiler-lanes.json` records exact candidate compiler heads and root trees for the
+consolidated execution lanes. Existing Rust, Java, .NET and native graph adapters
+remain intact. The added JS, Forge, Cranelift, HDL and LLVM-native adapters are
+byte-identical to their separately reviewed candidate test files. The carrier
+must rerun the combined fixture tree; historical receipts do not establish a
+pass on this tree. No adapter may be relabeled as a default production linker.
