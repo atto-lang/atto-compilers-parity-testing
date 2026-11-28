@@ -1,0 +1,9 @@
+# Actor DATA codec differential execution — draft
+
+Status: DESIGN_ONLY_NOT_EXECUTED. Normative proposal https://github.com/atto-lang/atto-spec/pull/228; shared 22-case matrix https://github.com/atto-lang/atto-platform-conformance/pull/586. Do not duplicate feature fixtures here.
+
+- Pin common fixture/schema versions, compiler heads/root trees, compiler flags, target/toolchain and runtime versions. Compare independently compiled and executed .atto guests; run producer/consumer cross-product for each mutually supported codec and schema version. Preserve existing MessagePack v2/DATA v0 vectors; compare same semantic results and canonical bytes where a reviewed profile requires canonicality. Do not require protobuf byte equality absent a canonical profile.
+- Execute MessagePack default, explicit Protobuf and CBOR, optional FlatBuffers only where verified and supported; report unsupported separately, never silently fall back. Keep local Sendable behavior separate from wire Serializable.
+- Differential negative cases: codec downgrade, invalid schema/tag/field/length/UTF-8, duplicate fields, parser-work/heap/mailbox budgets, forged ActorRef or CONTROL, cross-tenant and stale generation, replay, cancellation/restart and queue-full rollback, immutable buffer validation. Normalize typed rejection categories and assert no publication or leaked credits; preserve exact raw diagnostics for triage.
+- Share deterministic fuzz seeds and bounded mutation corpus; retain failures and exact guest receipts with sensitive payloads redacted. Compare resource and latency results separately from semantics.
+- Evidence states PASS/FAIL/UNSUPPORTED/NOT_EXECUTED; source-only/host-only/zero-step CI is NOT_EXECUTED for guest parity. No claims until actual executed matrix; independent security review and overlap reconciliation required before readiness.
