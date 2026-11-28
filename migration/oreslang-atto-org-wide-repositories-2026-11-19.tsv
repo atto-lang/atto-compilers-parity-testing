@@ -1,0 +1,84 @@
+source_repo	target_repo	status	source_visibility
+ores-truffle-oreslang/.github	atto-lang/.github	candidate	private
+ores-truffle-oreslang/async-testing		missing	private
+ores-truffle-oreslang/atto-ci	atto-lang/atto-ci	candidate	private
+ores-truffle-oreslang/atto-redis-clone.atto		missing	private
+ores-truffle-oreslang/atto-source.atto	atto-lang/atto-source.atto	candidate	private
+ores-truffle-oreslang/attolang-language-spec.md	atto-lang/atto-spec	candidate	private
+ores-truffle-oreslang/compiler-parity-website		missing	private
+ores-truffle-oreslang/gh-linguist-fork		missing	public
+ores-truffle-oreslang/html-js-css-syntax-highlighter		missing	public
+ores-truffle-oreslang/ores-fm-mac-agent.ores		missing	private
+ores-truffle-oreslang/ores-truffle-oreslang.github.io	atto-lang/atto-lang.github.io	candidate	public
+ores-truffle-oreslang/oreslana.ores		missing	private
+ores-truffle-oreslang/oreslang-ai-agent-coordination-via-actors-demo	atto-lang/atto-ai-agent-coordination-demo	candidate	private
+ores-truffle-oreslang/oreslang-api-server.ores	atto-lang/atto-api-server.atto	candidate	private
+ores-truffle-oreslang/oreslang-autograd	atto-lang/atto-autograd	candidate	private
+ores-truffle-oreslang/oreslang-browser	atto-lang/atto-browser	candidate	private
+ores-truffle-oreslang/oreslang-cli	atto-lang/atto-cli	candidate	public
+ores-truffle-oreslang/oreslang-common-source	atto-lang/atto-common-source	candidate	private
+ores-truffle-oreslang/oreslang-compilers-parity-testing	atto-lang/atto-compilers-parity-testing	candidate	private
+ores-truffle-oreslang/oreslang-data-science	atto-lang/atto-data-science	candidate	private
+ores-truffle-oreslang/oreslang-db	atto-lang/atto-db	candidate	private
+ores-truffle-oreslang/oreslang-demo	atto-lang/atto-demo	candidate	private
+ores-truffle-oreslang/oreslang-demo-restful-server	atto-lang/atto-demo-restful-server	candidate	public
+ores-truffle-oreslang/oreslang-demos	atto-lang/atto-demos	candidate	public
+ores-truffle-oreslang/oreslang-design-patterns	atto-lang/atto-design-patterns	candidate	private
+ores-truffle-oreslang/oreslang-durable-objects.ores		missing	private
+ores-truffle-oreslang/oreslang-format	atto-lang/atto-format	candidate	private
+ores-truffle-oreslang/oreslang-forward-proxy-demo.ores	atto-lang/atto-forward-proxy-demo.atto	candidate	private
+ores-truffle-oreslang/oreslang-hot-loading-tests	atto-lang/atto-hot-loading-tests	candidate	private
+ores-truffle-oreslang/oreslang-hpc-finance		missing	private
+ores-truffle-oreslang/oreslang-http-routing	atto-lang/atto-http-routing	candidate	private
+ores-truffle-oreslang/oreslang-language-specs.md	atto-lang/atto-spec	candidate	private
+ores-truffle-oreslang/oreslang-linked-queue	atto-lang/atto-linked-queue	candidate	private
+ores-truffle-oreslang/oreslang-logic.ores	atto-lang/atto-logic.atto	candidate	private
+ores-truffle-oreslang/oreslang-ml	atto-lang/atto-ml	candidate	private
+ores-truffle-oreslang/oreslang-ml-conformance	atto-lang/atto-ml-conformance	candidate	private
+ores-truffle-oreslang/oreslang-n8n-make-zapier-app	atto-lang/atto-automated-jobs	ambiguous	private
+ores-truffle-oreslang/oreslang-orie-ieor		missing	private
+ores-truffle-oreslang/oreslang-otel	atto-lang/atto-otel	candidate	private
+ores-truffle-oreslang/oreslang-phoenix-server.ores	atto-lang/atto-phoenix-server.atto	candidate	private
+ores-truffle-oreslang/oreslang-physics-demo.ores	atto-lang/atto-physics-demo.atto	candidate	private
+ores-truffle-oreslang/oreslang-platform-conformance	atto-lang/atto-platform-conformance	candidate	private
+ores-truffle-oreslang/oreslang-platform.asic	atto-lang/atto-platform.asic	candidate	private
+ores-truffle-oreslang/oreslang-platform.desktop	atto-lang/atto-platform.desktop	candidate	private
+ores-truffle-oreslang/oreslang-platform.embedded	atto-lang/atto-platform.embedded	candidate	private
+ores-truffle-oreslang/oreslang-platform.fpga	atto-lang/atto-platform.fpga	candidate	private
+ores-truffle-oreslang/oreslang-platform.iot	atto-lang/atto-platform.iot	candidate	private
+ores-truffle-oreslang/oreslang-platform.mobile	atto-lang/atto-platform.mobile	candidate	private
+ores-truffle-oreslang/oreslang-proof-of-concepts	atto-lang/atto-proof-of-concepts	candidate	private
+ores-truffle-oreslang/oreslang-restful-server-perf-benchmarks	atto-lang/atto-restful-server-perf-benchmarks	candidate	private
+ores-truffle-oreslang/oreslang-reverse-proxy-demo.ores	atto-lang/atto-reverse-proxy-demo.atto	candidate	private
+ores-truffle-oreslang/oreslang-rpc	atto-lang/atto-rpc	candidate	private
+ores-truffle-oreslang/oreslang-runtime-ui	atto-lang/atto-runtime-ui	candidate	private
+ores-truffle-oreslang/oreslang-runtime.realtime-java	atto-lang/atto-runtime.realtime-java	candidate	private
+ores-truffle-oreslang/oreslang-serialization-and-validation	atto-lang/atto-serialization-and-validation	candidate	private
+ores-truffle-oreslang/oreslang-sg-stategraph.ores	atto-lang/atto-stategraph.atto	candidate	private
+ores-truffle-oreslang/oreslang-source.cranelift	atto-lang/atto-source.cranelift	candidate	private
+ores-truffle-oreslang/oreslang-source.forge	atto-lang/atto-source.forge	candidate	private
+ores-truffle-oreslang/oreslang-source.hdl	atto-lang/atto-source.hdl	candidate	private
+ores-truffle-oreslang/oreslang-source.java	atto-lang/atto-source.java	candidate	private
+ores-truffle-oreslang/oreslang-source.js	atto-lang/atto-source.js	candidate	private
+ores-truffle-oreslang/oreslang-source.llvm	atto-lang/atto-source.llvm	candidate	private
+ores-truffle-oreslang/oreslang-source.net	atto-lang/atto-source.net	candidate	private
+ores-truffle-oreslang/oreslang-source.rs	atto-lang/atto-source.rs	candidate	private
+ores-truffle-oreslang/oreslang-source.wasm	atto-lang/atto-source.wasm	candidate	private
+ores-truffle-oreslang/oreslang-spin		missing	private
+ores-truffle-oreslang/oreslang-ssr	atto-lang/atto-ssr	candidate	private
+ores-truffle-oreslang/oreslang-stack-cli		missing	private
+ores-truffle-oreslang/oreslang-static-analysis.rs	atto-lang/atto-static-analysis.rs	candidate	private
+ores-truffle-oreslang/oreslang-step-function-demo	atto-lang/atto-step-function-demo	candidate	private
+ores-truffle-oreslang/oreslang-target-profiles	atto-lang/atto-target-profiles	candidate	private
+ores-truffle-oreslang/oreslang-tensor	atto-lang/atto-tensor	candidate	private
+ores-truffle-oreslang/oreslang-test.cli	atto-lang/atto-test.cli	candidate	private
+ores-truffle-oreslang/oreslang-wasm	atto-lang/atto-wasm	candidate	private
+ores-truffle-oreslang/oreslang-web-browser.ores	atto-lang/atto-browser	ambiguous	private
+ores-truffle-oreslang/oreslang-websocket-server-demo.ores	atto-lang/atto-websocket-server-demo.atto	candidate	private
+ores-truffle-oreslang/postgres-orm.ores	atto-lang/atto-postgres-orm.atto	candidate	private
+ores-truffle-oreslang/rx-ores	atto-lang/atto-rx	candidate	private
+ores-truffle-oreslang/rx-ores-callbacks	atto-lang/atto-rx-callbacks	candidate	private
+ores-truffle-oreslang/rx-ores-tasks	atto-lang/atto-rx-tasks	candidate	private
+ores-truffle-oreslang/rx-oreslang-channels	atto-lang/atto-rx-channels	candidate	private
+ores-truffle-oreslang/sublime-text-plugins	atto-lang/atto-sublime	candidate	public
+ores-truffle-oreslang/vscode-plugins	atto-lang/atto-vscode	candidate	public
