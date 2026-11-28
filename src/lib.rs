@@ -128,3 +128,5 @@ pub mod release_gate;
 pub mod github_probe;
 
 pub mod artifact_receipt;
+
+pub mod challenge_gate;

@@ -85,3 +85,11 @@ fixture execution. Verified bytes, a valid SLSA attestation and replay
 prevention still **do not prove the guest runtime actually executed**.
 Release status remains `NOT_CERTIFIED` until independently trusted
 runner/guest execution evidence is established.
+
+## Independent verifier-issued challenges (new, fail-closed)
+
+`src/challenge_gate.rs` adds a separate verifier-owned authority journal. On an independently administered verifier host, create a pre-existing owner-private `0700` directory and set `ATTO_CHALLENGE_LEDGER_DIR`. `challenge_issue` draws 256 bits from the OS CSPRNG, fixes the approved repository, source commit/tree, fixture hash, backend, feature, command, signing workflow and a **10-minute lifetime**, and atomically persists the issued record. Transfer only the returned nonce over an approved channel to the guest producer. **Never copy the authority journal to a producer runner.** The public nonce is not a signing key.
+
+`guest_artifact_probe` now refuses otherwise-valid signed artifact metadata unless the nonce was recorded by the verifier-side authority, all bindings and expiration match, and a consumption marker is atomically recorded in the private directory; duplicate and concurrent accepts fail. The existing independent durable replay journal remains mandatory. Tests cover expiry, future issuance, tampering, mismatched tree/backend, locally fabricated nonces, concurrent replay, and unsafe directories.
+
+**No production signer, authenticated private nonce-delivery channel, or trusted guest runner is configured.** The current LLVM PR #7 emits a self-generated nonce and therefore MUST fail the new independent challenge gate. Neither that historical artifact nor synthetic tests are release certificates. A private KMS/trust root and source-approved runner workflow are prerequisites for certification. This change introduces no public Rekor disclosure and no private source export.
