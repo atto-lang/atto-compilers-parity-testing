@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "source": "atto-lang/atto-source.net",
+  "ref": "21956758f6d00808c9afdb9493526cd8f965d5f2",
+  "expected": 42,
+  "fixtures": [
+    {
+      "name": "inline-shortcircuit-writeback",
+      "blob": "adea3e544fd92d4b79387f7dc9881e36ecae65f3"
+    },
+    {
+      "name": "inline-conditional-writeback",
+      "blob": "84c0e81f83361e00be1f3441fc4171546654609f"
+    },
+    {
+      "name": "inline-match-writeback",
+      "blob": "2a85a1d585bb8b3ff98afcea5d0f201c911c8de3"
+    },
+    {
+      "name": "inline-ternary-writeback",
+      "blob": "3c756a785b22eea6b3d076f1c506c642dce4a839"
+    }
+  ],
+  "pins": {
+    "llvm": [
+      "3e57dbc9d34e488cb03c85e14cffc0bdb9a7f056",
+      "e96119dfff58c1505d204bf44b2763cb89974317"
+    ],
+    "rs": [
+      "f00eadc1cc115371a4f04a1f39cdb68b394151ed",
+      "02fa1a27fb449ab49ace6c6e51c82badda5216ef"
+    ],
+    "js": [
+      "0efb03d221968e4153f664c86660e84f655d03af",
+      "ede163ea6b291db0fc9fa7dafdf3ff9e9c84e2ed"
+    ],
+    "forge": [
+      "9e70a6e5fe3402857225bf05b85581db319b720b",
+      "374e97c4634a4291d14b7c7452360a7a9d0c9238"
+    ],
+    "cranelift": [
+      "5fc441b7bd044b089f7dbdb16284893fbb873bfa",
+      "b1adae07e60fac7eee05e47ddbd6516cc249ef16"
+    ],
+    "wasm": [
+      "d676557516c0179e476a693f84ed73e854f92548",
+      "ce32cff332439a740901b8b2a69b1d3a45776cc7"
+    ],
+    "atto": [
+      "2a839a0bff856b2f6c64116d354fca4a4c72fbcf",
+      "e291ea41becf367162347a16c6556e2677a3e6d2"
+    ],
+    "hdl": [
+      "b043f33733ecfc0eaa0a4f45d35a1b3a7a8d3edf",
+      "788b1269326c37fbf4e1c74b00c92eebac8db686"
+    ],
+    "realtime": [
+      "8161daa8654a55abbf6260470272814012ef5911",
+      "bd06ea4c2be68295ce6439550950ef846d37295d"
+    ]
+  },
+  "scope": {
+    "java": "existing exact-source PRs #1846/#1875",
+    "net": "existing NativeAOT/CoreCLR PR #272 and prior receipts",
+    "wasm": "pinned Rust source compiler plus separately pinned Wasm host admission, not an independent frontend",
+    "atto": "bootstrap only; no general compiler CLI",
+    "hdl": "candidate #84, exact task-specific negative admission, no RTL",
+    "realtime": "planned backend, no compiler CLI"
+  }
+}
