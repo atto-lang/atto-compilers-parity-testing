@@ -1,0 +1,18 @@
+schema_version = "2"
+[project]
+root = "."
+[packages.checkout]
+files = [
+  "src/local0.ores",
+  "src/local1.ores",
+  "src/unit0.ores",
+  "src/unit1.ores",
+  "src/unit2.ores",
+  "src/unit3.ores",
+  "src/unit4.ores",
+  "src/unit5.ores",
+  "src/unit6.ores",
+  "src/unit7.ores",
+  "src/unit8.ores",
+  "src/unit9.ores",
+]

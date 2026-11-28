@@ -1,0 +1,9 @@
+namespace app;
+import namespace billing as provider from "checkout";
+pub fnc main(): void {
+  stdio.println(provider.function0());
+  stdio.println(provider.function1());
+  stdio.println(provider.function2());
+  stdio.println(provider.function3());
+  return;
+}

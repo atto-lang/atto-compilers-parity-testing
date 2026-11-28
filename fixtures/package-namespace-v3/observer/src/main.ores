@@ -1,0 +1,8 @@
+namespace app;
+import namespace identity as provider from "checkout";
+pub fnc main(): void {
+  stdio.println(provider.function4());
+  stdio.println(provider.function5());
+  stdio.println(provider.function6());
+  return;
+}

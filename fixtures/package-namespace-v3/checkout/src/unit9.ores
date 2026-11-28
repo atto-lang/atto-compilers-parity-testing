@@ -1,0 +1,2 @@
+namespace telemetry;
+pub fnc function9(): int { return 9; }

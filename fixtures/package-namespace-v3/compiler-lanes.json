@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "scope": "restricted adapted guest evidence; not production linker parity",
+  "lanes": [
+    {
+      "backend": "java",
+      "repository": "atto-lang/atto-source.java",
+      "head": "03c865b2a671c7376a583bbfd92d839367bc1d0d",
+      "tree": "30e340888181f55b16f76e16c67b9ae7d336161c",
+      "adapter": "adapters/java/SharedNamespaceV3GuestTest.java",
+      "scope": "restricted Graal guest; not default linker"
+    },
+    {
+      "backend": "js",
+      "repository": "atto-lang/atto-source.js",
+      "head": "6901ee60e77b7e6f82a2663a1ba67b2b7c3a9f70",
+      "tree": "64a935c8b29c35563d603bd9bce5c4832732e152",
+      "adapter": "adapters/js/pinned-namespace-esm.test.mjs",
+      "scope": "actual provider ESM; host consumer wrapper"
+    },
+    {
+      "backend": "forge",
+      "repository": "atto-lang/atto-source.forge",
+      "head": "62bb9f2c99e746f7299ca301ae2ab60213e9e310",
+      "tree": "167a8fd65ddef5aedfa1e54ac2ce165812cb2578",
+      "adapter": "adapters/forge/native-session.test.mjs",
+      "scope": "native independent objects; host linker"
+    },
+    {
+      "backend": "cranelift",
+      "repository": "atto-lang/atto-source.cranelift",
+      "head": "007c4057104bda20055513025ce210831c9412cf",
+      "tree": "d83ae6258087a24854d6aa4ff6feeaed01196496",
+      "adapter": "adapters/cranelift/native-session.test.mjs",
+      "scope": "native independent objects; checked result ABI"
+    },
+    {
+      "backend": "hdl",
+      "repository": "atto-lang/atto-source.hdl",
+      "head": "3ac499d8e9bc5a9e4df3f307d8a2549d6f5f53e1",
+      "tree": "6303353b81d87037e23ac24ab7f4d70253fc833e",
+      "adapter": "adapters/hdl/rtl-session.test.mjs",
+      "scope": "nonnegative int RTL; simulation not simulator binary reuse"
+    },
+    {
+      "backend": "llvm",
+      "repository": "atto-lang/atto-source.llvm",
+      "head": "d7003b847ef942fea97df5b9c77c4744e3397804",
+      "tree": "1b252d093234ed3d7ea9c0d31917991b3a96b7ba",
+      "adapter": "adapters/llvm-native/native-session.test.mjs",
+      "scope": "Rust scalar LLVM path; C++ production graph separate"
+    },
+    {
+      "backend": "net",
+      "repository": "atto-lang/atto-source.net",
+      "head": "a1c39c2df9e9ef638650fb406d512233e573fcb6",
+      "tree": "8e5ab59457bd7ea2997ac0e8d2697d5d848f29c4",
+      "adapter": "adapters/net/SharedNamespaceV3Net.cs",
+      "scope": "adapted namespace source; NativeAOT"
+    },
+    {
+      "backend": "rs",
+      "repository": "atto-lang/atto-source.rs",
+      "head": "b1b02a0f67fd4408c1e4da63fdb99b6c59ec5f19",
+      "tree": "626a591360ad158179c5676804c3c0c8fc8bd052",
+      "adapter": "adapters/rust/shared_namespace_v3.rs",
+      "scope": "registry-adapted actual Wasm guest; not native namespace linker"
+    }
+  ],
+  "bootstrap_pending": [
+    "atto",
+    "realtime"
+  ],
+  "consumer_only": [
+    "wasm"
+  ],
+  "unresolved": [
+    "default namespace entrypoints",
+    "persistent multi-provider cache",
+    "independent durable authority",
+    "production C++ LLVM guest",
+    "general signed HDL semantics"
+  ],
+  "note": "These pins identify exact candidate compiler trees, not approvals or test results on the combined fixture. The Java package identity child is deliberately tested against the shared fixture rather than assuming its external adversarial receipt transfers."
+}

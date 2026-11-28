@@ -1,0 +1,10 @@
+schema_version = "2"
+[project]
+root = "."
+[packages.observer]
+files = ["src/main.ores"]
+[namespace_dependencies.checkout]
+manifest = "../checkout/.ores.pkg.toml"
+package = "checkout"
+manifest_sha256 = "72721b058d5367d74ed1bc4694e79ad13742db24513a192fb25851a3d391912f"
+sources_sha256 = "8e5170a12e8950f934538ae7055d112a147361903f330b8632eaa71df5a2ebae"
