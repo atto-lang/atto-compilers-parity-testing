@@ -74,7 +74,7 @@ pub fn validate_archive(bytes:&[u8],p:&ArtifactPolicy<'_>)->Result<CheckedGuestA
     let mut fixture_set=None;
     let mut seen=BTreeSet::new();
     for i in 0..zip.len(){
-        let mut f=zip.by_index(i).map_err(|e|e.to_string())?;
+        let f=zip.by_index(i).map_err(|e|e.to_string())?;
         let name=f.name().to_owned();
         if !seen.insert(name.clone())||f.is_dir()
            ||name!="guest-receipt.json"&&name!="guest-stdout.bin"&&name!="fixture-set.json"{
